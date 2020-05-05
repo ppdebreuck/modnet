@@ -12,6 +12,8 @@ from matminer.featurizers.site import *
 from pymatgen.analysis.local_env import VoronoiNN
 from typing import Dict, List
 import pickle
+import os
+database = None
 
 def nmi_target(df_feat,df_target):
 
@@ -27,7 +29,6 @@ def nmi_target(df_feat,df_target):
             diag[x]=(mutual_info_regression(df_feat[x].values.reshape(-1, 1),df_feat[x]))[0]
             if diag[x] == 0:
                 to_drop.append(x) # features which have an entropy of zero are useless
-                #print("WARNING: Entropy {} is zero".format(x),flush=True)
 
     mi_df.drop(to_drop,inplace=True)
     for x in mi_df.index:
@@ -40,6 +41,9 @@ def get_features_dyn(n_feat,cross_mi,target_mi):
   
     first_feature =target_mi.nlargest(1).index[0]
     feature_set = [first_feature]
+    
+    if n_feat == -1:
+        n_feat = len(cross_mi.index)
 
     for n in range(n_feat-1):
         if (n+1)%50 ==0:
@@ -51,13 +55,6 @@ def get_features_dyn(n_feat,cross_mi,target_mi):
         if p < 0.1:
             p=0.1
             
-        #0: p = 6-2*math.log10(n+1)
-        #0: c = 0.0001*(2**(n/10))
-        
-        #1: p = 6-2*math.log10(n+1)
-        #1: c = 0.0001*(4**(n/10))
-        
-        #print((n,p,c))
         score = cross_mi.copy()
         score = score.drop(feature_set,axis=0)
         score = score[feature_set]
@@ -84,7 +81,6 @@ def merge_ranked(lists):
 
 
 def featurize_composition(df):
-    #df = pd.DataFrame({'structure':structures, 'composition':[s.composition for s in structures]})
     
     df = df.copy()
     df['composition'] = df['structure'].apply(lambda s: s.composition)
@@ -97,8 +93,8 @@ def featurize_composition(df):
                                  IonProperty(),
                                  ElementFraction(),
                                  TMetalFraction(),
-                                 CohesiveEnergy(), # equals the formation energy
-                                 Miedema(), # Formation enthalpies
+                                 CohesiveEnergy(),
+                                 Miedema(),
                                  YangSolidSolution(),
                                  AtomicPackingEfficiency(),
                                 ])
@@ -112,8 +108,6 @@ def featurize_composition(df):
                                     ElectronegativityDiff()
                                 ])
 
-
-    #df["composition_oxid"] = composition_to_oxidcomposition(df["Input Data|composition"])
     df = CompositionToOxidComposition().featurize_dataframe(df,"Input Data|composition")
     
     df = ox_featurizer.featurize_dataframe(df,"composition_oxid",multiindex=True,ignore_errors=True)
@@ -128,7 +122,6 @@ def featurize_composition(df):
     df = df.dropna(axis=1,how='all')
     df = df.replace([np.inf, -np.inf, np.nan], 0)
     df = df.select_dtypes(include='number')
-    # todo drop input data (structure,composition)
     return df
 
     
@@ -148,18 +141,11 @@ def featurize_structure(df):
     
     featurizer = MultipleFeaturizer([DensityFeatures(),
                                      GlobalSymmetryFeatures(),
-                                     #Dimensionality(),
                                      RadialDistributionFunction(),
-                                     #prdf,
-                                     #ElectronicRadialDistributionFunction(),
                                      cm,
                                      scm,
-                                     #OrbitalFieldMatrix(),
-                                     #MinimumRelativeDistances(),
-                                     #SiteStatsFingerprint(),
                                      EwaldEnergy(),
-                                     bf, # add bond type name, here no distinction                                 
-                                     #bob,
+                                     bf,                           
                                      StructuralHeterogeneity(),
                                      MaximumPackingEfficiency(),
                                      ChemicalOrdering(),
@@ -182,8 +168,6 @@ def featurize_structure(df):
     df = df.dropna(axis=1,how='all')
     df = df.replace([np.inf, -np.inf, np.nan], -1)
     df = df.select_dtypes(include='number')
-    
-    # todo drop input data (structure)
     return df
     
 def featurize_site(df):
@@ -217,10 +201,7 @@ def featurize_site(df):
     
     df = grdf.featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["GeneralizedRDF|"+x if '|' not in x else x for x in df.columns]
-    
-    #SiteStatsFingerprint(AngularFourierSeries.from_preset('gaussian'),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    #df.columns = ["AngularFourierSeries|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(LocalPropertyDifference(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["LocalPropertyDifference|"+x if '|' not in x else x for x in df.columns]
     
@@ -237,14 +218,17 @@ def featurize_site(df):
     df = df.loc[:, (df != 0).any(axis=0)]
     df = df.replace([np.inf, -np.inf, np.nan], -1)
     df = df.select_dtypes(include='number')
-    
-    # todo drop input data (structure)
     return df
 
 class MODData():
-    def __init__(self,structures:List[Structure],targets:List,names:List=[],mpids:List=[]):
+    def __init__(self,structures:List[Structure],targets:List=[],names:List=[],mpids:List=[]):
         self.structures = structures
         self.df_featurized = None
+        
+        if len(targets)==0:
+            self.prediction = True
+        else:
+            self.prediction = False
         
         if np.array(targets).ndim == 2:
             self.targets = targets
@@ -264,23 +248,23 @@ class MODData():
             self.ids = mpids
         else:
             self.ids = ['id'+str(i) for i in range(len(self.structures))]
-        
-        data = {'id':self.ids,}
-        for i,target in enumerate(self.targets):
-            data[self.names[i]] = target
-        self.df_targets = pd.DataFrame(data)
-        self.df_targets.set_index('id',inplace=True)
+            
+        if not self.prediction:
+            data = {'id':self.ids,}
+            for i,target in enumerate(self.targets):
+                data[self.names[i]] = target
+            self.df_targets = pd.DataFrame(data)
+            self.df_targets.set_index('id',inplace=True)
         self.df_structure = pd.DataFrame({'id':self.ids, 'structure':self.structures})
         self.df_structure.set_index('id',inplace=True)
 
-    def featurize(self,fast=0):
-        ####
-        # TODO fast part taking already computed structures from file
-        ####
+    def featurize(self,fast=0,db_file='feature_database.pkl'):
         print('Computing features, this can take time...')
         if fast and len(self.mpids)>0:
             print('Fast featurization on, retrieving from database...')
-            database = pd.read_pickle('../data/feature_database.pkl')
+            this_dir, this_filename = os.path.split(__file__)
+            global database
+            database = pd.read_pickle(db_file)
             mpids_done = [x for x in self.mpids if x in database.index]
             print('Retrieved features for {} out of {} materials'.format(len(mpids_done),len(self.mpids)))
             df_done = database.loc[mpids_done]
@@ -308,15 +292,14 @@ class MODData():
             df_site = featurize_site(self.df_structure)
             
             df_final = df_composition.join(df_structure.join(df_site))
-            #for name, target in zip(self.names,self.targets):
-            #    df_final['Target|'+name] = target
-            
+        df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
         self.df_featurized = df_final
         print('Data has successfully been featurized!')
         
-    def feature_selection(self,n=300):
+    def feature_selection(self,n=1500):
         
         assert hasattr(self, 'df_featurized'), 'Please featurize the data first'
+        assert not self.prediction, 'Please provide targets'
 
         ranked_lists = []
         for i,name in enumerate(self.names):
@@ -324,22 +307,14 @@ class MODData():
             
             # Computing mutual information with target
             print("Computing mutual information ...")
-            df = self.df_featurized.copy()
-            
-            #a = []
-            #for x in df.columns:
-            #    if 'Target' in x:
-            #        a.append(x)
-            #a.remove('Target|' + name)
-            #df = df.drop(a,axis=1)
-            
+            df = self.df_featurized.copy()            
             y_nmi = nmi_target(self.df_featurized,self.df_targets[[name]])[name]
-            #y_nmi = df1['Target|'+name]
-            #y_nmi.drop('Target|'+name, inplace=True)
             
             print('Computing optimal features...')
             #Loading mutual information between features
-            cross_mi = pd.read_pickle('../data/Features_cross')
+            this_dir, this_filename = os.path.split(__file__)
+            dp = os.path.join(this_dir, "data", "Features_cross")
+            cross_mi = pd.read_pickle(dp)
             a = []
             for x in cross_mi.index:
                 if x not in y_nmi.index:
@@ -352,6 +327,11 @@ class MODData():
         print('Merging all features...')
         self.optimal_features = merge_ranked(ranked_lists)
         print('Done.')
+        
+    def shuffle(self):
+        # caution, not fully implemented
+        self.df_featurized =self.df_featurized.sample(frac=1)
+        self.df_targets = self.df_targets.loc[data.df_featurized.index]
         
     def save(self,filename):
         fp = open(filename,'wb')
@@ -375,7 +355,7 @@ class MODData():
     def get_featurized_df(self):
         return self.df_featurized
 
-    def get_optimal_features(self):
+    def get_optimal_descriptors(self):
         return self.optimal_features
     
     def get_optimal_df(self):
