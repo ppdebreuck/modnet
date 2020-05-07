@@ -42,7 +42,7 @@ pip install modnet
 
 The MODNet package is built around two classes: `MODData` and `MODNetModel`.
 
-The usal workflow is as follows:
+The usual workflow is as follows:
 ```python
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
@@ -59,12 +59,12 @@ model.fit(data)
 # Predicting on unlabeled data
 data_to_predict = MODData(new_structures)
 data_to_predict.featurize()
-df_predictions = model.predict(md) # dataframe containing the prediction on new_structures
+df_predictions = model.predict(data_to_predict) # returns dataframe containing the prediction on new_structures
 
 
 
 ```
-Example notebooks can be found in *example_notebooks* directory.
+Example notebooks can be found in the *example_notebooks* directory.
 
 
 <a name="pretrained"></a>
@@ -74,7 +74,7 @@ Two pretrained models are provided in *pretrained/*:
  - Vibrational thermodynamics
 
 Download this directory localy to *path/to/pretrained/*.
-These can then be used as follows:
+Pretrained models can then be used as follows:
 
 ```python
 from modnet.models import MODNetModel
@@ -86,7 +86,7 @@ model = MODNetModel.load('path/to/pretrained/refractive_index')
 <a name="stored-moddata"></a>
 ## Stored MODData
 
-Three `MODData` are provided in *moddata/*:
+Three `MODData`s are provided in *moddata/*:
 - Refractive index
 - Vibrational thermodynamics
 - Formation energy on Materials Project (June 2018)
@@ -100,7 +100,7 @@ data_MP = MODData.load('path/to/moddata/MP_2018.6')
 
 ```
 
-The latter MODData (MP_2018.6) is very usefull for predicting on all structures in the Materials Project:
+The latter MODData (MP_2018.6) is very usefull for predicting a learned property on all structures from the Materials Project:
 
 ```python
 predictions_on_MP = model.predict(data_MP)
@@ -108,7 +108,7 @@ predictions_on_MP = model.predict(data_MP)
 
 <a name="documentation"></a>
 ## Documentation
-The MODNet package is built around two classes: `MODData` and `MODNetModel`. 
+The two main classes, `MODData` and `MODNetModel`, are detailed here.
 
 <a name="moddata"></a>
 ### MODData
@@ -135,7 +135,7 @@ data.featurize(self,fast=False,db_file='feature_database.pkl')
 ```
 **Arguments:**
 - `fast (Boolean)` *(optional)*: If set to True, the algorithm will use the pre-computed features from a database instead of computing them again from scratch. This is recommended (and only possible) when using structures from the Materials Project. Note that the mpids should be provided in the MODData.
-- `db_file (Boolean)` *(optional)*: When setting fast to True, you need to download the file at *modnet/data/feature_database.pkl*. Then set the local path to this file in this argument.
+- `db_file (Boolean)` *(optional)*: When setting fast to True, you also need to provide this argument. Download the file at *modnet/data/feature_database.pkl*, then set the local path to this file as argument.
 
 Finally, the optimal features are computed:
 
@@ -221,7 +221,7 @@ model.fit(data, val_fraction = 0.0, val_key = None, lr=0.001, epochs = 200, batc
 - `lr (float)` *(optional)*: Learning rate.
 - `epochs (int)` *(optional)*: Number of epochs.
 - `batch_size (int)` *(optional)*: Batch size.
-- `xscale (String)` *(optional)*: Scaling of the features. Possible values: 'minmax' or'standard'.
+- `xscale (String)` *(optional)*: Scaling of the features. Possible values: 'minmax' or 'standard'.
 
 
 You can save and load the model for later usage:
@@ -245,7 +245,7 @@ data_to_predict.featurize(fast=True)
 and then using the predict method:
 
 ```python
-df_predictions = model.predict(md)
+df_predictions = model.predict(data_to_predict)
 ```
 A dataframe containing the predictions is returned.
 

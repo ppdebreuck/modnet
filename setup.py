@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
     
 setuptools.setup(
     name="modnet",
-    version="0.1",
+    version="0.1.1",
     author="Pierre-Paul De Breuck",
     author_email="pierre-paul.debreuck@uclouvain.be",
     description="MODNet, the Material Optimal Descriptor Network for materials properties prediction. ",
