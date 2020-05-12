@@ -120,9 +120,7 @@ class MODNetModel:
         
     def predict(self,data):
         
-        df = pd.DataFrame(columns=self.optimal_descriptors[:self.n_feat])
-        df = df.append(data.get_featurized_df()).replace([np.inf, -np.inf, np.nan], 0)
-        x = df[self.optimal_descriptors[:self.n_feat]].values
+        x = data.get_featurized_df()[self.optimal_descriptors[:self.n_feat]].values
         
         #Scale the input features:
         if self.xscale == 'minmax':

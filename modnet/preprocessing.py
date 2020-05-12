@@ -13,9 +13,13 @@ from pymatgen.analysis.local_env import VoronoiNN
 from typing import Dict, List
 import pickle
 import os
-database = None
+database = pd.DataFrame([])
 
 def nmi_target(df_feat,df_target):
+    
+    frange = df_feat.max(axis=0)-df_feat.min(axis=0)
+    to_drop = frange[frange==0].index
+    df_feat = df_feat.drop(to_drop,axis=1)
 
     target_name = df_target.columns[0]
     mi_df = pd.DataFrame([],columns=[target_name],index=df_feat.columns)
@@ -24,11 +28,10 @@ def nmi_target(df_feat,df_target):
     S_mi = mutual_info_regression(df_target[target_name].values.reshape(-1, 1),df_target[target_name])[0]
 
     diag={}
-    to_drop=[]
     for x in df_feat.columns:
             diag[x]=(mutual_info_regression(df_feat[x].values.reshape(-1, 1),df_feat[x]))[0]
-            if diag[x] == 0:
-                to_drop.append(x) # features which have an entropy of zero are useless
+            #if diag[x] < 0.01:
+            #    to_drop.append(x) # features which have an entropy of nearly zero are useless
 
     mi_df.drop(to_drop,inplace=True)
     for x in mi_df.index:
@@ -264,7 +267,8 @@ class MODData():
             print('Fast featurization on, retrieving from database...')
             this_dir, this_filename = os.path.split(__file__)
             global database
-            database = pd.read_pickle(db_file)
+            if len(database) == 0:
+                database = pd.read_pickle(db_file)
             mpids_done = [x for x in self.mpids if x in database.index]
             print('Retrieved features for {} out of {} materials'.format(len(mpids_done),len(self.mpids)))
             df_done = database.loc[mpids_done]
