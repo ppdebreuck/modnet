@@ -33,7 +33,7 @@ def nmi_target(df_feat,df_target):
             #if diag[x] < 0.01:
             #    to_drop.append(x) # features which have an entropy of nearly zero are useless
 
-    mi_df.drop(to_drop,inplace=True)
+    #mi_df.drop(to_drop,inplace=True)
     for x in mi_df.index:
         mi_df.loc[x,target_name] = mi_df.loc[x,target_name] / ((S_mi + diag[x])/2)
 
