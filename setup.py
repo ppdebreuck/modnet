@@ -1,11 +1,21 @@
 import setuptools
+import re
 
 with open("README.md", "r") as f:
     long_description = f.read()
     
+with open("modnet/__init__.py", "r") as f:
+    lines = ""
+    for item in f.readlines():
+        lines += item + '\n'
+
+
+
+version = re.search('__version__ = "(.*)"', lines).group(1)
+    
 setuptools.setup(
     name="modnet",
-    version="0.1.1",
+    version=version,
     author="Pierre-Paul De Breuck",
     author_email="pierre-paul.debreuck@uclouvain.be",
     description="MODNet, the Material Optimal Descriptor Network for materials properties prediction. ",
