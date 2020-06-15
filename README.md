@@ -50,7 +50,7 @@ from modnet.models import MODNetModel
 # Creating MODData
 data = MODData(structures,targets)
 data.featurize()
-data.feature_selection(self,n=1000)
+data.feature_selection(n=1000)
 
 # Creating MODNetModel
 model = MODNetModel(target_hierarchy,weights,num_neurons=[[256],[64,64],[32]])
@@ -131,16 +131,16 @@ data = MODData(structures,targets,names=[],mpids=[])
 The next step is to create the features:
 
 ```python
-data.featurize(self,fast=False,db_file='feature_database.pkl')
+data.featurize(fast=False,db_file='feature_database.pkl')
 ```
 **Arguments:**
 - `fast (Boolean)` *(optional)*: If set to True, the algorithm will use the pre-computed features from a database instead of computing them again from scratch. This is recommended (and only possible) when using structures from the Materials Project. Note that the mpids should be provided in the MODData.
-- `db_file (Boolean)` *(optional)*: When setting fast to True, you also need to provide this argument. Download the file at *modnet/data/feature_database.pkl*, then set the local path to this file as argument.
+- `db_file (Boolean)` *(optional)*: When setting fast to True, you also need to provide this argument. Download the file at [this figshare link](https://figshare.com/articles/feature_database_for_MODNet/12480620), unzip it, then set the local path to this file as argument.
 
 Finally, the optimal features are computed:
 
 ```python
-data.feature_selection(self,n=300)
+data.feature_selection(n=300)
 ```
 
 **Arguments:**
