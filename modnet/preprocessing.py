@@ -15,30 +15,56 @@ import pickle
 import os
 database = pd.DataFrame([])
 
-def nmi_target(df_feat,df_target):
-    
-    frange = df_feat.max(axis=0)-df_feat.min(axis=0)
-    to_drop = frange[frange==0].index
-    df_feat = df_feat.drop(to_drop,axis=1)
 
+def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
+               drop_constant_features: bool=True, **kwargs) -> pd.DataFrame:
+    """
+    Computes the Normalized Mutual Information (NMI) between a list of input features and a target variable.
+
+    Args:
+        df_feat: panda's DataFrame containing the input features for which the NMI with the target variable is to be
+            computed.
+        df_target: panda's DataFrame containing the target variable. This DataFrame should contain only one column and
+            have the same size as df_feat.
+        drop_constant_features: If True, the features that are constant across the entire data set will be dropped.
+        **kwargs: Keyword arguments to be passed down to the mutual_info_regression function from scikit-learn. This
+            can be useful e.g. for testing purposes.
+
+    Returns:
+        panda's DataFrame: panda's DataFrame containing the NMI between each of the input features and the target
+            variable.
+    """
+    # Initial checks
+    if df_target.shape[1] != 1:
+        raise ValueError('The target DataFrame should have exactly one column.')
+    if len(df_feat) != len(df_target):
+        raise ValueError('The input features DataFrame and the target variable DataFrame should contain the same '
+                         'number of data points.')
+
+    # Drop features which have the same value for the entire data set
+    if drop_constant_features:
+        frange = df_feat.max(axis=0) - df_feat.min(axis=0)
+        to_drop = frange[frange == 0].index
+        df_feat = df_feat.drop(to_drop, axis=1)
+
+    # Prepare the output DataFrame and compute the mutual information
     target_name = df_target.columns[0]
-    mi_df = pd.DataFrame([],columns=[target_name],index=df_feat.columns)
+    out_df = pd.DataFrame([], columns=[target_name], index=df_feat.columns)
+    out_df.loc[:, target_name] = (mutual_info_regression(df_feat, df_target[target_name], **kwargs))
 
-    mi_df.loc[:,target_name] = (mutual_info_regression(df_feat,df_target[target_name]))
-    S_mi = mutual_info_regression(df_target[target_name].values.reshape(-1, 1),df_target[target_name])[0]
-
-    diag={}
+    # Compute the "self" mutual information (i.e. information entropy) of the target variable and of the input features
+    target_mi = mutual_info_regression(df_target[target_name].values.reshape(-1, 1),
+                                       df_target[target_name], **kwargs)[0]
+    diag = {}
     for x in df_feat.columns:
-            diag[x]=(mutual_info_regression(df_feat[x].values.reshape(-1, 1),df_feat[x]))[0]
-            #if diag[x] < 0.01:
-            #    to_drop.append(x) # features which have an entropy of nearly zero are useless
+        diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
 
-    #mi_df.drop(to_drop,inplace=True)
-    for x in mi_df.index:
-        mi_df.loc[x,target_name] = mi_df.loc[x,target_name] / ((S_mi + diag[x])/2)
+    # Normalize the mutual information
+    for x in out_df.index:
+        out_df.loc[x, target_name] = out_df.loc[x, target_name] / ((target_mi + diag[x])/2)
 
+    return out_df
 
-    return mi_df
 
 def get_features_dyn(n_feat,cross_mi,target_mi):
   
