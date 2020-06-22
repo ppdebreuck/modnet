@@ -91,4 +91,17 @@ def test_nmi_target():
     with pytest.raises(ValueError, match=r'The target DataFrame should have exactly one column.'):
         nmi_target(df_feat=df_feat, df_target=df_target)
 
-    # Test with some more real data (for which NMI is not just 0.0 or 1.0) ... to be added
+    # Test with some more real data (for which NMI is not just 0.0 or 1.0)
+    npoints = 200
+    np.random.seed(42)
+    x = np.random.rand(npoints)
+    z = 4 * x + 1.0 * np.random.rand(npoints)
+
+    df_feat = pd.DataFrame({'x': x})
+    df_target = pd.DataFrame({'z': z})
+
+    # Here we fix the random_state for the call to sklearn.feature_selection's mutual_info_regression so
+    # that we always get the same value.
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, random_state=42)
+    assert df_nmi_target.shape == (1, 1)
+    assert df_nmi_target.loc['x']['z'] == pytest.approx(0.3417665092162398)
