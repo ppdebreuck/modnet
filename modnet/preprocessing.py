@@ -66,11 +66,38 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     return out_df
 
 
+def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    """Computes the Normalized Mutual Information (NMI) between input features.
+
+    Args:
+        df_feat: panda's DataFrame containing the input features for which the NMI with the target variable is to be
+            computed.
+        **kwargs: Keyword arguments to be passed down to the mutual_info_regression function from scikit-learn. This
+            can be useful e.g. for testing purposes.
+    """
+    # Prepare the output DataFrame and compute the mutual information
+    out_df = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
+    for feat_name in out_df.columns:
+        out_df.loc[:, feat_name] = (mutual_info_regression(df_feat, df_feat[feat_name], **kwargs))
+
+    # Compute the "self" mutual information (i.e. information entropy) of the features
+    diag = {}
+    for x in df_feat.columns:
+        diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
+
+    # Normalize the mutual information between features
+    for feat1 in out_df.index:
+        for feat2 in out_df.columns:
+            out_df.loc[feat1, feat2] = out_df.loc[feat1, feat2] / ((diag[feat1] + diag[feat2]) / 2)
+
+    return out_df
+
+
 def get_features_dyn(n_feat,cross_mi,target_mi):
-  
+
     first_feature =target_mi.nlargest(1).index[0]
     feature_set = [first_feature]
-    
+
     if n_feat == -1:
         n_feat = len(cross_mi.index)
 
@@ -83,18 +110,18 @@ def get_features_dyn(n_feat,cross_mi,target_mi):
             c=100000
         if p < 0.1:
             p=0.1
-            
+
         score = cross_mi.copy()
         score = score.drop(feature_set,axis=0)
         score = score[feature_set]
-        
+
         for i in score.index:
             row = score.loc[i,:]
             score.loc[i,:] = target_mi[i] /(row**p+c)
-            
+
         next_feature = score.min(axis=1).idxmax(axis=0)
         feature_set.append(next_feature)
-        
+
     return feature_set
 
 def merge_ranked(lists):
@@ -110,23 +137,23 @@ def merge_ranked(lists):
 
 
 def featurize_composition(df):
-    
+
     df = df.copy()
     df['composition'] = df['structure'].apply(lambda s: s.composition)
     featurizer = MultipleFeaturizer([ElementProperty.from_preset("magpie"),
-                                 AtomicOrbitals(),
-                                 BandCenter(),
-                                 ElectronAffinity(),
-                                 Stoichiometry(),
-                                 ValenceOrbital(),
-                                 IonProperty(),
-                                 ElementFraction(),
-                                 TMetalFraction(),
-                                 CohesiveEnergy(),
-                                 Miedema(),
-                                 YangSolidSolution(),
-                                 AtomicPackingEfficiency(),
-                                ])
+                                     AtomicOrbitals(),
+                                     BandCenter(),
+                                     ElectronAffinity(),
+                                     Stoichiometry(),
+                                     ValenceOrbital(),
+                                     IonProperty(),
+                                     ElementFraction(),
+                                     TMetalFraction(),
+                                     CohesiveEnergy(),
+                                     Miedema(),
+                                     YangSolidSolution(),
+                                     AtomicPackingEfficiency(),
+                                     ])
 
 
     df = featurizer.featurize_dataframe(df,"composition",multiindex=True,ignore_errors=True)
@@ -134,11 +161,11 @@ def featurize_composition(df):
 
 
     ox_featurizer = MultipleFeaturizer([OxidationStates(),
-                                    ElectronegativityDiff()
-                                ])
+                                        ElectronegativityDiff()
+                                        ])
 
     df = CompositionToOxidComposition().featurize_dataframe(df,"Input Data|composition")
-    
+
     df = ox_featurizer.featurize_dataframe(df,"composition_oxid",multiindex=True,ignore_errors=True)
     df=df.rename(columns = {'Input Data':''})
     df.columns = df.columns.map('|'.join).str.strip('|')
@@ -153,7 +180,7 @@ def featurize_composition(df):
     df = df.select_dtypes(include='number')
     return df
 
-    
+
 def featurize_structure(df):
 
     df = df.copy()
@@ -167,27 +194,27 @@ def featurize_structure(df):
     bf.fit(df["structure"])
     bob =  BagofBonds()
     bob.fit(df["structure"])
-    
+
     featurizer = MultipleFeaturizer([DensityFeatures(),
                                      GlobalSymmetryFeatures(),
                                      RadialDistributionFunction(),
                                      cm,
                                      scm,
                                      EwaldEnergy(),
-                                     bf,                           
+                                     bf,
                                      StructuralHeterogeneity(),
                                      MaximumPackingEfficiency(),
                                      ChemicalOrdering(),
                                      XRDPowderPattern()
-                                    ])
+                                     ])
 
 
     df = featurizer.featurize_dataframe(df,"structure",multiindex=True,ignore_errors=True)
     df.columns = df.columns.map('|'.join).str.strip('|')
-    
+
     dist = df["RadialDistributionFunction|radial distribution function"][1]['distances'][:50]
     for i,d in enumerate(dist):
-      df["RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
+        df["RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
     df = df.drop("RadialDistributionFunction|radial distribution function",axis=1)
 
     df["GlobalSymmetryFeatures|crystal_system"] = df["GlobalSymmetryFeatures|crystal_system"].map({"cubic":1, "tetragonal":2, "orthorombic":3, "hexagonal":4, "trigonal=":5, "monoclinic":6, "triclinic":7})
@@ -198,51 +225,51 @@ def featurize_structure(df):
     df = df.replace([np.inf, -np.inf, np.nan], -1)
     df = df.select_dtypes(include='number')
     return df
-    
+
 def featurize_site(df):
-    
+
     df = df.copy()
     grdf = SiteStatsFingerprint(GeneralizedRadialDistributionFunction.from_preset('gaussian'),stats=('mean', 'std_dev')).fit(df["structure"])
-        
+
     df.columns = ["Input data|"+x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(AGNIFingerprints(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["AGNIFingerPrint|"+x if '|' not in x else x for x in df.columns]
-    
-    
+
+
     df = SiteStatsFingerprint(OPSiteFingerprint(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["OPSiteFingerprint|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(CrystalNNFingerprint.from_preset("ops"),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["CrystalNNFingerprint|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(VoronoiFingerprint(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["VoronoiFingerprint|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(GaussianSymmFunc(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["GaussianSymmFunc" + x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(ChemEnvSiteFingerprint.from_preset("simple"),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["ChemEnvSiteFingerprint|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(CoordinationNumber(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["CoordinationNumber|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = grdf.featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["GeneralizedRDF|"+x if '|' not in x else x for x in df.columns]
 
     df = SiteStatsFingerprint(LocalPropertyDifference(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["LocalPropertyDifference|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(BondOrientationalParameter(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["BondOrientationParameter|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(AverageBondLength(VoronoiNN()),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["AverageBondLength|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = SiteStatsFingerprint(AverageBondAngle(VoronoiNN()),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
     df.columns = ["AverageBondAngle|"+x if '|' not in x else x for x in df.columns]
-    
+
     df = df.dropna(axis=1,how='all')
     df = df.loc[:, (df != 0).any(axis=0)]
     df = df.replace([np.inf, -np.inf, np.nan], -1)
@@ -253,31 +280,31 @@ class MODData():
     def __init__(self,structures:List[Structure],targets:List=[],names:List=[],mpids:List=[]):
         self.structures = structures
         self.df_featurized = None
-        
+
         if len(targets)==0:
             self.prediction = True
         else:
             self.prediction = False
-        
+
         if np.array(targets).ndim == 2:
             self.targets = targets
             self.PP = True
         else:
             self.targets = [targets]
             self.PP = False
-        
+
         if len(names)>0:
             self.names = names
         else:
             self.names = ['prop'+str(i) for i in range(len(self.targets))]
-        
+
         self.mpids = mpids
-        
+
         if len(mpids)>0:
             self.ids = mpids
         else:
             self.ids = ['id'+str(i) for i in range(len(self.structures))]
-            
+
         if not self.prediction:
             data = {'id':self.ids,}
             for i,target in enumerate(self.targets):
@@ -299,7 +326,7 @@ class MODData():
             print('Retrieved features for {} out of {} materials'.format(len(mpids_done),len(self.mpids)))
             df_done = database.loc[mpids_done]
             df_todo = self.df_structure.drop(mpids_done,axis=0)
-            
+
             if len(df_todo) > 0 and len(df_done) > 0:
                 df_composition = featurize_composition(df_todo)
                 df_structure = featurize_structure(df_todo)
@@ -313,33 +340,33 @@ class MODData():
                 df_composition = featurize_composition(self.df_structure)
                 df_structure = featurize_structure(self.df_structure)
                 df_site = featurize_site(self.df_structure)
-            
+
                 df_final = df_composition.join(df_structure.join(df_site))
-        
+
         else:
             df_composition = featurize_composition(self.df_structure)
             df_structure = featurize_structure(self.df_structure)
             df_site = featurize_site(self.df_structure)
-            
+
             df_final = df_composition.join(df_structure.join(df_site))
         df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
         self.df_featurized = df_final
         print('Data has successfully been featurized!')
-        
+
     def feature_selection(self,n=1500):
-        
+
         assert hasattr(self, 'df_featurized'), 'Please featurize the data first'
         assert not self.prediction, 'Please provide targets'
 
         ranked_lists = []
         for i,name in enumerate(self.names):
             print("Starting target {}/{}: {} ...".format(i+1,len(self.targets),self.names[i]))
-            
+
             # Computing mutual information with target
             print("Computing mutual information ...")
-            df = self.df_featurized.copy()            
+            df = self.df_featurized.copy()
             y_nmi = nmi_target(self.df_featurized,self.df_targets[[name]])[name]
-            
+
             print('Computing optimal features...')
             #Loading mutual information between features
             this_dir, this_filename = os.path.split(__file__)
@@ -353,40 +380,40 @@ class MODData():
             opt_features = get_features_dyn(min(n,len(cross_mi.index)),cross_mi,y_nmi)
             ranked_lists.append(opt_features)
             print("Done with target {}/{}: {}.".format(i+1,len(self.targets),self.names[i]))
-            
+
         print('Merging all features...')
         self.optimal_features = merge_ranked(ranked_lists)
         print('Done.')
-        
+
     def shuffle(self):
         # caution, not fully implemented
         self.df_featurized =self.df_featurized.sample(frac=1)
         self.df_targets = self.df_targets.loc[data.df_featurized.index]
-        
+
     def save(self,filename):
         fp = open(filename,'wb')
         pickle.dump(self,fp)
         fp.close()
         print('Data successfully saved!')
-    
+
     @staticmethod
     def load(filename):
         fp = open(filename,'rb')
         data = pickle.load(fp)
         fp.close()
         return data
-    
+
     def get_structure_df(self):
         return self.df_structure
-        
+
     def get_target_df(self):
         return self.df_targets
-    
+
     def get_featurized_df(self):
         return self.df_featurized
 
     def get_optimal_descriptors(self):
         return self.optimal_features
-    
+
     def get_optimal_df(self):
         return self.df_featurized[self.optimal_features].join(self.targets)

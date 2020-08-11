@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from modnet.preprocessing import get_cross_nmi
 from modnet.preprocessing import nmi_target
 
 
@@ -105,3 +106,83 @@ def test_nmi_target():
     df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, random_state=42)
     assert df_nmi_target.shape == (1, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(0.3417665092162398)
+
+
+def test_get_cross_nmi():
+
+    # Test with linear data (should get 1.0 mutual information, or very close due to algorithm used
+    # in mutual_info_regression)
+    npoints = 31
+    x = np.linspace(0.5, 3.5, npoints)
+    y = 2*x - 2
+    z = 4*x + 2
+
+    df_feat = pd.DataFrame({'x': x, 'y': y, 'z': z})
+
+    # Here we fix the number of neighbors for the call to sklearn.feature_selection's mutual_info_regression to 2 so
+    # that we get exactly 1 for the mutual information.
+    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+
+    assert df_cross_nmi.shape == (3, 3)
+    for idx in df_cross_nmi.index:
+        for col in df_cross_nmi.columns:
+            assert df_cross_nmi.loc[idx][col] == pytest.approx(1.0)
+
+    # Same data shuffled
+    # Shuffle the x, y and z
+    indices = np.arange(npoints)
+    np.random.seed(42)
+    np.random.shuffle(indices)
+    xs = x.take(indices)
+    ys = y.take(indices)
+    zs = z.take(indices)
+
+    df_feat = pd.DataFrame({'x': xs, 'y': ys, 'z': zs})
+
+    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+
+    assert df_cross_nmi.shape == (3, 3)
+    for idx in df_cross_nmi.index:
+        for col in df_cross_nmi.columns:
+            assert df_cross_nmi.loc[idx][col] == pytest.approx(1.0)
+
+    # Test with one constant feature
+    c = np.ones(npoints) * 1.4
+    df_feat = pd.DataFrame({'x': x, 'y': y, 'z': z, 'c': c})
+
+    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+    assert df_cross_nmi.shape == (4, 4)
+    for idx in df_cross_nmi.index:
+        for col in df_cross_nmi.columns:
+            expected = 0.0 if idx == 'c' or col == 'c' else 1.0
+            assert df_cross_nmi.loc[idx][col] == pytest.approx(expected)
+
+    # Test with unrelated data (grid)
+    x = np.linspace(start=2, stop=5, num=4)
+    y = np.linspace(start=3, stop=7, num=5)
+    x, y = np.meshgrid(x, y)
+    x = x.flatten()
+    y = y.flatten()
+    df_feat = pd.DataFrame({'x': x, 'y': y})
+
+    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+    assert df_cross_nmi.shape == (2, 2)
+    assert df_cross_nmi.loc['x']['y'] == pytest.approx(0.0)
+    assert df_cross_nmi.loc['y']['x'] == pytest.approx(0.0)
+
+    # Test with some more real data (for which NMI is not just 0.0 or 1.0)
+    npoints = 200
+    np.random.seed(42)
+    x = np.random.rand(npoints)
+    y = 4 * x + 1.0 * np.random.rand(npoints)
+
+    df_feat = pd.DataFrame({'x': x, 'y': y})
+
+    # Here we fix the random_state for the call to sklearn.feature_selection's mutual_info_regression so
+    # that we always get the same value.
+    df_cross_nmi = get_cross_nmi(df_feat=df_feat, random_state=42)
+    assert df_cross_nmi.shape == (2, 2)
+    assert df_cross_nmi.loc['x']['x'] == pytest.approx(1.0)
+    assert df_cross_nmi.loc['y']['y'] == pytest.approx(1.0)
+    assert df_cross_nmi.loc['x']['y'] == pytest.approx(0.3417665092162398)
+    assert df_cross_nmi.loc['y']['x'] == pytest.approx(0.3417665092162398)
