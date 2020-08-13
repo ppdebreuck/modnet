@@ -10,9 +10,10 @@ from pymatgen.core.periodic_table import *
 from matminer.featurizers.structure import *
 from matminer.featurizers.site import *
 from pymatgen.analysis.local_env import VoronoiNN
-from typing import Dict, List
+from typing import Dict, List, Union
 import pickle
 import os
+import logging
 database = pd.DataFrame([])
 
 
@@ -74,26 +75,111 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
             computed.
         **kwargs: Keyword arguments to be passed down to the mutual_info_regression function from scikit-learn. This
             can be useful e.g. for testing purposes.
+
+    Returns:
+        pd.DataFrame: panda's DataFrame containing the Normalized Mutual Information between features.
     """
     # Prepare the output DataFrame and compute the mutual information
     out_df = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
-    for feat_name in out_df.columns:
+    for ifeat, feat_name in enumerate(out_df.columns, start=1):
+        logging.info('Computing MI of feature #{:d}/{:d} ({}) with all other features'.format(ifeat,
+                                                                                              len(out_df.columns),
+                                                                                              feat_name))
         out_df.loc[:, feat_name] = (mutual_info_regression(df_feat, df_feat[feat_name], **kwargs))
 
     # Compute the "self" mutual information (i.e. information entropy) of the features
+    logging.info('Computing "self" MI (i.e. information entropy) of features')
     diag = {}
     for x in df_feat.columns:
         diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
 
     # Normalize the mutual information between features
+    logging.info('Normalizing MI')
     for feat1 in out_df.index:
         for feat2 in out_df.columns:
             out_df.loc[feat1, feat2] = out_df.loc[feat1, feat2] / ((diag[feat1] + diag[feat2]) / 2)
-
+        logging.debug('  => Computed NMI of feature "{}" with all other features :\n'
+                      '{}'.format(feat1, '\n'.join(['      {} : {:.4f}'.format(feat2,
+                                                                               out_df.loc[feat1, feat2])
+                                                    for feat2 in out_df.loc[feat1, :].index])))
     return out_df
 
 
-def get_features_dyn(n_feat,cross_mi,target_mi):
+def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.DataFrame,
+                                      n_feat: Union[None, int]=None, rr_parameters: Union[None, Dict]=None) -> List:
+    """
+    Select features from the Relevance Redundancy (RR) score between the input features and the target output.
+
+    Args:
+        target_nmi: panda's DataFrame containing the Normalized Mutual Information (NMI) between a list of input
+            features and a target variable, as computed from :py:func:`nmi_target`.
+        cross_nmi: panda's DataFrame containing the Normalized Mutual Information (NMI) between the input features, as
+            computed from :py:func:`get_cross_nmi`.
+        n_feat: Number of features for which the RR score needs to be computed (default: all features).
+        rr_parameters: Not yet implemented. Allow to tune p and c parameters.
+    """
+    # Initial checks
+    if set(cross_nmi.index) != set(cross_nmi.columns):
+        raise ValueError('The cross_nmi DataFrame should have its indices and columns identical.')
+    if not set(target_nmi.index).issubset(set(cross_nmi.index)):
+        raise ValueError('The indices of the target DataFrame should be included in the cross_nmi DataFrame indices.')
+
+    # Define the functions for the parameters
+    if rr_parameters is None:
+        def get_p(nn):
+            p = 4.5 - (nn ** 0.4) * 0.4
+            return 0.1 if p < 0.1 else p
+
+        def get_c(nn):
+            c = 0.000001 * nn ** 3
+            return 100000 if c > 100000 else c
+    else:
+        raise NotImplementedError('Tuning p and c parameters for the RR score is not yet implemented.')
+
+    # Set up the output list
+    out = []
+
+    # The first feature is the one with the largest target NMI
+    target_column = target_nmi.columns[0]
+    first_feature = target_nmi.nlargest(1, columns=target_column).index[0]
+    feature_set = [first_feature]
+    out.append({'feature': first_feature, 'RR_score': None, 'NMI_target': target_nmi[target_column][first_feature]})
+
+    # Default is to get the RR score for all features
+    if n_feat is None:
+        n_feat = len(target_nmi.index)
+
+    # Loop on the number of features
+    for n in range(1, n_feat):
+        logging.debug("In selection of feature {}/{} features...".format(n+1, n_feat))
+        if (n+1) % 50 == 0:
+            logging.info("Selected {}/{} features...".format(n, n_feat))
+        p = get_p(nn=n)
+        c = get_c(nn=n)
+
+        # Compute the RR score
+        score = cross_nmi.copy()
+        # Remove features already selected for the index
+        score = score.drop(feature_set, axis=0)
+        # Use features already selected to compute the maximum NMI between
+        # the remaining features and those already selected
+        score = score[feature_set]
+
+        for i in score.index:
+            row = score.loc[i, :]
+            score.loc[i, :] = target_nmi.loc[i, target_column] / (row ** p + c)
+
+        scores_remaining_features = score.min(axis=1)
+        next_feature = scores_remaining_features.idxmax(axis=0)
+        feature_set.append(next_feature)
+
+        out.append({'feature': next_feature, 'RR_score': scores_remaining_features[next_feature],
+                    'NMI_target': target_nmi[target_column][next_feature]})
+
+    return out
+
+
+def get_features_dyn(n_feat,cross_mi, target_mi):
 
     first_feature =target_mi.nlargest(1).index[0]
     feature_set = [first_feature]
@@ -277,7 +363,7 @@ def featurize_site(df):
     return df
 
 class MODData():
-    def __init__(self,structures:List[Structure],targets:List=[],names:List=[],mpids:List=[]):
+    def __init__(self, structures: Union[None, List[Structure]], targets: List=[], names: List=[], mpids:List=[]):
         self.structures = structures
         self.df_featurized = None
 
