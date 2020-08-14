@@ -3,16 +3,21 @@ import re
 
 with open("README.md", "r") as f:
     long_description = f.read()
-    
+
 with open("modnet/__init__.py", "r") as f:
     lines = ""
     for item in f.readlines():
         lines += item + '\n'
 
 
-
 version = re.search('__version__ = "(.*)"', lines).group(1)
-    
+
+tests_require = [
+    "pytest>=6.0",
+    "pytest-cov>=2.10",
+    "flake8>=3.8"
+]
+
 setuptools.setup(
     name="modnet",
     version=version,
@@ -32,6 +37,9 @@ setuptools.setup(
           'numpy>=1.18.3',
           'scikit-learn'
         ],
+    tests_require=tests_require,
+    test_suite="modnet.tests",
+    extras_require={"test": tests_require},
     classifiers=[
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
