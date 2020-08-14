@@ -106,7 +106,8 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
 
 def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.DataFrame,
-                                      n_feat: Union[None, int]=None, rr_parameters: Union[None, Dict]=None) -> List:
+                                      n_feat: Union[None, int]=None, rr_parameters: Union[None, Dict]=None,
+                                      return_pc: bool=False) -> List:
     """
     Select features from the Relevance Redundancy (RR) score between the input features and the target output.
 
@@ -116,7 +117,12 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
         cross_nmi: panda's DataFrame containing the Normalized Mutual Information (NMI) between the input features, as
             computed from :py:func:`get_cross_nmi`.
         n_feat: Number of features for which the RR score needs to be computed (default: all features).
-        rr_parameters: Not yet implemented. Allow to tune p and c parameters.
+        rr_parameters: Allow to tune p and c parameters. Currently allows to fix p and c to constant values instead
+            of using the dynamical evaluation.
+        return_pc: Whether to return the p and c values in the output dictionaries.
+
+    Returns:
+        list: List of dictionaries containing the results of the relevance-redundancy selection algorithm.
     """
     # Initial checks
     if set(cross_nmi.index) != set(cross_nmi.columns):
@@ -134,7 +140,21 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
             c = 0.000001 * nn ** 3
             return 100000 if c > 100000 else c
     else:
-        raise NotImplementedError('Tuning p and c parameters for the RR score is not yet implemented.')
+        if 'p' not in rr_parameters or 'c' not in rr_parameters:
+            raise ValueError('When tuning p and c with rr_parameters in get_features_relevance_redundancy, '
+                             'both parameters should be tuned')
+        # Set up p
+        if rr_parameters['p']['function'] == 'constant':
+            def get_p(nn):
+                return rr_parameters['p']['value']
+        else:
+            raise ValueError('Allowed function for p : constant')
+        # Set up c
+        if rr_parameters['c']['function'] == 'constant':
+            def get_c(nn):
+                return rr_parameters['c']['value']
+        else:
+            raise ValueError('Allowed function for c : constant')
 
     # Set up the output list
     out = []
@@ -143,7 +163,11 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
     target_column = target_nmi.columns[0]
     first_feature = target_nmi.nlargest(1, columns=target_column).index[0]
     feature_set = [first_feature]
-    out.append({'feature': first_feature, 'RR_score': None, 'NMI_target': target_nmi[target_column][first_feature]})
+    feat_out = {'feature': first_feature, 'RR_score': None, 'NMI_target': target_nmi[target_column][first_feature]}
+    if return_pc:
+        feat_out['RR_p'] = None
+        feat_out['RR_c'] = None
+    out.append(feat_out)
 
     # Default is to get the RR score for all features
     if n_feat is None:
@@ -159,22 +183,30 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
 
         # Compute the RR score
         score = cross_nmi.copy()
+        score = score.loc[target_nmi.index, target_nmi.index]
         # Remove features already selected for the index
         score = score.drop(feature_set, axis=0)
         # Use features already selected to compute the maximum NMI between
         # the remaining features and those already selected
         score = score[feature_set]
 
+        # Get the scores of the remaining features
         for i in score.index:
             row = score.loc[i, :]
             score.loc[i, :] = target_nmi.loc[i, target_column] / (row ** p + c)
 
+        # Get the next feature (the one with the highest score)
         scores_remaining_features = score.min(axis=1)
         next_feature = scores_remaining_features.idxmax(axis=0)
         feature_set.append(next_feature)
 
-        out.append({'feature': next_feature, 'RR_score': scores_remaining_features[next_feature],
-                    'NMI_target': target_nmi[target_column][next_feature]})
+        # Add the results for the next feature to the list
+        feat_out = {'feature': next_feature, 'RR_score': scores_remaining_features[next_feature],
+                    'NMI_target': target_nmi[target_column][next_feature]}
+        if return_pc:
+            feat_out['RR_p'] = p
+            feat_out['RR_c'] = c
+        out.append(feat_out)
 
     return out
 
@@ -198,6 +230,7 @@ def get_features_dyn(n_feat,cross_mi, target_mi):
             p=0.1
 
         score = cross_mi.copy()
+        score = score.loc[target_mi.index, target_mi.index]
         score = score.drop(feature_set,axis=0)
         score = score[feature_set]
 
@@ -362,10 +395,21 @@ def featurize_site(df):
     df = df.select_dtypes(include='number')
     return df
 
+
 class MODData():
-    def __init__(self, structures: Union[None, List[Structure]], targets: List=[], names: List=[], mpids:List=[]):
+    def __init__(self, structures: Union[None, List[Structure]], targets: List=[], names: List=[], mpids:List=[],
+                 df_featurized=None):
+        """
+
+        Args:
+            structures:
+            targets:
+            names:
+            mpids:
+            df_featurized: Allow to pass an already featurized DataFrame.
+        """
         self.structures = structures
-        self.df_featurized = None
+        self.df_featurized = df_featurized
 
         if len(targets)==0:
             self.prediction = True
@@ -439,12 +483,26 @@ class MODData():
         self.df_featurized = df_final
         print('Data has successfully been featurized!')
 
-    def feature_selection(self,n=1500):
+    def feature_selection(self,n=1500, full_cross_nmi=None):
+        """
 
+        Args:
+            n:
+            full_cross_nmi: Allow to use a specific Cross-Features NMI.
+        """
         assert hasattr(self, 'df_featurized'), 'Please featurize the data first'
         assert not self.prediction, 'Please provide targets'
 
         ranked_lists = []
+
+        # Loading mutual information between features
+        if full_cross_nmi is None:
+            this_dir, this_filename = os.path.split(__file__)
+            dp = os.path.join(this_dir, "data", "Features_cross")
+            full_cross_nmi = pd.read_pickle(dp)
+        else:
+            full_cross_nmi = full_cross_nmi
+
         for i,name in enumerate(self.names):
             print("Starting target {}/{}: {} ...".format(i+1,len(self.targets),self.names[i]))
 
@@ -454,16 +512,15 @@ class MODData():
             y_nmi = nmi_target(self.df_featurized,self.df_targets[[name]])[name]
 
             print('Computing optimal features...')
-            #Loading mutual information between features
-            this_dir, this_filename = os.path.split(__file__)
-            dp = os.path.join(this_dir, "data", "Features_cross")
-            cross_mi = pd.read_pickle(dp)
+            cross_nmi = full_cross_nmi.copy(deep=True)
+
             a = []
-            for x in cross_mi.index:
+            for x in cross_nmi.index:
                 if x not in y_nmi.index:
                     a.append(x)
-            cross_mi = cross_mi.drop(a,axis=0).drop(a,axis=1)
-            opt_features = get_features_dyn(min(n,len(cross_mi.index)),cross_mi,y_nmi)
+            cross_nmi = cross_nmi.drop(a,axis=0).drop(a,axis=1)
+            # opt_features = get_features_dyn(min(n,len(cross_nmi.index)),cross_nmi,y_nmi)
+            opt_features = get_features_dyn(min(n,len(y_nmi.index)),cross_nmi,y_nmi)
             ranked_lists.append(opt_features)
             print("Done with target {}/{}: {}.".format(i+1,len(self.targets),self.names[i]))
 
