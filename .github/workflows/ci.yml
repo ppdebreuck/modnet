@@ -35,4 +35,5 @@ jobs:
             --statistics
     - name: Run tests with pytest
       run: |
-        py.test -rs -vvv  --durations=0
+        # run tests with pytest, reporting coverage and timings
+        py.test -rs -vvv  --durations=0 --cov=./modnet/
