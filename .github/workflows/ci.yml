@@ -1,0 +1,39 @@
+name: Run tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[test]
+    - name: Check for syntax errors and lint with flake8
+      run: |
+        # check for important errors:
+        # - syntax errors (E9),
+        # - confusion between assignment and equality errors (F63),
+        # - logic errors and syntax errors in type hints (F7)
+        # - undefined name errors (F82)
+        flake8 . \
+            --count --select=E9,F63,F7,F82 --show-source --statistics
+        # display all other linting errors, but never return an error code
+        flake8 . \
+            --exit-zero \
+            --count \
+            --statistics
+    - name: Run tests with pytest
+      run: |
+        # run tests with pytest, reporting coverage and timings
+        py.test -rs -vvv  --durations=0 --cov=./modnet/
