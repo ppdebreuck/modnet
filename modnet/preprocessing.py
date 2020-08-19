@@ -324,7 +324,8 @@ def featurize_structure(df):
                                      StructuralHeterogeneity(),
                                      MaximumPackingEfficiency(),
                                      ChemicalOrdering(),
-                                     XRDPowderPattern()
+                                     XRDPowderPattern(),
+                                     bob
                                      ])
 
 
