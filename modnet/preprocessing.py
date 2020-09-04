@@ -534,18 +534,33 @@ class MODData():
         self.df_featurized =self.df_featurized.sample(frac=1)
         self.df_targets = self.df_targets.loc[data.df_featurized.index]
 
-    def save(self,filename):
-        fp = open(filename,'wb')
-        pickle.dump(self,fp)
-        fp.close()
-        print('Data successfully saved!')
+    def save(self, filename):
+        """ Pickle the contents of the `MODData` object
+        so that it can be loaded in  with `MODData.load()`.
+
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be compressed accordingly by `pandas.to_pickle(...)`.
+
+        """
+        pd.to_pickle(self, filename)
+        print(f'Data successfully saved as {filename}!')
 
     @staticmethod
     def load(filename):
-        fp = open(filename,'rb')
-        data = pickle.load(fp)
-        fp.close()
-        return data
+        """ Load `MODData` object pickled by the `.save(...)` method.
+
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be decompressed accordingly by `pandas.read_pickle(...)`.
+
+        """
+        pickled_data = pd.read_pickle(filename)
+        if isinstance(pickled_data, MODData):
+            return pickled_data
+
+        raise ValueError(
+            f"File {filename} did not contain compatible data to create a MODData object, "
+            f"instead found {pickled_data.__class__.__name__}."
+        )
 
     def get_structure_df(self):
         return self.df_structure
