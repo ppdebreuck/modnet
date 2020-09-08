@@ -1,9 +1,10 @@
-__author__ = "David Waroquiers, Matgenix SRL"
-__credits__ = "David Waroquiers, Matgenix SRL"
-"""Proposition of API for MODNet.
+"""
+sklearn API of modnet
 
+This version implements the RR class of the sklearn API
+Still TODO: MODNetFeaturizer and MODNet classes
 
-The idea is to do something like :
+The general pipeline will be:
 from sklearn.pipeline import Pipeline
 modnet_featurizer = MODNetFeaturizer(...arguments here...)
 rr_analysis = RR(...arguments here...)
@@ -32,7 +33,6 @@ from typing import Dict
 
 
 class MODNetFeaturizer(TransformerMixin, BaseEstimator):
-    """"""
 
     def __init__(self, matminer_featurizers):
         """Constructor for MODNetFeaturizer"""
@@ -58,16 +58,10 @@ class MODNetFeaturizer(TransformerMixin, BaseEstimator):
 
 
 class RR(TransformerMixin, BaseEstimator):
-    """Relevance-Redundancy (RR) analysis.
+    """Relevance-Redundancy (RR) feature selection.
+    Features are ranked and selected following a relevance-redundancy ratio as developed
+    by De Breuck et al. (2020), see https://arxiv.org/abs/2004.14766.
 
-    Feature selection and ordering procedure based on the relevance-redundancy algorithm developed in ARTICLE.
-
-    Blabla
-
-    Notes:
-        1. Uses preprocessing.get_features_relevance_redundancy under the hood.
-        2. To check if it is ok to have y that is *NOT* ignored (i.e. not y=None) in the fit method. Usually a
-           Transformer's fit method signature is fit(self, X, y=None, ...).
     """
 
     def __init__(self, n_feat: Union[None, int]=None, rr_parameters: Union[None, Dict]=None):
@@ -75,38 +69,36 @@ class RR(TransformerMixin, BaseEstimator):
 
         Args:
             n_feat: Number of features to keep and reorder using the RR procedure (default: None, i.e. all features).
-            rr_parameters: Allow to tune p and c parameters. (default: None, i.e. use the dynamical setting in ARTICLE).
-
-        Notes:
-            This method should not be changed
+            rr_parameters: Allow to tune p and c parameters. (default: None, i.e. use the dynamical setting of the paper).
         """
         self.n_feat = n_feat
         self.rr_parameters = rr_parameters
 
     def fit(self, X, y, nmi_feats_target=None, cross_nmi_feats=None):
-        """Fit the model with X and y.
-
-        Allow to accept numpy arrays for X and y or pandas Dataframes ?
+        """Ranking of the features. This is based on relevance and redundancy provided as NMI dataframes.
+        If not provided (i.e set to None), the NMIs are computed here. Nevertheless, it is strongly recommended to compute
+        them separately and store them locally.
 
         Args:
-            X: Training input data
-            y: Training output data
-            nmi_feats_target: If a precomputed nmi features=>target is available.
-            cross_nmi_feats: If a precomputed cross-nmi features=>features is available.
+            X: Training input pandas dataframe of shape (n_samples,n_features)
+            y: Training output pandas dataframe of shape (n_samples,n_features)
+            nmi_feats_target: NMI between features and targets, pandas dataframe
+            cross_nmi_feats: NMI between features, pandas dataframe
+
+        Returns:
+            self : object
+            Fitted RR transformer
         """
 
     def transform(self, X, y=None):
-        """Transform the inputs X based on a fitted RR analysis.
-
-        Notes:
-            I don't remember if the signature should be transform(self, X, y=None) or transform(self, X).
+        """Transform the inputs X based on a fitted RR analysis. The best n_feat features are kept and returned.
 
         Args:
-            X: Input data
-            y: Output data (should be ignored)
+            X: input pandas dataframe of shape (n_samples,n_features)
+            y: ignored
 
         Returns:
-            Filtered and ordered data according to the fitted RR analysis.
+            X data containing n_feat rows (best features) as a pandas dataframe
         """
 
 
