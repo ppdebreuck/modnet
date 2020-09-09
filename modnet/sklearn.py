@@ -28,8 +28,7 @@ p = Pipeline([('featurizer', modnet_featurizer), ('rr', rr_analysis), ('modnet',
 from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin
 from sklearn.base import TransformerMixin
-from typing import Union
-from typing import Dict
+from typing import Union, Callable
 
 
 class MODNetFeaturizer(TransformerMixin, BaseEstimator):
@@ -62,9 +61,19 @@ class RR(TransformerMixin, BaseEstimator):
     Features are ranked and selected following a relevance-redundancy ratio as developed
     by De Breuck et al. (2020), see https://arxiv.org/abs/2004.14766.
 
+    Use the fit method for computing the most important features.
+    Then use the transform method to truncate the input data to those features.
+
+    Attributes:
+        n_feat: int
+                number of features to keep
+
+        optimal_descriptors: list of length (n_feat)
+                            ordered list of best descriptors
+
     """
 
-    def __init__(self, n_feat: Union[None, int]=None, rr_parameters: Union[None, Dict]=None):
+    def __init__(self, n_feat: Union[None, int] = None, p: Union[None, Callable]=None, c: Union[None, Callable]=None):
         """Constructor for RR transformer.
 
         Args:
@@ -72,12 +81,14 @@ class RR(TransformerMixin, BaseEstimator):
             rr_parameters: Allow to tune p and c parameters. (default: None, i.e. use the dynamical setting of the paper).
         """
         self.n_feat = n_feat
-        self.rr_parameters = rr_parameters
+        self.p = p
+        self.c = c
+        self.optimal_descriptors = []
 
     def fit(self, X, y, nmi_feats_target=None, cross_nmi_feats=None):
         """Ranking of the features. This is based on relevance and redundancy provided as NMI dataframes.
-        If not provided (i.e set to None), the NMIs are computed here. Nevertheless, it is strongly recommended to compute
-        them separately and store them locally.
+        If not provided (i.e set to None), the NMIs are computed here.
+        Nevertheless, it is strongly recommended to compute them separately and store them locally.
 
         Args:
             X: Training input pandas dataframe of shape (n_samples,n_features)
