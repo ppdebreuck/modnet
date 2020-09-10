@@ -4,11 +4,11 @@ import pandas as pd
 from modnet.sklearn import RR
 def test_fit():
     np.random.seed(11)
-    npoints = 100
+    npoints = 1000
 
-    x = np.linspace(0, 5, npoints)
-    x2 = np.linspace(10, 20, npoints)
-    y = 2 * np.exp(x) + x2 + np.random.rand(npoints)*2
+    x = np.linspace(0, 50, npoints)
+    x2 = np.random.rand(npoints)*50
+    y = x + x2
     x3 = x + np.random.rand(npoints)*5  # x with noise
     x4 = np.random.rand(npoints)*10
     # x and x2 are the two most important variables. x4 should be last (random noise). x3 is redundant wrt. x
@@ -31,8 +31,8 @@ def test_fit():
 
     # C.
     # test when NMis are provided
-    df_target_nmis = pd.DataFrame([[0],[1],[0.4],[0,2]],index=['x','x2','x3','x4'],columns=['y'])
-    df_cross_nmis = pd.DataFrame([[1,0,0,0],[0,1,0.9,0],[0,0.9,1,0],[0,0,0,1]])
+    df_target_nmis = pd.DataFrame([[0],[1],[0.4],[0.2]],index=['x','x2','x3','x4'],columns=['y'])
+    df_cross_nmis = pd.DataFrame([[1,0,0,0],[0,1,0.9,0],[0,0.9,1,0],[0,0,0,1]],index=['x','x2','x3','x4'],columns=['x','x2','x3','x4'])
     # In this example x2 is the most important, then x3 and x4. x has zero relevance.
     # Moreover x2 and x3 are very redundant.
     # Therefore the order of importance should be x2,x4,x3,x.
@@ -43,17 +43,17 @@ def test_fit():
     # D.
     # test rr_params
     # simple constant values
-    rr = RR(p=lambda n: 1, c=lambda n: 1)
+    rr = RR(get_p=lambda n: 1, get_c=lambda n: 0.01)
     rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
     assert rr.optimal_descriptors == ['x2', 'x4', 'x3', 'x']
 
     # dynamical values
-    rr = RR(p=lambda n: max(0.1, 4.5 - (n ** 0.4) * 0.4), c=lambda n: min(100000, 0.000001 * n ** 3))
+    rr = RR(get_p=lambda n: max(0.1, 4.5 - (n ** 0.4) * 0.4), get_c=lambda n: min(100000, 0.000001 * n ** 3))
     rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
     assert rr.optimal_descriptors == ['x2', 'x4', 'x3', 'x']
 
     # neglect redundancy
-    rr = RR(p=lambda n: 1, c=lambda n: 10000000)
+    rr = RR(get_p=lambda n: 1, get_c=lambda n: 100)
     rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
     assert rr.optimal_descriptors == ['x2', 'x3', 'x4', 'x']
 
