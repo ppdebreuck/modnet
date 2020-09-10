@@ -29,6 +29,8 @@ from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin
 from sklearn.base import TransformerMixin
 from typing import Union, Callable
+from modnet.preprocessing import get_features_relevance_redundancy, get_cross_nmi, nmi_target
+
 
 
 class MODNetFeaturizer(TransformerMixin, BaseEstimator):
@@ -73,7 +75,7 @@ class RR(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, n_feat: Union[None, int] = None, p: Union[None, Callable]=None, c: Union[None, Callable]=None):
+    def __init__(self, n_feat: Union[None, int] = None, get_p: Union[None, Callable]=None, get_c: Union[None, Callable]=None):
         """Constructor for RR transformer.
 
         Args:
@@ -81,8 +83,8 @@ class RR(TransformerMixin, BaseEstimator):
             rr_parameters: Allow to tune p and c parameters. (default: None, i.e. use the dynamical setting of the paper).
         """
         self.n_feat = n_feat
-        self.p = p
-        self.c = c
+        self.get_p = get_p
+        self.get_c = get_c
         self.optimal_descriptors = []
 
     def fit(self, X, y, nmi_feats_target=None, cross_nmi_feats=None):
@@ -101,6 +103,14 @@ class RR(TransformerMixin, BaseEstimator):
             Fitted RR transformer
         """
 
+        if cross_nmi_feats is None:
+            cross_nmi_feats = get_cross_nmi(X)
+        if nmi_feats_target is None:
+            nmi_feats_target = nmi_target(X,y)
+
+        rr_results = get_features_relevance_redundancy(nmi_feats_target, cross_nmi_feats, n_feat=self.n_feat, get_p=self.get_p, get_c=self.get_c)
+        self.optimal_descriptors = [x['feature'] for x in rr_results]
+
     def transform(self, X, y=None):
         """Transform the inputs X based on a fitted RR analysis. The best n_feat features are kept and returned.
 
@@ -111,6 +121,8 @@ class RR(TransformerMixin, BaseEstimator):
         Returns:
             X data containing n_feat rows (best features) as a pandas dataframe
         """
+
+        return X[self.optimal_descriptors]
 
 
 class MODNet(RegressorMixin, BaseEstimator):
