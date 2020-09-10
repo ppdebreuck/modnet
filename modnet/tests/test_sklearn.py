@@ -63,6 +63,6 @@ def test_transform():
     rr = RR()
     rr.optimal_descriptors = ['c', 'a']  # bypass fit method
     df = rr.transform(df_x)
-    assert df.index == ['id1', 'id2', 'id3']
-    assert df.columns == ['c', 'a']
-    assert df.values == [[0,1], [1,2], [0,2]]
+    assert list(df.index) == ['id1', 'id2', 'id3']
+    assert list(df.columns) == ['c', 'a']
+    assert (df.values == np.array([[0,1], [1,2], [0,2]])).all()
