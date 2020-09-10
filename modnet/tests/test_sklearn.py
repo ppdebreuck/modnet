@@ -8,9 +8,9 @@ def test_fit():
 
     x = np.linspace(0, 5, npoints)
     x2 = np.linspace(10, 20, npoints)
-    y = 2 * np.exp(x) + x2 + np.random.rand((npoints,))*2
-    x3 = x + np.random.rand((npoints,))*5  # x with noise
-    x4 = np.random.rand((npoints,))*10
+    y = 2 * np.exp(x) + x2 + np.random.rand(npoints)*2
+    x3 = x + np.random.rand(npoints)*5  # x with noise
+    x4 = np.random.rand(npoints)*10
     # x and x2 are the two most important variables. x4 should be last (random noise). x3 is redundant wrt. x
 
     df_x = pd.DataFrame({'x': x, 'x2': x2, 'x3': x3, 'x4': x4})
@@ -21,7 +21,7 @@ def test_fit():
     rr = RR(n_feat=2)
     rr.fit(df_x, df_y)
     assert rr.n_feat == 2
-    assert rr.optimal_descriptors == 2
+    assert len(rr.optimal_descriptors) == 2
 
     # B.
     # test when no NMIS are not provided
