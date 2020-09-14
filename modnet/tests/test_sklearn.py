@@ -43,17 +43,17 @@ def test_fit():
     # D.
     # test rr_params
     # simple constant values
-    rr = RR(get_p=lambda n: 1, get_c=lambda n: 0.01)
+    rr = RR(rr_parameters={'p':{'function':'constant', 'value':1}, 'c':{'function':'constant', 'value':0.01}})
     rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
     assert rr.optimal_descriptors == ['x2', 'x4', 'x3', 'x']
 
-    # dynamical values
-    rr = RR(get_p=lambda n: max(0.1, 4.5 - (n ** 0.4) * 0.4), get_c=lambda n: min(100000, 0.000001 * n ** 3))
-    rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
-    assert rr.optimal_descriptors == ['x2', 'x4', 'x3', 'x']
+    # dynamical values, for later once matthew PR is merged
+    #rr = RR(rr_parameters={'p': lambda n: max(0.1, 4.5 - (n ** 0.4) * 0.4), 'c': lambda n: min(100000, 0.000001 * n ** 3))
+    #rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
+    #assert rr.optimal_descriptors == ['x2', 'x4', 'x3', 'x']
 
     # neglect redundancy
-    rr = RR(get_p=lambda n: 1, get_c=lambda n: 100)
+    rr = RR(rr_parameters={'p':{'function':'constant', 'value':1}, 'c':{'function':'constant', 'value':100}})
     rr.fit(df_x, df_y, nmi_feats_target=df_target_nmis, cross_nmi_feats=df_cross_nmis)
     assert rr.optimal_descriptors == ['x2', 'x3', 'x4', 'x']
 

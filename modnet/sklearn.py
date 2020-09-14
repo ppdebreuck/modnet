@@ -28,7 +28,7 @@ p = Pipeline([('featurizer', modnet_featurizer), ('rr', rr_analysis), ('modnet',
 from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin
 from sklearn.base import TransformerMixin
-from typing import Union, Callable
+from typing import Union, Dict
 from modnet.preprocessing import get_features_relevance_redundancy, get_cross_nmi, nmi_target
 
 
@@ -75,16 +75,18 @@ class RR(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, n_feat: Union[None, int] = None, get_p: Union[None, Callable]=None, get_c: Union[None, Callable]=None):
+    def __init__(self, n_feat: Union[None, int] = None, rr_parameters: Union[None, Dict]=None):
         """Constructor for RR transformer.
 
         Args:
             n_feat: Number of features to keep and reorder using the RR procedure (default: None, i.e. all features).
-            rr_parameters: Allow to tune p and c parameters. (default: None, i.e. use the dynamical setting of the paper).
+            rr_parameters: Allows tuning of p and c parameters. Currently allows fixing of p and c
+             to constant values instead of using the dynamical evaluation. Expects to find keys `"p"` and `"c"`,
+              containing either a callable that takes `n` as an argument and returns the desired `p` or `c`,
+               or another dictionary containing the key `"value"` that stores a constant value of `p` or `c`.
         """
         self.n_feat = n_feat
-        self.get_p = get_p
-        self.get_c = get_c
+        self.rr_parameters = rr_parameters
         self.optimal_descriptors = []
 
     def fit(self, X, y, nmi_feats_target=None, cross_nmi_feats=None):
@@ -108,7 +110,7 @@ class RR(TransformerMixin, BaseEstimator):
         if nmi_feats_target is None:
             nmi_feats_target = nmi_target(X,y)
 
-        rr_results = get_features_relevance_redundancy(nmi_feats_target, cross_nmi_feats, n_feat=self.n_feat, get_p=self.get_p, get_c=self.get_c)
+        rr_results = get_features_relevance_redundancy(nmi_feats_target, cross_nmi_feats, n_feat=self.n_feat, rr_parameters=self.rr_parameters)
         self.optimal_descriptors = [x['feature'] for x in rr_results]
 
     def transform(self, X, y=None):
