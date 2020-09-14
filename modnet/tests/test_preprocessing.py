@@ -190,7 +190,7 @@ def test_get_cross_nmi():
     assert df_cross_nmi.loc['y']['x'] == pytest.approx(0.3417665092162398)
 
 
-def test_load_moddata():
+def test_load_moddata_zip():
     """ This test checks that older MODData objects can still be loaded. """
 
     data_file = Path(__file__).parent.joinpath("data/MP_2018.6_subset.zip")
@@ -210,3 +210,32 @@ def test_load_moddata():
     assert len(data.df_featurized) == 100
     assert len(data.df_targets) == 100
     assert len(data.df_targets) == 100
+
+
+def test_small_moddata_featurization():
+    """ This test creates a new MODData from the MP 2018.6 structures. """
+    data_file = Path(__file__).parent.joinpath("data/MP_2018.6_small.zip")
+
+    # Loading pickles can be dangerous, so lets at least check that the MD5 matches
+    # what it was when created
+    assert (
+        get_sha512_of_file(data_file) ==
+        "45f714ce1f6c30c6db09f96e955755027c58e77ad078c575b8c450cb629df68c"
+        "d9d2699d8879e2d7fc19eb0c880401ede79eab676b4275ed3eadb9c1a768ca90"
+    )
+
+    mp_moddata = MODData.load(data_file)
+    structures = mp_moddata.structures
+    targets = mp_moddata.targets
+
+    names = mp_moddata.names
+
+    new_moddata = MODData(structures, targets, names=names)
+    new_moddata.featurize(fast=False)
+
+    assert len(new_moddata.df_featurized) == len(structures)
+
+
+    # Should also test feature selection here
+    # new_moddata.feature_selection(10)
+    # assert len(new_moddata.optimal_features) == 10
