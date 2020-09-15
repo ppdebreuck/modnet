@@ -518,7 +518,7 @@ def featurize_structure(df: pd.DataFrame) -> pd.DataFrame:
     df = featurizer.featurize_dataframe(df, "structure", multiindex=True, ignore_errors=True)
     df.columns = df.columns.map('|'.join).str.strip('|')
 
-    dist = df["RadialDistributionFunction|radial distribution function"][1]['distances'][:50]
+    dist = df["RadialDistributionFunction|radial distribution function"][0]['distances'][:50]
     for i, d in enumerate(dist):
         _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)
         df[_rdf_key] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
