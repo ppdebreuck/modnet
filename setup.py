@@ -32,10 +32,10 @@ setuptools.setup(
     install_requires=[
           'pandas>=0.25.3',
           'keras>=2.3',
-          'pymatgen>=2020.3.13',
+          'pymatgen>=2020.3.13,<2020.9',
           'matminer>=0.6.2',
           'numpy>=1.18.3',
-          'scikit-learn'
+          'scikit-learn>=0.23'
         ],
     tests_require=tests_require,
     test_suite="modnet.tests",

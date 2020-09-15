@@ -1,46 +1,111 @@
+# coding: utf-8
+# Distributed under the terms of the MIT License.
+
+""" This module defines the :class:`MODData` class, featurizer functions
+and functions to compute normalized mutual information (NMI) and relevance redundancy
+(RR) between descriptors.
+
+"""
+
+import os
+import logging
+
 from pymatgen import Structure
+from pymatgen.core.periodic_table import Element
 from sklearn.feature_selection import mutual_info_regression
 import pandas as pd
 import numpy as np
-from matminer.utils.conversions import composition_to_oxidcomposition
-from matminer.featurizers.composition import *
-from matminer.featurizers.base import *
-from matminer.featurizers.conversions import *
-from pymatgen.core.periodic_table import *
-from matminer.featurizers.structure import *
-from matminer.featurizers.site import *
+
+from matminer.featurizers.base import MultipleFeaturizer
+from matminer.featurizers.composition import (
+    AtomicOrbitals,
+    AtomicPackingEfficiency,
+    BandCenter,
+    # CohesiveEnergy, - This descriptor was not used in the paper preset
+    # ElectronAffinity, - This descriptor was not used in the paper preset
+    ElectronegativityDiff,
+    ElementFraction,
+    ElementProperty,
+    IonProperty,
+    Miedema,
+    OxidationStates,
+    Stoichiometry,
+    TMetalFraction,
+    ValenceOrbital,
+    YangSolidSolution,
+)
+
+from matminer.featurizers.conversions import CompositionToOxidComposition
+from matminer.featurizers.structure import (
+    BagofBonds,
+    BondFractions,
+    ChemicalOrdering,
+    CoulombMatrix,
+    DensityFeatures,
+    EwaldEnergy,
+    GlobalSymmetryFeatures,
+    MaximumPackingEfficiency,
+    PartialRadialDistributionFunction,
+    RadialDistributionFunction,
+    SineCoulombMatrix,
+    SiteStatsFingerprint,
+    StructuralHeterogeneity,
+    XRDPowderPattern,
+)
+from matminer.featurizers.site import (
+    AGNIFingerprints,
+    AverageBondAngle,
+    AverageBondLength,
+    BondOrientationalParameter,
+    ChemEnvSiteFingerprint,
+    CoordinationNumber,
+    CrystalNNFingerprint,
+    GaussianSymmFunc,
+    GeneralizedRadialDistributionFunction,
+    LocalPropertyDifference,
+    OPSiteFingerprint,
+    VoronoiFingerprint,
+)
 from pymatgen.analysis.local_env import VoronoiNN
-from typing import Dict, List, Union
-import pickle
-import os
-import logging
-database = pd.DataFrame([])
+from typing import Dict, List, Union, Optional, Callable, Hashable
+
+DATABASE = pd.DataFrame([])
+
+logging.getLogger().setLevel(logging.INFO)
 
 
 def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
-               drop_constant_features: bool=True, **kwargs) -> pd.DataFrame:
+               drop_constant_features: bool = True, **kwargs) -> pd.DataFrame:
     """
-    Computes the Normalized Mutual Information (NMI) between a list of input features and a target variable.
+    Computes the Normalized Mutual Information (NMI) between a list of
+    input features and a target variable.
 
     Args:
-        df_feat: panda's DataFrame containing the input features for which the NMI with the target variable is to be
-            computed.
-        df_target: panda's DataFrame containing the target variable. This DataFrame should contain only one column and
-            have the same size as df_feat.
-        drop_constant_features: If True, the features that are constant across the entire data set will be dropped.
-        **kwargs: Keyword arguments to be passed down to the mutual_info_regression function from scikit-learn. This
+        df_feat (pandas.DataFrame): Dataframe containing the input features for
+            which the NMI with the target variable is to be computed.
+        df_target (pandas.DataFrame): Dataframe containing the target variable.
+            This DataFrame should contain only one column and have the same
+            size as `df_feat`.
+        drop_constant_features (bool): If True, the features that are constant
+            across the entire data set will be dropped.
+        **kwargs: Keyword arguments to be passed down to the
+            :py:func:`mutual_info_regression` function from scikit-learn. This
             can be useful e.g. for testing purposes.
 
     Returns:
-        panda's DataFrame: panda's DataFrame containing the NMI between each of the input features and the target
-            variable.
+        pandas.DataFrame: Dataframe containing the NMI between each of
+            the input features and the target variable.
+
     """
     # Initial checks
     if df_target.shape[1] != 1:
         raise ValueError('The target DataFrame should have exactly one column.')
+
     if len(df_feat) != len(df_target):
-        raise ValueError('The input features DataFrame and the target variable DataFrame should contain the same '
-                         'number of data points.')
+        raise ValueError(
+            'The input features DataFrame and the target variable DataFrame '
+            'should contain the same number of data points.'
+        )
 
     # Drop features which have the same value for the entire data set
     if drop_constant_features:
@@ -68,16 +133,18 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
 
 
 def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
-    """Computes the Normalized Mutual Information (NMI) between input features.
+    """
+    Computes the Normalized Mutual Information (NMI) between input features.
 
     Args:
-        df_feat: panda's DataFrame containing the input features for which the NMI with the target variable is to be
-            computed.
-        **kwargs: Keyword arguments to be passed down to the mutual_info_regression function from scikit-learn. This
+        df_feat (pandas.DataFrame): Dataframe containing the input features for
+            which the NMI with the target variable is to be computed.
+        **kwargs: Keyword arguments to be passed down to the
+            :py:func:`mutual_info_regression` function from scikit-learn. This
             can be useful e.g. for testing purposes.
 
     Returns:
-        pd.DataFrame: panda's DataFrame containing the Normalized Mutual Information between features.
+        pd.DataFrame: pandas.DataFrame containing the Normalized Mutual Information between features.
     """
     # Prepare the output DataFrame and compute the mutual information
     out_df = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
@@ -105,24 +172,75 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
     return out_df
 
 
-def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.DataFrame,
-                                      n_feat: Union[None, int]=None, rr_parameters: Union[None, Dict]=None,
-                                      return_pc: bool=False) -> List:
+def get_rr_p_parameter_default(nn: int) -> float:
     """
-    Select features from the Relevance Redundancy (RR) score between the input features and the target output.
+    Returns p for the default expression outlined in arXiv:2004:14766.
 
     Args:
-        target_nmi: panda's DataFrame containing the Normalized Mutual Information (NMI) between a list of input
-            features and a target variable, as computed from :py:func:`nmi_target`.
-        cross_nmi: panda's DataFrame containing the Normalized Mutual Information (NMI) between the input features, as
-            computed from :py:func:`get_cross_nmi`.
-        n_feat: Number of features for which the RR score needs to be computed (default: all features).
-        rr_parameters: Allow to tune p and c parameters. Currently allows to fix p and c to constant values instead
-            of using the dynamical evaluation.
-        return_pc: Whether to return the p and c values in the output dictionaries.
+        nn (int): number of features currently in chosen subset.
+
+    Returns:
+        float: the value for p.
+
+    """
+    return max(0.1, 4.5 - 0.4 * nn ** 0.4)
+
+
+def get_rr_c_parameter_default(nn: int) -> float:
+    """
+    Returns c for the default expression outlined in arXiv:2004:14766.
+
+    Args:
+        nn (int): number of features currently in chosen subset.
+
+    Returns:
+        float: the value for p.
+
+    """
+    return min(1e5, 1e-6 * nn ** 3)
+
+
+def get_features_relevance_redundancy(
+    target_nmi: pd.DataFrame,
+    cross_nmi: pd.DataFrame,
+    n_feat: Optional[int] = None,
+    rr_parameters: Optional[Dict[str, Union[float, Callable[[int], float]]]] = None,
+    return_pc: bool = False
+) -> List:
+    """
+    Select features from the Relevance Redundancy (RR) score between the input
+    features and the target output.
+
+    The RR is defined following Equation 2 of De Breuck et al, arXiv:2004:14766,
+    with default values,
+
+    ..math:: p = \\max{0.1, 4.5 -  n^{0.4}},
+
+    and
+
+    ..math:: c = 10^{-6} n^3,
+
+    where :math:`n` is the number of features in the "chosen" subset for that iteration.
+    These values can be overriden with the `rr_parameters` dictionary argument.
+
+    Args:
+        target_nmi (pandas.DataFrame): dataframe  containing the Normalized
+            Mutual Information (NMI) between a list of input features and a
+            target variable, as computed from :py:func:`nmi_target`.
+        cross_nmi (pandas.DataFrame): dataframe containing the NMI between the
+            input features, as computed from :py:func:`get_cross_nmi`.
+        n_feat (int): Number of features for which the RR score needs to be computed (default: all features).
+        rr_parameters (dict): Allows tuning of p and c parameters. Currently
+            allows fixing of p and c to constant values instead of using the
+            dynamical evaluation. Expects to find keys `"p"` and `"c"`, containing
+            either a callable that takes `n` as an argument and returns the
+            desired `p` or `c`, or another dictionary containing the key `"value"`
+            that stores a constant value of `p` or `c`.
+        return_pc: Whether to return p and c values in the output dictionaries.
 
     Returns:
         list: List of dictionaries containing the results of the relevance-redundancy selection algorithm.
+
     """
     # Initial checks
     if set(cross_nmi.index) != set(cross_nmi.columns):
@@ -132,29 +250,32 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
 
     # Define the functions for the parameters
     if rr_parameters is None:
-        def get_p(nn):
-            p = 4.5 - (nn ** 0.4) * 0.4
-            return 0.1 if p < 0.1 else p
-
-        def get_c(nn):
-            c = 0.000001 * nn ** 3
-            return 100000 if c > 100000 else c
+        get_p = get_rr_p_parameter_default
+        get_c = get_rr_c_parameter_default
     else:
         if 'p' not in rr_parameters or 'c' not in rr_parameters:
             raise ValueError('When tuning p and c with rr_parameters in get_features_relevance_redundancy, '
                              'both parameters should be tuned')
         # Set up p
-        if rr_parameters['p']['function'] == 'constant':
-            def get_p(nn):
+        if callable(rr_parameters["p"]):
+            get_p = rr_parameters["p"]
+        elif rr_parameters['p'].get('function') == 'constant':
+            def get_p(_):
                 return rr_parameters['p']['value']
         else:
-            raise ValueError('Allowed function for p : constant')
+            raise ValueError(
+                'If not passing a callable, "p" dict must contain keys "function" and "value".'
+            )
         # Set up c
-        if rr_parameters['c']['function'] == 'constant':
-            def get_c(nn):
+        if callable(rr_parameters["c"]):
+            get_c = rr_parameters["c"]
+        elif rr_parameters['c'].get('function') == 'constant':
+            def get_c(_):
                 return rr_parameters['c']['value']
         else:
-            raise ValueError('Allowed function for c : constant')
+            raise ValueError(
+                'If not passing a callable, "c" dict must contain keys "function" and "value".'
+            )
 
     # Set up the output list
     out = []
@@ -178,8 +299,8 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
         logging.debug("In selection of feature {}/{} features...".format(n+1, n_feat))
         if (n+1) % 50 == 0:
             logging.info("Selected {}/{} features...".format(n, n_feat))
-        p = get_p(nn=n)
-        c = get_c(nn=n)
+        p = get_p(n)
+        c = get_c(n)
 
         # Compute the RR score
         score = cross_nmi.copy()
@@ -206,333 +327,527 @@ def get_features_relevance_redundancy(target_nmi: pd.DataFrame, cross_nmi: pd.Da
         if return_pc:
             feat_out['RR_p'] = p
             feat_out['RR_c'] = c
+
         out.append(feat_out)
 
     return out
 
 
-def get_features_dyn(n_feat,cross_mi, target_mi):
+def get_features_dyn(n_feat, cross_mi, target_mi):
 
-    first_feature =target_mi.nlargest(1).index[0]
+    first_feature = target_mi.nlargest(1).index[0]
     feature_set = [first_feature]
+
+    get_p = get_rr_p_parameter_default
+    get_c = get_rr_c_parameter_default
 
     if n_feat == -1:
         n_feat = len(cross_mi.index)
 
     for n in range(n_feat-1):
-        if (n+1)%50 ==0:
-            print("Selected {}/{} features...".format(n+1,n_feat))
-        p = 4.5-(n**0.4)*0.4
-        c = 0.000001*n**3
-        if c > 100000:
-            c=100000
-        if p < 0.1:
-            p=0.1
+        if (n+1) % 50 == 0:
+            logging.info("Selected {}/{} features...".format(n+1, n_feat))
+
+        p = get_p(n)
+        c = get_c(n)
 
         score = cross_mi.copy()
         score = score.loc[target_mi.index, target_mi.index]
-        score = score.drop(feature_set,axis=0)
+        score = score.drop(feature_set, axis=0)
         score = score[feature_set]
 
         for i in score.index:
-            row = score.loc[i,:]
-            score.loc[i,:] = target_mi[i] /(row**p+c)
+            row = score.loc[i, :]
+            score.loc[i, :] = target_mi[i] / (row**p+c)
 
         next_feature = score.min(axis=1).idxmax(axis=0)
         feature_set.append(next_feature)
 
     return feature_set
 
-def merge_ranked(lists):
-    zipped_lists = zip(*lists)
+
+def merge_ranked(lists: List[List[Hashable]]) -> List[Hashable]:
+    """ For multiple lists of ranked feature names/IDs (e.g. for different
+    targets), work through the lists and merge them such that each
+    feature is included once according to its highest rank across each
+    list.
+
+    Args:
+        lists (List[List[Hashable]]): the list of lists to merge.
+
+    Returns:
+        List[Hashable]: list of merged and ranked feature names/IDs.
+
+    """
+    if not all(len(lists[0]) == len(sublist) for sublist in lists):
+        # pad all lists to same length
+        max_len = max(len(sublist) for sublist in lists)
+        for ind, sublist in enumerate(lists):
+            if len(sublist) < max_len:
+                lists[ind].extend((max_len - len(sublist))*[None])
+
     total_set = set()
     ranked_list = []
-    for subrank in zipped_lists:
+    for subrank in zip(*lists):
         for feature in subrank:
-            if feature not in total_set:
+            if feature not in total_set and feature is not None:
                 ranked_list.append(feature)
                 total_set.add(feature)
+
     return ranked_list
 
 
-def featurize_composition(df):
+def clean_df(df):
+    """ Cleans dataframe by dropping missing values, replacing NaN's and infinities
+    and selecting only columns containing numerical data.
 
+    Args:
+        df (pd.DataFrame): the dataframe to clean.
+
+    Returns:
+        pd.DataFrame: the cleaned dataframe.
+
+    """
+
+    df = df.dropna(axis=1, how='all')
+    df = df.replace([np.inf, -np.inf, np.nan], -1)
+    df = df.select_dtypes(include='number')
+
+    return df
+
+
+def featurize_composition(df: pd.DataFrame) -> pd.DataFrame:
+    """ Decorate input `pandas.DataFrame` of structures with composition
+    features from matminer.
+
+    Currently applies the set of all matminer composition features.
+
+    Args:
+        df (pandas.DataFrame): the input dataframe with `"structure"`
+            column containing `pymatgen.Structure` objects.
+
+    Returns:
+        pandas.DataFrame: the decorated DataFrame.
+
+    """
+    logging.info("Applying composition featurizers...")
     df = df.copy()
     df['composition'] = df['structure'].apply(lambda s: s.composition)
     featurizer = MultipleFeaturizer([ElementProperty.from_preset("magpie"),
                                      AtomicOrbitals(),
                                      BandCenter(),
-                                     ElectronAffinity(),
+                                     # ElectronAffinity(), - This descriptor was not used in the paper preset
                                      Stoichiometry(),
                                      ValenceOrbital(),
                                      IonProperty(),
                                      ElementFraction(),
                                      TMetalFraction(),
-                                     CohesiveEnergy(),
+                                     # CohesiveEnergy(), - This descriptor was not used in the paper preset
                                      Miedema(),
                                      YangSolidSolution(),
                                      AtomicPackingEfficiency(),
                                      ])
 
-
-    df = featurizer.featurize_dataframe(df,"composition",multiindex=True,ignore_errors=True)
+    df = featurizer.featurize_dataframe(df, "composition", multiindex=True, ignore_errors=True)
     df.columns = df.columns.map('|'.join).str.strip('|')
-
 
     ox_featurizer = MultipleFeaturizer([OxidationStates(),
                                         ElectronegativityDiff()
                                         ])
 
-    df = CompositionToOxidComposition().featurize_dataframe(df,"Input Data|composition")
+    df = CompositionToOxidComposition().featurize_dataframe(df, "Input Data|composition")
 
-    df = ox_featurizer.featurize_dataframe(df,"composition_oxid",multiindex=True,ignore_errors=True)
-    df=df.rename(columns = {'Input Data':''})
+    df = ox_featurizer.featurize_dataframe(df, "composition_oxid", multiindex=True, ignore_errors=True)
+    df = df.rename(columns={'Input Data': ''})
     df.columns = df.columns.map('|'.join).str.strip('|')
 
-    df['AtomicOrbitals|HOMO_character'] = df['AtomicOrbitals|HOMO_character'].map({'s':1,'p':2,'d':3,'f':4})
-    df['AtomicOrbitals|LUMO_character'] = df['AtomicOrbitals|LUMO_character'].map({'s':1,'p':2,'d':3,'f':4})
-    df['AtomicOrbitals|HOMO_element'] = df['AtomicOrbitals|HOMO_element'].apply(lambda x: -1 if not isinstance(x, str) else Element(x).Z)
-    df['AtomicOrbitals|LUMO_element'] = df['AtomicOrbitals|LUMO_element'].apply(lambda x: -1 if not isinstance(x, str) else Element(x).Z)
+    _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
 
-    df = df.dropna(axis=1,how='all')
+    df['AtomicOrbitals|HOMO_character'] = df['AtomicOrbitals|HOMO_character'].map(_orbitals)
+    df['AtomicOrbitals|LUMO_character'] = df['AtomicOrbitals|LUMO_character'].map(_orbitals)
+
+    df['AtomicOrbitals|HOMO_element'] = df['AtomicOrbitals|HOMO_element'].apply(
+        lambda x: -1 if not isinstance(x, str) else Element(x).Z
+    )
+    df['AtomicOrbitals|LUMO_element'] = df['AtomicOrbitals|LUMO_element'].apply(
+        lambda x: -1 if not isinstance(x, str) else Element(x).Z
+    )
+
     df = df.replace([np.inf, -np.inf, np.nan], 0)
-    df = df.select_dtypes(include='number')
-    return df
+
+    return clean_df(df)
 
 
-def featurize_structure(df):
+def featurize_structure(df: pd.DataFrame) -> pd.DataFrame:
+    """ Decorate input `pandas.DataFrame` of structures with structural
+    features from matminer.
+
+    Currently applies the set of all matminer structure features.
+
+    Args:
+        df (pandas.DataFrame): the input dataframe with `"structure"`
+            column containing `pymatgen.Structure` objects.
+
+    Returns:
+        pandas.DataFrame: the decorated DataFrame.
+
+    """
+
+    logging.info("Applying structure featurizers...")
 
     df = df.copy()
-    prdf = PartialRadialDistributionFunction()
-    prdf.fit(df["structure"])
-    cm = CoulombMatrix()
-    cm.fit(df["structure"])
-    scm = SineCoulombMatrix()
-    scm.fit(df["structure"])
-    bf = BondFractions()
-    bf.fit(df["structure"])
-    bob =  BagofBonds()
-    bob.fit(df["structure"])
 
-    featurizer = MultipleFeaturizer([DensityFeatures(),
-                                     GlobalSymmetryFeatures(),
-                                     RadialDistributionFunction(),
-                                     cm,
-                                     scm,
-                                     EwaldEnergy(),
-                                     bf,
-                                     StructuralHeterogeneity(),
-                                     MaximumPackingEfficiency(),
-                                     ChemicalOrdering(),
-                                     XRDPowderPattern(),
-                                     bob
-                                     ])
+    structure_features = [
+         DensityFeatures(),
+         GlobalSymmetryFeatures(),
+         RadialDistributionFunction(),
+         CoulombMatrix(),
+         PartialRadialDistributionFunction(),
+         SineCoulombMatrix(),
+         EwaldEnergy(),
+         BondFractions(),
+         StructuralHeterogeneity(),
+         MaximumPackingEfficiency(),
+         ChemicalOrdering(),
+         XRDPowderPattern(),
+         BagofBonds()
+    ]
 
+    featurizer = MultipleFeaturizer([feature.fit(df["structure"]) for feature in structure_features])
 
-    df = featurizer.featurize_dataframe(df,"structure",multiindex=True,ignore_errors=True)
+    df = featurizer.featurize_dataframe(df, "structure", multiindex=True, ignore_errors=True)
     df.columns = df.columns.map('|'.join).str.strip('|')
 
     dist = df["RadialDistributionFunction|radial distribution function"][1]['distances'][:50]
-    for i,d in enumerate(dist):
-        df["RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
-    df = df.drop("RadialDistributionFunction|radial distribution function",axis=1)
+    for i, d in enumerate(dist):
+        _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)
+        df[_rdf_key] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
 
-    df["GlobalSymmetryFeatures|crystal_system"] = df["GlobalSymmetryFeatures|crystal_system"].map({"cubic":1, "tetragonal":2, "orthorombic":3, "hexagonal":4, "trigonal":5, "monoclinic":6, "triclinic":7})
-    df["GlobalSymmetryFeatures|is_centrosymmetric"] = df["GlobalSymmetryFeatures|is_centrosymmetric"].map({True:1, False:0})
+    df = df.drop("RadialDistributionFunction|radial distribution function", axis=1)
+
+    _crystal_system = {
+        "cubic": 1, "tetragonal": 2, "orthorombic": 3,
+        "hexagonal": 4, "trigonal": 5, "monoclinic": 6, "triclinic": 7
+    }
+
+    df["GlobalSymmetryFeatures|crystal_system"] = df["GlobalSymmetryFeatures|crystal_system"].map(_crystal_system)
+    df["GlobalSymmetryFeatures|is_centrosymmetric"] = df["GlobalSymmetryFeatures|is_centrosymmetric"].map(int)
+
+    return clean_df(df)
 
 
-    df = df.dropna(axis=1,how='all')
-    df = df.replace([np.inf, -np.inf, np.nan], -1)
-    df = df.select_dtypes(include='number')
-    return df
+def featurize_site(df: pd.DataFrame, site_stats=("mean", "std_dev")) -> pd.DataFrame:
+    """ Decorate input `pandas.DataFrame` of structures with site
+    features from matminer.
 
-def featurize_site(df):
+    Currently creates the set of all matminer structure features with
+    the `matminer.featurizers.structure.SiteStatsFingerprint`.
+
+    Args:
+        df (pandas.DataFrame): the input dataframe with `"structure"`
+            column containing `pymatgen.Structure` objects.
+        site_stats (Tuple[str]): the matminer site stats to use in the
+            `SiteStatsFingerprint` for all features.
+
+    Returns:
+        pandas.DataFrame: the decorated DataFrame.
+
+    """
+
+    logging.info("Applying site featurizers...")
 
     df = df.copy()
-    grdf = SiteStatsFingerprint(GeneralizedRadialDistributionFunction.from_preset('gaussian'),stats=('mean', 'std_dev')).fit(df["structure"])
+    df.columns = ["Input data|" + x for x in df.columns]
 
-    df.columns = ["Input data|"+x for x in df.columns]
+    site_fingerprints = (
+        AGNIFingerprints(),
+        GeneralizedRadialDistributionFunction.from_preset("gaussian"),
+        OPSiteFingerprint(),
+        CrystalNNFingerprint.from_preset("ops"),
+        VoronoiFingerprint(),
+        GaussianSymmFunc(),
+        ChemEnvSiteFingerprint.from_preset("simple"),
+        CoordinationNumber(),
+        LocalPropertyDifference(),
+        BondOrientationalParameter(),
+        AverageBondLength(VoronoiNN()),
+        AverageBondAngle(VoronoiNN())
+    )
 
-    df = SiteStatsFingerprint(AGNIFingerprints(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["AGNIFingerPrint|"+x if '|' not in x else x for x in df.columns]
+    for fingerprint in site_fingerprints:
+        site_stats_fingerprint = SiteStatsFingerprint(
+            fingerprint,
+            stats=site_stats
+        )
 
+        df = site_stats_fingerprint.featurize_dataframe(
+            df,
+            "Input data|structure",
+            multiindex=False,
+            ignore_errors=True
+        )
 
-    df = SiteStatsFingerprint(OPSiteFingerprint(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["OPSiteFingerprint|"+x if '|' not in x else x for x in df.columns]
+        fingerprint_name = fingerprint.__class__.__name__
 
-    df = SiteStatsFingerprint(CrystalNNFingerprint.from_preset("ops"),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["CrystalNNFingerprint|"+x if '|' not in x else x for x in df.columns]
+        # rename some features for backwards compatibility with pretrained models
+        if fingerprint_name == "GeneralizedRadialDistributionFunction":
+            fingerprint_name = "GeneralizedRDF"
+        elif fingerprint_name == "AGNIFingerprints":
+            fingerprint_name = "AGNIFingerPrint"
+        elif fingerprint_name == "BondOrientationalParameter":
+            fingerprint_name = "BondOrientationParameter"
+        elif fingerprint_name == "GaussianSymmFunc":
+            fingerprint_name = "ChemEnvSiteFingerprint|GaussianSymmFunc"
 
-    df = SiteStatsFingerprint(VoronoiFingerprint(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["VoronoiFingerprint|"+x if '|' not in x else x for x in df.columns]
+        if "|" not in fingerprint_name:
+            fingerprint_name += "|"
 
-    df = SiteStatsFingerprint(GaussianSymmFunc(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["GaussianSymmFunc" + x if '|' not in x else x for x in df.columns]
+        df.columns = [f"{fingerprint_name}{x}" if "|" not in x else x for x in df.columns]
 
-    df = SiteStatsFingerprint(ChemEnvSiteFingerprint.from_preset("simple"),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["ChemEnvSiteFingerprint|"+x if '|' not in x else x for x in df.columns]
-
-    df = SiteStatsFingerprint(CoordinationNumber(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["CoordinationNumber|"+x if '|' not in x else x for x in df.columns]
-
-    df = grdf.featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["GeneralizedRDF|"+x if '|' not in x else x for x in df.columns]
-
-    df = SiteStatsFingerprint(LocalPropertyDifference(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["LocalPropertyDifference|"+x if '|' not in x else x for x in df.columns]
-
-    df = SiteStatsFingerprint(BondOrientationalParameter(),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["BondOrientationParameter|"+x if '|' not in x else x for x in df.columns]
-
-    df = SiteStatsFingerprint(AverageBondLength(VoronoiNN()),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["AverageBondLength|"+x if '|' not in x else x for x in df.columns]
-
-    df = SiteStatsFingerprint(AverageBondAngle(VoronoiNN()),stats=('mean', 'std_dev')).featurize_dataframe(df,"Input data|structure",multiindex=False,ignore_errors=True)
-    df.columns = ["AverageBondAngle|"+x if '|' not in x else x for x in df.columns]
-
-    df = df.dropna(axis=1,how='all')
     df = df.loc[:, (df != 0).any(axis=0)]
-    df = df.replace([np.inf, -np.inf, np.nan], -1)
-    df = df.select_dtypes(include='number')
-    return df
+
+    return clean_df(df)
 
 
-class MODData():
-    def __init__(self, structures: Union[None, List[Structure]], targets: List=[], names: List=[], mpids:List=[],
-                 df_featurized=None):
-        """
+class MODData:
+    """ The MODData class takes takes a list of `pymatgen.Structure`
+    objects and creates a `pandas.DataFrame` that contains many matminer
+    features per structure. It then uses mutual information between
+    features and targets, and between the features themselves, to
+    perform feature selection using relevance-redundancy indices.
+
+    Attributes:
+        df_structure (pd.DataFrame): dataframe storing the `pymatgen.Structure`
+            representations for each structured, indexed by ID.
+        df_targets (pd.Dataframe): dataframe storing the prediction targets
+            per structure, indexed by ID.
+        df_featurized (pd.DataFrame): dataframe with columns storing all
+            computed features per structure, indexed by ID.
+        optimal_features (List[str]): if feature selection has been performed
+            this attribute stores a list of the selected features.
+        optimal_features_by_target (Dict[str, List[str]]): if feature selection has been performed
+            this attribute stores a list of the selected features, broken down by
+            target property.
+
+    """
+
+    def __init__(
+        self,
+        structures: Optional[List[Structure]] = None,
+        targets: Optional[Union[List[float], np.ndarray, List[List[float]]]] = None,
+        target_names: Optional[List[str]] = None,
+        structure_ids: Optional[List[Hashable]] = None,
+        df_featurized: Optional[pd.DataFrame] = None,
+    ):
+        """ Initialise the MODData object either from a list of structures
+        or from an already featurized dataframe. Prediction targets per
+        structure can be specified as lists or an array alongside their
+        target names. A list of unique IDs can be provided to label the
+        structures.
 
         Args:
-            structures:
-            targets:
-            names:
-            mpids:
-            df_featurized: Allow to pass an already featurized DataFrame.
+            structures: list of structures to featurize and predict.
+            targets: optional list or list of lists of prediction targets per structure.
+            target_names: optional list of names of target properties to use in the dataframe.
+            structure_ids: optional list of unique IDs to use instead of generated integers.
+            df_featurized: optional featurized dataframe to use instead of
+                featurizing a new one. Should be passed without structures.
+
         """
-        self.structures = structures
+
         self.df_featurized = df_featurized
 
-        if len(targets)==0:
-            self.prediction = True
+        if structures is not None and self.df_featurized is not None:
+            raise RuntimeError(
+                "Only one of `structures` or `df_featurized` should be passed to `MODData`."
+            )
+        if structures is None and self.df_featurized is None:
+            raise RuntimeError(
+                "At least one of `structures` or `df_featurized` should be passed to `MODData`."
+            )
+
+        if structures is not None and targets is not None:
+            if np.shape(targets)[0] != len(structures):
+                raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(structures)}")
+
+        if target_names:
+            if np.shape(targets)[-1] != len(target_names):
+                raise ValueError("Target names must be supplied for every target.")
         else:
-            self.prediction = False
+            target_names = ['prop'+str(i) for i in range(len(targets))]
 
-        if np.array(targets).ndim == 2:
-            self.targets = targets
-            self.PP = True
+        if structure_ids:
+            # for backwards compat, always store the *passed* list of
+            # IDs, so they can be used when loading from a database file
+            self.mpids = structure_ids
+            # check ids are unique
+            if len(set(structure_ids)) != len(structure_ids):
+                raise ValueError("List of IDs (`structure_ids`) provided must be unique.")
+
+            if len(structure_ids) != len(structures):
+                raise ValueError("List of IDs (`structure_ids`) must have same length as list of structure.")
+
         else:
-            self.targets = [targets]
-            self.PP = False
+            self.mpids = None
+            structure_ids = [f"id{i}" for i in range(len(structures))]
 
-        if len(names)>0:
-            self.names = names
-        else:
-            self.names = ['prop'+str(i) for i in range(len(self.targets))]
+        if targets is None:
+            # set up dataframe for targets with columns (id, property_1, ..., property_n)
+            data = {name: target for name, target in zip(target_names, targets)}
+            data["id"] = structure_ids
 
-        self.mpids = mpids
-
-        if len(mpids)>0:
-            self.ids = mpids
-        else:
-            self.ids = ['id'+str(i) for i in range(len(self.structures))]
-
-        if not self.prediction:
-            data = {'id':self.ids,}
-            for i,target in enumerate(self.targets):
-                data[self.names[i]] = target
             self.df_targets = pd.DataFrame(data)
-            self.df_targets.set_index('id',inplace=True)
-        self.df_structure = pd.DataFrame({'id':self.ids, 'structure':self.structures})
-        self.df_structure.set_index('id',inplace=True)
+            self.df_targets.set_index('id', inplace=True)
 
-    def featurize(self,fast=0,db_file='feature_database.pkl'):
-        print('Computing features, this can take time...')
-        if fast and len(self.mpids)>0:
-            print('Fast featurization on, retrieving from database...')
-            this_dir, this_filename = os.path.split(__file__)
-            global database
-            if len(database) == 0:
-                database = pd.read_pickle(db_file)
-            mpids_done = [x for x in self.mpids if x in database.index]
-            print('Retrieved features for {} out of {} materials'.format(len(mpids_done),len(self.mpids)))
-            df_done = database.loc[mpids_done]
-            df_todo = self.df_structure.drop(mpids_done,axis=0)
+        # set up dataframe for structures with columns (id, structure)
+        self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
+        self.df_structure.set_index('id', inplace=True)
 
-            if len(df_todo) > 0 and len(df_done) > 0:
+    def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl'):
+        """ For the input structures, construct many matminer features
+        and save a featurized dataframe. If `db_file` is specified, this
+        method will try to load previous feature calculations for each
+        structure ID instead of recomputing.
+
+        Sets the `self.df_featurized` attribute.
+
+        Args:
+            fast (bool): whether or not to try to load from a backup.
+            db_file (str): filename of a pickled dataframe containing
+                with the same ID index as this `MODData` object.
+
+        """
+
+        logging.info('Computing features, this can take time...')
+
+        df_done = None
+        df_todo = None
+
+        if self.df_featurized:
+            raise RuntimeError("Not overwriting existing featurized dataframe.")
+
+        if fast and self.mpids:
+            logging.info('Fast featurization on, retrieving from database...')
+
+            global DATABASE
+            if DATABASE.empty:
+                DATABASE = pd.read_pickle(db_file)
+
+            mpids_done = [x for x in self.mpids if x in DATABASE.index]
+
+            logging.info(f"Retrieved features for {len(mpids_done)} out of {len(self.mpids)} materials")
+            df_done = DATABASE.loc[mpids_done]
+            df_todo = self.df_structure.drop(mpids_done, axis=0)
+
+        # if any structures were already loaded
+        if df_done:
+            # if any are left to compute, do them
+            if len(df_todo) > 0:
                 df_composition = featurize_composition(df_todo)
                 df_structure = featurize_structure(df_todo)
                 df_site = featurize_site(df_todo)
+                df_final = df_done.append(df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r"))
 
-                df_final = df_done.append(df_composition.join(df_structure.join(df_site)))
-                df_final = df_final.reindex(self.mpids)
-            elif len(df_todo) == 0:
-                df_final = df_done
+            # otherwise, all structures were successfully loaded
             else:
-                df_composition = featurize_composition(self.df_structure)
-                df_structure = featurize_structure(self.df_structure)
-                df_site = featurize_site(self.df_structure)
+                df_final = df_done
 
-                df_final = df_composition.join(df_structure.join(df_site))
-
+        # otherwise, no structures were loaded, so we need to compute all
         else:
             df_composition = featurize_composition(self.df_structure)
             df_structure = featurize_structure(self.df_structure)
             df_site = featurize_site(self.df_structure)
+            df_final = df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
 
-            df_final = df_composition.join(df_structure.join(df_site))
+        if self.mpids:
+            df_final = df_final.reindex(self.mpids)
+
         df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
-        self.df_featurized = df_final
-        print('Data has successfully been featurized!')
 
-    def feature_selection(self,n=1500, full_cross_nmi=None):
-        """
+        self.df_featurized = df_final
+        logging.info('Data has successfully been featurized!')
+
+    def feature_selection(self, n: int = 1500, full_cross_nmi: Optional[pd.DataFrame] = None):
+        """ Compute the mutual information between features and targets,
+        then apply relevance-redundancy rankings to choose the top `n`
+        features.
+
+        Sets the `self.optimal_features` attribute to a list of feature
+        names.
 
         Args:
-            n:
-            full_cross_nmi: Allow to use a specific Cross-Features NMI.
+            n: number of desired features.
+            full_cross_nmi: specify the cross NMI between features as a
+                dataframe.
+
         """
-        assert hasattr(self, 'df_featurized'), 'Please featurize the data first'
-        assert not self.prediction, 'Please provide targets'
+        if getattr(self, "df_featurized") is None:
+            raise RuntimeError("Mutual information feature selection requiresd featurized data, please call `.featurize()`")
+        if getattr(self, "df_targets") is None:
+            raise RuntimeError("Mutual information feature selection requires target properties")
 
         ranked_lists = []
+        optimal_features_by_target = {}
 
         # Loading mutual information between features
         if full_cross_nmi is None:
             this_dir, this_filename = os.path.split(__file__)
             dp = os.path.join(this_dir, "data", "Features_cross")
-            full_cross_nmi = pd.read_pickle(dp)
+            if os.path.isfile(dp):
+                full_cross_nmi = pd.read_pickle(dp)
         else:
             full_cross_nmi = full_cross_nmi
 
-        for i,name in enumerate(self.names):
-            print("Starting target {}/{}: {} ...".format(i+1,len(self.targets),self.names[i]))
+        if full_cross_nmi is None:
+            if full_cross_nmi is None:
+                logging.info('Computing cross NMI between all features...')
+                df = self.df_featurized.copy()
+                cross_nmi = get_cross_nmi(df)
+
+        for i, name in enumerate(self.names):
+            logging.info("Starting target {}/{}: {} ...".format(i+1, len(self.targets), self.names[i]))
 
             # Computing mutual information with target
-            print("Computing mutual information ...")
+            logging.info("Computing mutual information between features and target...")
             df = self.df_featurized.copy()
-            y_nmi = nmi_target(self.df_featurized,self.df_targets[[name]])[name]
+            y_nmi = nmi_target(self.df_featurized, self.df_targets[[name]])[name]
 
-            print('Computing optimal features...')
+            # remove columns from cross NMI if not present in feature NMI
             cross_nmi = full_cross_nmi.copy(deep=True)
+            missing = [x for x in cross_nmi.index if x not in y_nmi.index]
+            cross_nmi = cross_nmi.drop(missing, axis=0).drop(missing, axis=1)
 
-            a = []
-            for x in cross_nmi.index:
-                if x not in y_nmi.index:
-                    a.append(x)
-            cross_nmi = cross_nmi.drop(a,axis=0).drop(a,axis=1)
-            # opt_features = get_features_dyn(min(n,len(cross_nmi.index)),cross_nmi,y_nmi)
-            opt_features = get_features_dyn(min(n,len(y_nmi.index)),cross_nmi,y_nmi)
-            ranked_lists.append(opt_features)
-            print("Done with target {}/{}: {}.".format(i+1,len(self.targets),self.names[i]))
+            logging.info('Computing optimal features...')
+            optimal_features_by_target[name] = get_features_dyn(min(n, len(y_nmi.index)), cross_nmi, y_nmi)
+            ranked_lists.append(optimal_features_by_target[name])
 
-        print('Merging all features...')
+            logging.info("Done with target {}/{}: {}.".format(i+1, len(self.targets), name))
+
+        logging.info('Merging all features...')
         self.optimal_features = merge_ranked(ranked_lists)
-        print('Done.')
+        self.optimal_features_by_target = optimal_features_by_target
+        logging.info('Done.')
 
     def shuffle(self):
         # caution, not fully implemented
-        self.df_featurized =self.df_featurized.sample(frac=1)
-        self.df_targets = self.df_targets.loc[data.df_featurized.index]
+        raise NotImplementedError("shuffle function not yet finished.")
+        self.df_featurized = self.df_featurized.sample(frac=1)
+        self.df_targets = self.df_targets.loc[self.df_featurized.index]
+
+    @property
+    def structures(self) -> List[Structure]:
+        """Returns the list of `pymatgen.Structure` objects. """
+        return self.df_structure["structure"]
+
+    @property
+    def targets(self) -> np.ndarray:
+        """ Returns a list of lists of prediction targets. """
+        return self.df_targets.values
+
+    @property
+    def names(self) -> List[str]:
+        """ Returns the list of prediction target field names. """
+        return list(self.df_targets)
 
     def save(self, filename):
         """ Pickle the contents of the `MODData` object
@@ -543,7 +858,7 @@ class MODData():
 
         """
         pd.to_pickle(self, filename)
-        print(f'Data successfully saved as {filename}!')
+        logging.info(f'Data successfully saved as {filename}!')
 
     @staticmethod
     def load(filename):

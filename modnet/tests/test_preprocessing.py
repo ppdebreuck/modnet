@@ -220,22 +220,73 @@ def test_small_moddata_featurization():
     # what it was when created
     assert (
         get_sha512_of_file(data_file) ==
-        "45f714ce1f6c30c6db09f96e955755027c58e77ad078c575b8c450cb629df68c"
-        "d9d2699d8879e2d7fc19eb0c880401ede79eab676b4275ed3eadb9c1a768ca90"
+        "37bd4f8ce6f29c904a13e5670dd53af9a8779094727052ec85ccd6362b1b3765"
+        "ac613426331811b3f626242896d87c3f6bc1884cc5545875b5ae66a712f9e218"
     )
 
-    mp_moddata = MODData.load(data_file)
-    structures = mp_moddata.structures
-    targets = mp_moddata.targets
+    old = MODData.load(data_file)
+    structures = old.structures
+    targets = old.targets
 
-    names = mp_moddata.names
+    names = old.names
 
-    new_moddata = MODData(structures, targets, names=names)
-    new_moddata.featurize(fast=False)
+    new = MODData(structures, targets, target_names=names)
+    new.featurize(fast=False)
 
-    assert len(new_moddata.df_featurized) == len(structures)
+    new_cols = sorted(new.df_featurized.columns.tolist())
+    old_cols = sorted(old.df_featurized.columns.tolist())
+
+    for i in range(len(old_cols)):
+        print(new_cols[i], old_cols[i])
+        assert new_cols[i] == old_cols[i]
+
+    np.testing.assert_array_equal(
+        old_cols,
+        new_cols
+    )
+
+    for col in new.df_featurized.columns:
+        np.testing.assert_almost_equal(
+            new.df_featurized[col].to_numpy(),
+            old.df_featurized[col].to_numpy(),
+        )
 
 
-    # Should also test feature selection here
-    # new_moddata.feature_selection(10)
-    # assert len(new_moddata.optimal_features) == 10
+def test_merge_ranked():
+    from modnet.preprocessing import merge_ranked
+
+    # Test lists of the same length
+    test_features = [
+        ["a", "b", "c"],
+        ["d", "b", "e"]
+    ]
+
+    expected = ["a", "d", "b", "c", "e"]
+    assert merge_ranked(test_features) == expected
+
+    # Test lists of different length
+    test_features = [
+        ["a", "b", "c"],
+        ["d", "b", "e", "g"]
+    ]
+
+    expected = ["a", "d", "b", "c", "e", "g"]
+    assert merge_ranked(test_features) == expected
+
+    test_features = [
+        ["d", "b", "e", "g"],
+        ["a", "b", "c"]
+    ]
+
+    expected = ["d", "a", "b", "e", "c", "g"]
+    assert merge_ranked(test_features) == expected
+
+    # Test lists with other hashable types
+    test_features = [
+        ["a", "b", "c"],
+        ["d", "b", 2, "g"],
+        ["c", 0, "e", "0"]
+    ]
+
+    expected = ["a", "d", "c", "b", 0, 2, "e", "g", "0"]
+    assert merge_ranked(test_features) == expected
