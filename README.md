@@ -1,5 +1,7 @@
 # MODNet: Material Optimal Descriptor Network
 
+[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/workflow/status/ppdebreuck/modnet/Run%20tests?logo=github)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+)
+
 ## Table of contents
 - [Introduction](#introduction)
 - [How to install](#install)
@@ -21,10 +23,17 @@ This repository contains the python package implementing the Material Optimal De
 
 This repository also contains two pretrained models that can be used for predicting the refractive index and vibrational thermodynamics for any crystal structure.
 
-See paper for more details: [Machine learning materials properties for small datasets](https://arxiv.org/abs/2004.14766)
+See the MODNet paper for more details: 
 
-![MODNet schematic](img/MODNet_schematic.PNG)
-<div align='center'><strong>Figure 1. Schematic representation of the MODNet.</strong></div>
+_Machine learning materials properties for small datasets_, De Breuck *et al.* (2020), [arXiv:2004.14766](https://arxiv.org/abs/2004.14766).
+
+
+<p align='center'>
+<img src="img/MODNet_schematic.PNG" alt="MODNet schematic" />
+</p>
+<div align='center'>
+<strong>Figure 1. Schematic representation of the MODNet.</strong>
+</div>
 
 
 <a name="install"></a>
@@ -43,6 +52,7 @@ pip install modnet
 The MODNet package is built around two classes: `MODData` and `MODNetModel`.
 
 The usual workflow is as follows:
+
 ```python
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
@@ -60,10 +70,8 @@ model.fit(data)
 data_to_predict = MODData(new_structures)
 data_to_predict.featurize()
 df_predictions = model.predict(data_to_predict) # returns dataframe containing the prediction on new_structures
-
-
-
 ```
+
 Example notebooks can be found in the *example_notebooks* directory.
 
 
@@ -80,7 +88,7 @@ Pretrained models can then be used as follows:
 from modnet.models import MODNetModel
 
 model = MODNetModel.load('path/to/pretrained/refractive_index')
-# or MODNetModel.load(path/to/pretrained/vib_thermo)
+# or MODNetModel.load('path/to/pretrained/vib_thermo')
 ```
 
 <a name="stored-moddata"></a>
@@ -113,19 +121,19 @@ The two main classes, `MODData` and `MODNetModel`, are detailed here.
 <a name="moddata"></a>
 ### MODData
 
-A `MODData` instance is used for represtening a particular dataset. It contains a list of structures and corresponding properties:
+A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties:
 
 ```python
 from modnet.preprocessing import MODData
 
-data = MODData(structures,targets,names=[],mpids=[])
+data = MODData(structures, targets, target_names=None, mpids=None)
 ```
 
 **Arguments:**
 - `structures (List)`: List of pymatgen Structures.
 - `targets (List)`: List of targets corresponding to each structure. When learning on multiple properties this is a list of lists, where each inner list is the ensemble of properties for a given structure.
-- `names (List)` *(optional)*: List of names corresponding to the properties. E.g. ['S_300K','S_800K',...] or ['refractive_index'] for single target learning. These names are used when building the model.
-- `mpids (List)`*(optional)*: If the list of structures (`structures`) are from the Materials Project, you can specify the corresponding mpids by providing a list of mpids: ['mp-149','mp-166',...]. This will enable fast featurization (see further).
+- `target_names (List)` *(optional)*: List of names corresponding to the properties. E.g. `['S_300K','S_800K',...]` or `['refractive_index']` for single target learning. These names are used when building the model.
+- `mpids (List)`*(optional)*: If the list of structures (`structures`) are from the Materials Project, you can specify the corresponding mpids by providing a list of mpids: `['mp-149','mp-166',...]`. This will enable fast featurization (see further).
 
 
 The next step is to create the features:
@@ -144,7 +152,7 @@ data.feature_selection(n=300)
 ```
 
 **Arguments:**
-- `n`*(optional)*: Number of optimal features to compute, i.e. the n first ranked features are computed. When set to -1, all features are ranked (recommended, but can take time).
+- `n` *(optional)*: Number of optimal features to compute, i.e. the n first ranked features are computed. When set to -1, all features are ranked (recommended, but can take time).
 
 The MODData can be saved,
 
@@ -160,27 +168,26 @@ from modnet.preprocessing import MODData
 data = MODData.load('path/dataname')
 ```
 
-Features, targets and other data can be accesed trough the following methods:
+Both the save and load methods use pandas `.read_pickle(...)` and `.load_pickle(...)` which will try to compress/decompress files according to their file extensions (e.g. `".zip"`, `".tgz"` and `".bz2"`.
 
+Dataframes for features, targets and other data can be accessed trough the following methods:
 
 ```python
-
 # dataframe containing the structures
-data.get_structure_df():
+data.get_structure_df()
 
 # dataframe containing the targets
-data.get_target_df():
+data.get_target_df()
 
 # dataframe containing the features
-data.get_featurized_df():
+data.get_featurized_df()
 
 # List of the optimal features, in ranked order
-data.get_optimal_descriptors():
+data.get_optimal_descriptors()
     
 # get_featurized_df limited to the best features
-data.get_optimal_df():
+data.get_optimal_df()
 ```
-
 
 <a name="modnetmodel"></a>
 ### MODNetModel
@@ -217,11 +224,11 @@ model.fit(data, val_fraction = 0.0, val_key = None, lr=0.001, epochs = 200, batc
 
 **Arguments:**
 - `val_fraction (float)` *(optional)*: Validation fraction to be used while training.
-- `val_key (String)` *(optional)*: The name of the property used for printing validation MAE. When multiple properties are learned (e.g. ['formation energy','refractive_index','entropy']), setting the key_val (e.g. key_val = 'entropy') will only print the MAE of this property for each epoch.
+- `val_key (String)` *(optional)*: The name of the property used for printing validation MAE. When multiple properties are learned (e.g. `['formation energy', 'refractive_index', 'entropy']`), setting the key_val (e.g. `key_val = 'entropy'`) will only print the MAE of this property for each epoch.
 - `lr (float)` *(optional)*: Learning rate.
 - `epochs (int)` *(optional)*: Number of epochs.
 - `batch_size (int)` *(optional)*: Batch size.
-- `xscale (String)` *(optional)*: Scaling of the features. Possible values: 'minmax' or 'standard'.
+- `xscale (String)` *(optional)*: Scaling of the features. Possible values: `'minmax'` or `'standard'`.
 
 
 You can save and load the model for later usage:
@@ -249,14 +256,11 @@ df_predictions = model.predict(data_to_predict)
 ```
 A dataframe containing the predictions is returned.
 
-
-
 <a name="author"></a>
 ## Author
 This software is written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be)
 
 <a name="License"></a>
 ## License
+
 MODNet is released under the MIT License.
-
-
