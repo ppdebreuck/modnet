@@ -673,7 +673,8 @@ class MODData:
                 "At least one of `structures` or `df_featurized` should be passed to `MODData`."
             )
 
-        targets = np.array(targets).reshape((len(targets),-1))
+        if targets is not None:
+            targets = np.array(targets).reshape((len(targets),-1))
 
         if structures is not None and targets is not None:
             if np.shape(targets)[0] != len(structures):
@@ -802,7 +803,7 @@ class MODData:
         #        cross_nmi = get_cross_nmi(df)
 
         for i, name in enumerate(self.names):
-            logging.info("Starting target {}/{}: {} ...".format(i+1, len(self.targets), self.names[i]))
+            logging.info("Starting target {}/{}: {} ...".format(i+1, len(self.names), self.names[i]))
 
             # Computing mutual information with target
             logging.info("Computing mutual information between features and target...")
