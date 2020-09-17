@@ -69,7 +69,8 @@ class MODNetModel:
         
     def fit(self,data:MODData, val_fraction = 0.0, val_key = None, lr=0.001, epochs = 200, batch_size = 128, xscale='minmax',yscale=None):
         
-        print('new')
+        if self.n_feat > len(data.get_optimal_descriptors()):
+            raise RuntimeError("The model requires more features than computed in data. Please reduce n_feat below or equal to {}".format(len(data.get_optimal_descriptors())))
         self.xscale = xscale
         self.target_names = data.names
         self.optimal_descriptors = data.get_optimal_descriptors()
@@ -137,7 +138,7 @@ class MODNetModel:
             p = np.array(self.model.predict(x))[:,0].transpose()
         predictions = pd.DataFrame(p)
         predictions.columns = self.targets_flatten
-        predictions.index = data.ids
+        predictions.index = data.structure_ids
         
         return predictions
     
