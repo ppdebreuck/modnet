@@ -67,7 +67,7 @@ from matminer.featurizers.site import (
     VoronoiFingerprint,
 )
 from pymatgen.analysis.local_env import VoronoiNN
-from typing import Dict, List, Union, Optional, Callable, Hashable
+from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable
 
 DATABASE = pd.DataFrame([])
 
@@ -294,6 +294,8 @@ def get_features_relevance_redundancy(
     if n_feat is None:
         n_feat = len(target_nmi.index)
 
+    missing = [x for x in cross_nmi.index if x not in target_nmi.index]
+    cross_nmi = cross_nmi.drop(missing, axis=0).drop(missing, axis=1)
     # Loop on the number of features
     for n in range(1, n_feat):
         logging.debug("In selection of feature {}/{} features...".format(n+1, n_feat))
@@ -304,7 +306,6 @@ def get_features_relevance_redundancy(
 
         # Compute the RR score
         score = cross_nmi.copy()
-        score = score.loc[target_nmi.index, target_nmi.index]
         # Remove features already selected for the index
         score = score.drop(feature_set, axis=0)
         # Use features already selected to compute the maximum NMI between
@@ -333,16 +334,21 @@ def get_features_relevance_redundancy(
     return out
 
 
-def get_features_dyn(n_feat, cross_mi, target_mi):
+def get_features_dyn(n_feat, cross_nmi, target_nmi):
 
-    first_feature = target_mi.nlargest(1).index[0]
+    first_feature = target_nmi.nlargest(1).index[0]
     feature_set = [first_feature]
 
     get_p = get_rr_p_parameter_default
     get_c = get_rr_c_parameter_default
 
+    missing = [x for x in cross_nmi.index if x not in target_nmi.index]
+    cross_nmi = cross_nmi.drop(missing, axis=0).drop(missing, axis=1)
+
     if n_feat == -1:
-        n_feat = len(cross_mi.index)
+        n_feat = len(cross_nmi.index)
+    else:
+        n_feat = min(len(cross_nmi.index),n_feat)
 
     for n in range(n_feat-1):
         if (n+1) % 50 == 0:
@@ -351,14 +357,14 @@ def get_features_dyn(n_feat, cross_mi, target_mi):
         p = get_p(n)
         c = get_c(n)
 
-        score = cross_mi.copy()
-        score = score.loc[target_mi.index, target_mi.index]
+        score = cross_nmi.copy()
+        #score = score.loc[target_mi.index, target_mi.index]
         score = score.drop(feature_set, axis=0)
         score = score[feature_set]
 
         for i in score.index:
             row = score.loc[i, :]
-            score.loc[i, :] = target_mi[i] / (row**p+c)
+            score.loc[i, :] = target_nmi[i] / (row**p+c)
 
         next_feature = score.min(axis=1).idxmax(axis=0)
         feature_set.append(next_feature)
@@ -634,9 +640,9 @@ class MODData:
     def __init__(
         self,
         structures: Optional[List[Structure]] = None,
-        targets: Optional[Union[List[float], np.ndarray, List[List[float]]]] = None,
-        target_names: Optional[List[str]] = None,
-        structure_ids: Optional[List[Hashable]] = None,
+        targets: Optional[Union[List[float], np.ndarray]] = None,
+        target_names: Optional[Iterable] = None,
+        structure_ids: Optional[Iterable] = None,
         df_featurized: Optional[pd.DataFrame] = None,
     ):
         """ Initialise the MODData object either from a list of structures
@@ -647,9 +653,10 @@ class MODData:
 
         Args:
             structures: list of structures to featurize and predict.
-            targets: optional list or list of lists of prediction targets per structure.
-            target_names: optional list of names of target properties to use in the dataframe.
-            structure_ids: optional list of unique IDs to use instead of generated integers.
+            targets: optional List of targets corresponding to each structure. When learning on multiple targets this
+             is a ndarray where each column corresponds to a target, i.e. of shape (n_materials,n_targets).
+            target_names: optional Iterable (e.g. list) of names of target properties to use in the dataframe.
+            structure_ids: optional Iterable of unique IDs to use instead of generated integers.
             df_featurized: optional featurized dataframe to use instead of
                 featurizing a new one. Should be passed without structures.
 
@@ -666,20 +673,21 @@ class MODData:
                 "At least one of `structures` or `df_featurized` should be passed to `MODData`."
             )
 
+        targets = np.array(targets).reshape((len(targets),-1))
+
         if structures is not None and targets is not None:
             if np.shape(targets)[0] != len(structures):
                 raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(structures)}")
 
-        if target_names:
+        if target_names is not None:
             if np.shape(targets)[-1] != len(target_names):
                 raise ValueError("Target names must be supplied for every target.")
         else:
             target_names = ['prop'+str(i) for i in range(len(targets))]
 
-        if structure_ids:
+        if structure_ids is not None:
             # for backwards compat, always store the *passed* list of
             # IDs, so they can be used when loading from a database file
-            self.mpids = structure_ids
             # check ids are unique
             if len(set(structure_ids)) != len(structure_ids):
                 raise ValueError("List of IDs (`structure_ids`) provided must be unique.")
@@ -688,16 +696,11 @@ class MODData:
                 raise ValueError("List of IDs (`structure_ids`) must have same length as list of structure.")
 
         else:
-            self.mpids = None
             structure_ids = [f"id{i}" for i in range(len(structures))]
 
-        if targets is None:
+        if targets is not None:
             # set up dataframe for targets with columns (id, property_1, ..., property_n)
-            data = {name: target for name, target in zip(target_names, targets)}
-            data["id"] = structure_ids
-
-            self.df_targets = pd.DataFrame(data)
-            self.df_targets.set_index('id', inplace=True)
+            self.df_targets = pd.DataFrame(targets,index=structure_ids,columns=target_names)
 
         # set up dataframe for structures with columns (id, structure)
         self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
@@ -723,31 +726,31 @@ class MODData:
         df_done = None
         df_todo = None
 
-        if self.df_featurized:
+        if self.df_featurized is not None:
             raise RuntimeError("Not overwriting existing featurized dataframe.")
 
-        if fast and self.mpids:
+        if fast:
             logging.info('Fast featurization on, retrieving from database...')
 
             global DATABASE
             if DATABASE.empty:
                 DATABASE = pd.read_pickle(db_file)
 
-            mpids_done = [x for x in self.mpids if x in DATABASE.index]
+            ids_done = [x for x in self.structure_ids if x in DATABASE.index]
 
-            logging.info(f"Retrieved features for {len(mpids_done)} out of {len(self.mpids)} materials")
-            df_done = DATABASE.loc[mpids_done]
-            df_todo = self.df_structure.drop(mpids_done, axis=0)
+            logging.info(f"Retrieved features for {len(ids_done)} out of {len(self.structure_ids)} materials")
+            df_done = DATABASE.loc[ids_done]
+            df_todo = self.df_structure.drop(ids_done, axis=0)
 
         # if any structures were already loaded
-        if df_done:
+        if fast and not df_done.empty:
             # if any are left to compute, do them
             if len(df_todo) > 0:
                 df_composition = featurize_composition(df_todo)
                 df_structure = featurize_structure(df_todo)
                 df_site = featurize_site(df_todo)
                 df_final = df_done.append(df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r"))
-
+                df_final = df_final.reindex(self.structure_ids)
             # otherwise, all structures were successfully loaded
             else:
                 df_final = df_done
@@ -759,15 +762,12 @@ class MODData:
             df_site = featurize_site(self.df_structure)
             df_final = df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
 
-        if self.mpids:
-            df_final = df_final.reindex(self.mpids)
-
         df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
 
         self.df_featurized = df_final
         logging.info('Data has successfully been featurized!')
 
-    def feature_selection(self, n: int = 1500, full_cross_nmi: Optional[pd.DataFrame] = None):
+    def feature_selection(self, n: int = 1500, cross_nmi: Optional[pd.DataFrame] = None):
         """ Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
         features.
@@ -777,7 +777,7 @@ class MODData:
 
         Args:
             n: number of desired features.
-            full_cross_nmi: specify the cross NMI between features as a
+            cross_nmi: specify the cross NMI between features as a
                 dataframe.
 
         """
@@ -790,35 +790,26 @@ class MODData:
         optimal_features_by_target = {}
 
         # Loading mutual information between features
-        if full_cross_nmi is None:
+        if cross_nmi is None:
             this_dir, this_filename = os.path.split(__file__)
             dp = os.path.join(this_dir, "data", "Features_cross")
             if os.path.isfile(dp):
-                full_cross_nmi = pd.read_pickle(dp)
-        else:
-            full_cross_nmi = full_cross_nmi
+                cross_nmi = pd.read_pickle(dp)
 
-        if full_cross_nmi is None:
-            if full_cross_nmi is None:
-                logging.info('Computing cross NMI between all features...')
-                df = self.df_featurized.copy()
-                cross_nmi = get_cross_nmi(df)
+        #if cross_nmi is None:
+        #        logging.info('Computing cross NMI between all features...')
+        #        df = self.df_featurized.copy()
+        #        cross_nmi = get_cross_nmi(df)
 
         for i, name in enumerate(self.names):
             logging.info("Starting target {}/{}: {} ...".format(i+1, len(self.targets), self.names[i]))
 
             # Computing mutual information with target
             logging.info("Computing mutual information between features and target...")
-            df = self.df_featurized.copy()
             y_nmi = nmi_target(self.df_featurized, self.df_targets[[name]])[name]
 
-            # remove columns from cross NMI if not present in feature NMI
-            cross_nmi = full_cross_nmi.copy(deep=True)
-            missing = [x for x in cross_nmi.index if x not in y_nmi.index]
-            cross_nmi = cross_nmi.drop(missing, axis=0).drop(missing, axis=1)
-
             logging.info('Computing optimal features...')
-            optimal_features_by_target[name] = get_features_dyn(min(n, len(y_nmi.index)), cross_nmi, y_nmi)
+            optimal_features_by_target[name] = get_features_dyn(n, cross_nmi, y_nmi)
             ranked_lists.append(optimal_features_by_target[name])
 
             logging.info("Done with target {}/{}: {}.".format(i+1, len(self.targets), name))
@@ -837,17 +828,22 @@ class MODData:
     @property
     def structures(self) -> List[Structure]:
         """Returns the list of `pymatgen.Structure` objects. """
-        return self.df_structure["structure"]
+        return list(self.df_structure["structure"])
 
     @property
     def targets(self) -> np.ndarray:
-        """ Returns a list of lists of prediction targets. """
+        """ Returns a ndarray of prediction targets. """
         return self.df_targets.values
 
     @property
     def names(self) -> List[str]:
         """ Returns the list of prediction target field names. """
         return list(self.df_targets)
+
+    @property
+    def structure_ids(self) -> List[str]:
+        """ Returns the list of prediction target field names. """
+        return list(self.df_structure.index)
 
     def save(self, filename):
         """ Pickle the contents of the `MODData` object

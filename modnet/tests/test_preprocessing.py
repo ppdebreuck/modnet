@@ -229,7 +229,6 @@ def test_small_moddata_featurization():
     targets = old.targets
 
     names = old.names
-
     new = MODData(structures, targets, target_names=names)
     new.featurize(fast=False)
 

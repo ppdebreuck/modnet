@@ -131,9 +131,9 @@ data = MODData(structures, targets, target_names=None, mpids=None)
 
 **Arguments:**
 - `structures (List)`: List of pymatgen Structures.
-- `targets (List)`: List of targets corresponding to each structure. When learning on multiple properties this is a list of lists, where each inner list is the ensemble of properties for a given structure.
-- `target_names (List)` *(optional)*: List of names corresponding to the properties. E.g. `['S_300K','S_800K',...]` or `['refractive_index']` for single target learning. These names are used when building the model.
-- `mpids (List)`*(optional)*: If the list of structures (`structures`) are from the Materials Project, you can specify the corresponding mpids by providing a list of mpids: `['mp-149','mp-166',...]`. This will enable fast featurization (see further).
+- `targets (List)`: optional List of targets corresponding to each structure. When learning on multiple targets this is a ndarray where each column corresponds to a target, i.e. of shape (n_materials,n_targets).
+- `target_names (Iterable)` *(optional)*: Iterable (e.g list) of names corresponding to the properties. E.g. `['S_300K','S_800K',...]` or `['refractive_index']` for single target learning. These names are used when building the model.
+- `structure_ids (Iterable)` *(optional)*: If the list of structures (`structures`) are from the Materials Project, you can specify the corresponding mpids by providing an Iterable of mpids: `['mp-149','mp-166',...]`. This will enable fast featurization (see further).
 
 
 The next step is to create the features:
