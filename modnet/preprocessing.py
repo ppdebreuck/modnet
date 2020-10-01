@@ -11,63 +11,14 @@ import os
 import logging
 
 from pymatgen import Structure
-from pymatgen.core.periodic_table import Element
 from sklearn.feature_selection import mutual_info_regression
 import pandas as pd
 import numpy as np
 
-from matminer.featurizers.base import MultipleFeaturizer
-from matminer.featurizers.composition import (
-    AtomicOrbitals,
-    AtomicPackingEfficiency,
-    BandCenter,
-    # CohesiveEnergy, - This descriptor was not used in the paper preset
-    # ElectronAffinity, - This descriptor was not used in the paper preset
-    ElectronegativityDiff,
-    ElementFraction,
-    ElementProperty,
-    IonProperty,
-    Miedema,
-    OxidationStates,
-    Stoichiometry,
-    TMetalFraction,
-    ValenceOrbital,
-    YangSolidSolution,
-)
-
-from matminer.featurizers.conversions import CompositionToOxidComposition
-from matminer.featurizers.structure import (
-    BagofBonds,
-    BondFractions,
-    ChemicalOrdering,
-    CoulombMatrix,
-    DensityFeatures,
-    EwaldEnergy,
-    GlobalSymmetryFeatures,
-    MaximumPackingEfficiency,
-    PartialRadialDistributionFunction,
-    RadialDistributionFunction,
-    SineCoulombMatrix,
-    SiteStatsFingerprint,
-    StructuralHeterogeneity,
-    XRDPowderPattern,
-)
-from matminer.featurizers.site import (
-    AGNIFingerprints,
-    AverageBondAngle,
-    AverageBondLength,
-    BondOrientationalParameter,
-    ChemEnvSiteFingerprint,
-    CoordinationNumber,
-    CrystalNNFingerprint,
-    GaussianSymmFunc,
-    GeneralizedRadialDistributionFunction,
-    LocalPropertyDifference,
-    OPSiteFingerprint,
-    VoronoiFingerprint,
-)
-from pymatgen.analysis.local_env import VoronoiNN
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable
+
+from modnet.featurizers.presets import FEATURIZER_PRESETS
+from modnet.featurizers import MODFeaturizer
 
 DATABASE = pd.DataFrame([])
 
@@ -348,7 +299,7 @@ def get_features_dyn(n_feat, cross_nmi, target_nmi):
     if n_feat == -1:
         n_feat = len(cross_nmi.index)
     else:
-        n_feat = min(len(cross_nmi.index),n_feat)
+        n_feat = min(len(cross_nmi.index), n_feat)
 
     for n in range(n_feat-1):
         if (n+1) % 50 == 0:
@@ -358,7 +309,7 @@ def get_features_dyn(n_feat, cross_nmi, target_nmi):
         c = get_c(n)
 
         score = cross_nmi.copy()
-        #score = score.loc[target_mi.index, target_mi.index]
+        # score = score.loc[target_mi.index, target_mi.index]
         score = score.drop(feature_set, axis=0)
         score = score[feature_set]
 
@@ -403,218 +354,6 @@ def merge_ranked(lists: List[List[Hashable]]) -> List[Hashable]:
     return ranked_list
 
 
-def clean_df(df):
-    """ Cleans dataframe by dropping missing values, replacing NaN's and infinities
-    and selecting only columns containing numerical data.
-
-    Args:
-        df (pd.DataFrame): the dataframe to clean.
-
-    Returns:
-        pd.DataFrame: the cleaned dataframe.
-
-    """
-
-    df = df.dropna(axis=1, how='all')
-    df = df.replace([np.inf, -np.inf, np.nan], -1)
-    df = df.select_dtypes(include='number')
-
-    return df
-
-
-def featurize_composition(df: pd.DataFrame) -> pd.DataFrame:
-    """ Decorate input `pandas.DataFrame` of structures with composition
-    features from matminer.
-
-    Currently applies the set of all matminer composition features.
-
-    Args:
-        df (pandas.DataFrame): the input dataframe with `"structure"`
-            column containing `pymatgen.Structure` objects.
-
-    Returns:
-        pandas.DataFrame: the decorated DataFrame.
-
-    """
-    logging.info("Applying composition featurizers...")
-    df = df.copy()
-    df['composition'] = df['structure'].apply(lambda s: s.composition)
-    featurizer = MultipleFeaturizer([ElementProperty.from_preset("magpie"),
-                                     AtomicOrbitals(),
-                                     BandCenter(),
-                                     # ElectronAffinity(), - This descriptor was not used in the paper preset
-                                     Stoichiometry(),
-                                     ValenceOrbital(),
-                                     IonProperty(),
-                                     ElementFraction(),
-                                     TMetalFraction(),
-                                     # CohesiveEnergy(), - This descriptor was not used in the paper preset
-                                     Miedema(),
-                                     YangSolidSolution(),
-                                     AtomicPackingEfficiency(),
-                                     ])
-
-    df = featurizer.featurize_dataframe(df, "composition", multiindex=True, ignore_errors=True)
-    df.columns = df.columns.map('|'.join).str.strip('|')
-
-    ox_featurizer = MultipleFeaturizer([OxidationStates(),
-                                        ElectronegativityDiff()
-                                        ])
-
-    df = CompositionToOxidComposition().featurize_dataframe(df, "Input Data|composition")
-
-    df = ox_featurizer.featurize_dataframe(df, "composition_oxid", multiindex=True, ignore_errors=True)
-    df = df.rename(columns={'Input Data': ''})
-    df.columns = df.columns.map('|'.join).str.strip('|')
-
-    _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
-
-    df['AtomicOrbitals|HOMO_character'] = df['AtomicOrbitals|HOMO_character'].map(_orbitals)
-    df['AtomicOrbitals|LUMO_character'] = df['AtomicOrbitals|LUMO_character'].map(_orbitals)
-
-    df['AtomicOrbitals|HOMO_element'] = df['AtomicOrbitals|HOMO_element'].apply(
-        lambda x: -1 if not isinstance(x, str) else Element(x).Z
-    )
-    df['AtomicOrbitals|LUMO_element'] = df['AtomicOrbitals|LUMO_element'].apply(
-        lambda x: -1 if not isinstance(x, str) else Element(x).Z
-    )
-
-    df = df.replace([np.inf, -np.inf, np.nan], 0)
-
-    return clean_df(df)
-
-
-def featurize_structure(df: pd.DataFrame) -> pd.DataFrame:
-    """ Decorate input `pandas.DataFrame` of structures with structural
-    features from matminer.
-
-    Currently applies the set of all matminer structure features.
-
-    Args:
-        df (pandas.DataFrame): the input dataframe with `"structure"`
-            column containing `pymatgen.Structure` objects.
-
-    Returns:
-        pandas.DataFrame: the decorated DataFrame.
-
-    """
-
-    logging.info("Applying structure featurizers...")
-
-    df = df.copy()
-
-    structure_features = [
-         DensityFeatures(),
-         GlobalSymmetryFeatures(),
-         RadialDistributionFunction(),
-         CoulombMatrix(),
-         PartialRadialDistributionFunction(),
-         SineCoulombMatrix(),
-         EwaldEnergy(),
-         BondFractions(),
-         StructuralHeterogeneity(),
-         MaximumPackingEfficiency(),
-         ChemicalOrdering(),
-         XRDPowderPattern(),
-         BagofBonds()
-    ]
-
-    featurizer = MultipleFeaturizer([feature.fit(df["structure"]) for feature in structure_features])
-
-    df = featurizer.featurize_dataframe(df, "structure", multiindex=True, ignore_errors=True)
-    df.columns = df.columns.map('|'.join).str.strip('|')
-
-    dist = df["RadialDistributionFunction|radial distribution function"][0]['distances'][:50]
-    for i, d in enumerate(dist):
-        _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)
-        df[_rdf_key] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
-
-    df = df.drop("RadialDistributionFunction|radial distribution function", axis=1)
-
-    _crystal_system = {
-        "cubic": 1, "tetragonal": 2, "orthorombic": 3,
-        "hexagonal": 4, "trigonal": 5, "monoclinic": 6, "triclinic": 7
-    }
-
-    df["GlobalSymmetryFeatures|crystal_system"] = df["GlobalSymmetryFeatures|crystal_system"].map(_crystal_system)
-    df["GlobalSymmetryFeatures|is_centrosymmetric"] = df["GlobalSymmetryFeatures|is_centrosymmetric"].map(int)
-
-    return clean_df(df)
-
-
-def featurize_site(df: pd.DataFrame, site_stats=("mean", "std_dev")) -> pd.DataFrame:
-    """ Decorate input `pandas.DataFrame` of structures with site
-    features from matminer.
-
-    Currently creates the set of all matminer structure features with
-    the `matminer.featurizers.structure.SiteStatsFingerprint`.
-
-    Args:
-        df (pandas.DataFrame): the input dataframe with `"structure"`
-            column containing `pymatgen.Structure` objects.
-        site_stats (Tuple[str]): the matminer site stats to use in the
-            `SiteStatsFingerprint` for all features.
-
-    Returns:
-        pandas.DataFrame: the decorated DataFrame.
-
-    """
-
-    logging.info("Applying site featurizers...")
-
-    df = df.copy()
-    df.columns = ["Input data|" + x for x in df.columns]
-
-    site_fingerprints = (
-        AGNIFingerprints(),
-        GeneralizedRadialDistributionFunction.from_preset("gaussian"),
-        OPSiteFingerprint(),
-        CrystalNNFingerprint.from_preset("ops"),
-        VoronoiFingerprint(),
-        GaussianSymmFunc(),
-        ChemEnvSiteFingerprint.from_preset("simple"),
-        CoordinationNumber(),
-        LocalPropertyDifference(),
-        BondOrientationalParameter(),
-        AverageBondLength(VoronoiNN()),
-        AverageBondAngle(VoronoiNN())
-    )
-
-    for fingerprint in site_fingerprints:
-        site_stats_fingerprint = SiteStatsFingerprint(
-            fingerprint,
-            stats=site_stats
-        )
-
-        df = site_stats_fingerprint.featurize_dataframe(
-            df,
-            "Input data|structure",
-            multiindex=False,
-            ignore_errors=True
-        )
-
-        fingerprint_name = fingerprint.__class__.__name__
-
-        # rename some features for backwards compatibility with pretrained models
-        if fingerprint_name == "GeneralizedRadialDistributionFunction":
-            fingerprint_name = "GeneralizedRDF"
-        elif fingerprint_name == "AGNIFingerprints":
-            fingerprint_name = "AGNIFingerPrint"
-        elif fingerprint_name == "BondOrientationalParameter":
-            fingerprint_name = "BondOrientationParameter"
-        elif fingerprint_name == "GaussianSymmFunc":
-            fingerprint_name = "ChemEnvSiteFingerprint|GaussianSymmFunc"
-
-        if "|" not in fingerprint_name:
-            fingerprint_name += "|"
-
-        df.columns = [f"{fingerprint_name}{x}" if "|" not in x else x for x in df.columns]
-
-    df = df.loc[:, (df != 0).any(axis=0)]
-
-    return clean_df(df)
-
-
 class MODData:
     """ The MODData class takes takes a list of `pymatgen.Structure`
     objects and creates a `pandas.DataFrame` that contains many matminer
@@ -634,6 +373,7 @@ class MODData:
         optimal_features_by_target (Dict[str, List[str]]): if feature selection has been performed
             this attribute stores a list of the selected features, broken down by
             target property.
+        featurizer (MODFeaturizer): the class used to featurize the data.
 
     """
 
@@ -644,6 +384,7 @@ class MODData:
         target_names: Optional[Iterable] = None,
         structure_ids: Optional[Iterable] = None,
         df_featurized: Optional[pd.DataFrame] = None,
+        featurizer: Optional[Union[MODFeaturizer, str]] = None,
     ):
         """ Initialise the MODData object either from a list of structures
         or from an already featurized dataframe. Prediction targets per
@@ -659,6 +400,8 @@ class MODData:
             structure_ids: optional Iterable of unique IDs to use instead of generated integers.
             df_featurized: optional featurized dataframe to use instead of
                 featurizing a new one. Should be passed without structures.
+            featurizer: optional MODFeaturizer object to use for featurization, or string
+                preset to look up in presets dictionary.
 
         """
 
@@ -674,11 +417,23 @@ class MODData:
             )
 
         if targets is not None:
-            targets = np.array(targets).reshape((len(targets),-1))
+            targets = np.array(targets).reshape((len(targets), -1))
 
         if structures is not None and targets is not None:
             if np.shape(targets)[0] != len(structures):
                 raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(structures)}")
+
+        if isinstance(featurizer, str):
+            self.featurizer = FEATURIZER_PRESETS.get(featurizer)()
+            if self.featurizer is None:
+                raise RuntimeError("Requested preset {featurizer} not found in available presets: {FEATURIZER_PRESETS.keys()}")
+        elif isinstance(featurizer, MODFeaturizer):
+            self.featurizer = featurizer
+        elif featurizer is None and self.df_featurized is None:
+            self.featurizer = FEATURIZER_PRESETS["DeBreuck2020"]()
+
+        if self.featurizer is not None:
+            logging.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
 
         if target_names is not None:
             if np.shape(targets)[-1] != len(target_names):
@@ -701,7 +456,7 @@ class MODData:
 
         if targets is not None:
             # set up dataframe for targets with columns (id, property_1, ..., property_n)
-            self.df_targets = pd.DataFrame(targets,index=structure_ids,columns=target_names)
+            self.df_targets = pd.DataFrame(targets, index=structure_ids, columns=target_names)
 
         # set up dataframe for structures with columns (id, structure)
         self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
@@ -747,21 +502,17 @@ class MODData:
         if fast and not df_done.empty:
             # if any are left to compute, do them
             if len(df_todo) > 0:
-                df_composition = featurize_composition(df_todo)
-                df_structure = featurize_structure(df_todo)
-                df_site = featurize_site(df_todo)
-                df_final = df_done.append(df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r"))
+                df_finished = self.featurizer.featurize(df_todo)
+                df_final = df_done.append(df_finished)
                 df_final = df_final.reindex(self.structure_ids)
+
             # otherwise, all structures were successfully loaded
             else:
                 df_final = df_done
 
         # otherwise, no structures were loaded, so we need to compute all
         else:
-            df_composition = featurize_composition(self.df_structure)
-            df_structure = featurize_structure(self.df_structure)
-            df_site = featurize_site(self.df_structure)
-            df_final = df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
+            df_final = self.featurizer.featurize(self.df_structure)
 
         df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
 
@@ -797,7 +548,7 @@ class MODData:
             if os.path.isfile(dp):
                 cross_nmi = pd.read_pickle(dp)
 
-        #if cross_nmi is None:
+        # if cross_nmi is None:
         #        logging.info('Computing cross NMI between all features...')
         #        df = self.df_featurized.copy()
         #        cross_nmi = get_cross_nmi(df)
