@@ -438,7 +438,7 @@ class MODData:
         if target_names is not None:
             if np.shape(targets)[-1] != len(target_names):
                 raise ValueError("Target names must be supplied for every target.")
-        else:
+        elif targets is not None:
             target_names = ['prop'+str(i) for i in range(len(targets))]
 
         if structure_ids is not None:

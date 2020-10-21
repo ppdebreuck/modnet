@@ -33,7 +33,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         YangSolidSolution,
     )
     from matminer.featurizers.structure import (
-        BagofBonds,
+        # BagofBonds, - This descriptor was not used in the paper preset
         BondFractions,
         ChemicalOrdering,
         CoulombMatrix,
@@ -41,7 +41,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         EwaldEnergy,
         GlobalSymmetryFeatures,
         MaximumPackingEfficiency,
-        PartialRadialDistributionFunction,
+        # PartialRadialDistributionFunction,
         RadialDistributionFunction,
         SineCoulombMatrix,
         StructuralHeterogeneity,
@@ -87,7 +87,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
          GlobalSymmetryFeatures(),
          RadialDistributionFunction(),
          CoulombMatrix(),
-         PartialRadialDistributionFunction(),
+         # PartialRadialDistributionFunction(),
          SineCoulombMatrix(),
          EwaldEnergy(),
          BondFractions(),
@@ -95,7 +95,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
          MaximumPackingEfficiency(),
          ChemicalOrdering(),
          XRDPowderPattern(),
-         BagofBonds(),
+         # BagofBonds(),
      )
     site_featurizers = (
         AGNIFingerprints(),

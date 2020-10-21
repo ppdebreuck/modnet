@@ -220,8 +220,8 @@ def test_small_moddata_featurization():
     # what it was when created
     assert (
         get_sha512_of_file(data_file) ==
-        "37bd4f8ce6f29c904a13e5670dd53af9a8779094727052ec85ccd6362b1b3765"
-        "ac613426331811b3f626242896d87c3f6bc1884cc5545875b5ae66a712f9e218"
+        "937a29dad32d18e47c84eb7c735ed8af09caede21d2339c379032"
+        "fbd40c463d8ca377d9e3a777710b5741295765f6c12fbd7ab56f9176cc0ca11c9120283d878"
     )
 
     old = MODData.load(data_file)
