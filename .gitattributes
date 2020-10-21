@@ -1,5 +1,3 @@
 modnet/data/feature_database.pkl filter=lfs diff=lfs merge=lfs -text
 moddata/refractive_index filter=lfs diff=lfs merge=lfs -text
-moddata/MP_2018.6 filter=lfs diff=lfs merge=lfs -text
-moddata/MP_2018.6.zip filter=lfs diff=lfs merge=lfs -text
 modnet/data/feature_database.pkl.zip filter=lfs diff=lfs merge=lfs -text
