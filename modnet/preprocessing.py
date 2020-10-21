@@ -9,6 +9,7 @@ and functions to compute normalized mutual information (NMI) and relevance redun
 
 import os
 import logging
+from pathlib import Path
 
 from pymatgen import Structure
 from sklearn.feature_selection import mutual_info_regression
@@ -17,10 +18,20 @@ import numpy as np
 
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable
 
-from modnet.featurizers.presets import FEATURIZER_PRESETS
 from modnet.featurizers import MODFeaturizer
+from modnet import __version__
 
 DATABASE = pd.DataFrame([])
+
+Dataset = namedtuple("Dataset", ("url", "filename", "md5"))
+DATASETS = {
+    "MP_2018.6": Dataset(
+        url="https://ndownloader.figshare.com/files/24364571",
+        filename="MP_2018.6.zip"
+        md5="06280c4e539508bbcc5266f07698f8d1"
+    ),
+}
+
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -405,6 +416,8 @@ class MODData:
 
         """
 
+        from modnet.featurizers.presets import FEATURIZER_PRESETS
+        self.__modnet_version__ = __version__
         self.df_featurized = df_featurized
 
         if structures is not None and self.df_featurized is not None:
@@ -597,7 +610,7 @@ class MODData:
         """ Returns the list of prediction target field names. """
         return list(self.df_structure.index)
 
-    def save(self, filename):
+    def save(self, filename: str):
         """ Pickle the contents of the `MODData` object
         so that it can be loaded in  with `MODData.load()`.
 
@@ -609,21 +622,73 @@ class MODData:
         logging.info(f'Data successfully saved as {filename}!')
 
     @staticmethod
-    def load(filename):
+    def load(filename: Union[str, Path]):
         """ Load `MODData` object pickled by the `.save(...)` method.
 
         If the filename ends in "tgz", "bz2" or "zip", the pickle
         will be decompressed accordingly by `pandas.read_pickle(...)`.
 
         """
-        pickled_data = pd.read_pickle(filename)
+        pickled_data = None
+
+        if isinstance(filename, Path):
+            filename = str(filename)
+
+        # handle .zip files explicitly for OS X/macOS compatibility
+        if filename.endswith(".zip"):
+            from zipfile import ZipFile
+            with ZipFile(filename, "r") as zf:
+                namelist = zf.namelist()
+                _files = [_ for _ in namelist if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")]
+                if len(_files) == 1:
+                    with zf.open(_files.pop()) as f:
+                        pickled_data = pd.read_pickle(f)
+
+        if pickled_data is None:
+            pickled_data = pd.read_pickle(filename)
+
         if isinstance(pickled_data, MODData):
+            if not hasattr(pickled_data, "__modnet_version__"):
+                pickled_data.__modnet_version__ = "<= 0.1.6"
+            logging.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
             return pickled_data
 
         raise ValueError(
             f"File {filename} did not contain compatible data to create a MODData object, "
             f"instead found {pickled_data.__class__.__name__}."
         )
+
+    @classmethod
+    def load_precomputed(cls, dataset: str):
+        """ Load a `MODData` object from a pre-computed dataset.
+
+        Note:
+            Datasets may require significant (~10 GB) amounts of memory
+            to load.
+
+        Arguments:
+            dataset: the name of the precomputed dataset to load.
+                Currently available: 'MP_2018.6'.
+
+        Returns:
+            MODData: the precomputed dataset.
+
+        """
+        from collections import namedtuple
+        import urllib
+
+        if dataset not in DATASETS:
+            raise ValueError(f"No dataset {dataset} found, must be one of {list(DATASETS.keys())}")
+
+        model_path = Path(__file__).parent.parent.joinpath(f"moddata/{DATASETS[dataset].filename}")
+        if not model_path.is_file():
+            logging.info(f"Downloading featurized dataset {dataset} from {DATASETS[dataset].url} into {model_path}")
+            try:
+                zip_file, response = urllib.request.urlretrieve(DATASETS[dataset].url, model_path)
+            except (urllib.error.URLError, urllib.error.HTTPError) as exc:
+                raise ValueError(f"There was a problem downloading {DATASETS[dataset].url}: {exc.reason}")
+
+        return cls.load(str(model_path))
 
     def get_structure_df(self):
         return self.df_structure
