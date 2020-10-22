@@ -606,6 +606,11 @@ class MODData:
         return list(self.df_targets)
 
     @property
+    def target_names(self) -> List[str]:
+        """ Returns the list of prediction target field names. """
+        return list(self.df_targets)
+
+    @property
     def structure_ids(self) -> List[str]:
         """ Returns the list of prediction target field names. """
         return list(self.df_structure.index)
@@ -703,4 +708,4 @@ class MODData:
         return self.optimal_features
 
     def get_optimal_df(self):
-        return self.df_featurized[self.optimal_features].join(self.targets)
+        return self.df_featurized[self.optimal_features].join(self.get_target_df())
