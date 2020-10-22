@@ -129,27 +129,31 @@ class MODFeaturizer(abc.ABC):
                 containing `pymatgen.Structure` objects.
 
         Returns:
-            pandas.DataFrame: the decorated DataFrame.
+            pandas.DataFrame: the decorated DataFrame, or an empty
+                DataFrame if no composition/oxidation featurizers
+                exist for this class.
 
         """
 
-        if self.composition_featurizers or self.oxide_composition_featurizers:
-            df = df.copy()
+        if not (self.composition_featurizers or self.oxide_composition_featurizers):
+            return pd.DataFrame([])
 
-            if self.composition_featurizers:
-                logging.info("Applying composition featurizers...")
-                df['composition'] = df['structure'].apply(lambda s: s.composition)
-                df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
-                df = df.replace([np.inf, -np.inf, np.nan], 0)
-                df = df.rename(columns={'Input Data': ''})
-                df.columns = df.columns.map('|'.join).str.strip('|')
+        df = df.copy()
 
-            if self.oxide_composition_featurizers:
-                logging.info("Applying oxidation state featurizers...")
-                df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
-                df = self._fit_apply_featurizers(df, self.oxide_composition_featurizers, "composition_oxid")
-                df = df.rename(columns={'Input Data': ''})
-                df.columns = df.columns.map('|'.join).str.strip('|')
+        if self.composition_featurizers:
+            logging.info("Applying composition featurizers...")
+            df['composition'] = df['structure'].apply(lambda s: s.composition)
+            df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
+            df = df.replace([np.inf, -np.inf, np.nan], 0)
+            df = df.rename(columns={'Input Data': ''})
+            df.columns = df.columns.map('|'.join).str.strip('|')
+
+        if self.oxide_composition_featurizers:
+            logging.info("Applying oxidation state featurizers...")
+            df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
+            df = self._fit_apply_featurizers(df, self.oxide_composition_featurizers, "composition_oxid")
+            df = df.rename(columns={'Input Data': ''})
+            df.columns = df.columns.map('|'.join).str.strip('|')
 
         return df
 
@@ -168,11 +172,13 @@ class MODFeaturizer(abc.ABC):
 
         """
 
-        if self.structure_featurizers:
-            logging.info("Applying structure featurizers...")
-            df = df.copy()
-            df = self._fit_apply_featurizers(df, self.structure_featurizers, "structure")
-            df.columns = df.columns.map('|'.join).str.strip('|')
+        if not self.structure_featurizers:
+            return pd.DataFrame([])
+
+        logging.info("Applying structure featurizers...")
+        df = df.copy()
+        df = self._fit_apply_featurizers(df, self.structure_featurizers, "structure")
+        df.columns = df.columns.map('|'.join).str.strip('|')
 
         return df
 
@@ -192,29 +198,31 @@ class MODFeaturizer(abc.ABC):
 
         """
 
-        if self.site_featurizers:
-            logging.info("Applying site featurizers...")
+        if not self.site_featurizers:
+            return pd.DataFrame([])
 
-            df = df.copy()
-            df.columns = ["Input data|" + x for x in df.columns]
+        logging.info("Applying site featurizers...")
 
-            for fingerprint in self.site_featurizers:
-                site_stats_fingerprint = SiteStatsFingerprint(
-                    fingerprint,
-                    stats=self.site_stats
-                )
-                df = site_stats_fingerprint.featurize_dataframe(
-                    df,
-                    "Input data|structure",
-                    multiindex=False,
-                    ignore_errors=True
-                )
+        df = df.copy()
+        df.columns = ["Input data|" + x for x in df.columns]
 
-                fingerprint_name = fingerprint.__class__.__name__
-                if aliases:
-                    fingerprint_name = aliases.get(fingerprint_name, fingerprint_name)
-                if "|" not in fingerprint_name:
-                    fingerprint_name += "|"
-                df.columns = [f"{fingerprint_name}{x}" if "|" not in x else x for x in df.columns]
+        for fingerprint in self.site_featurizers:
+            site_stats_fingerprint = SiteStatsFingerprint(
+                fingerprint,
+                stats=self.site_stats
+            )
+            df = site_stats_fingerprint.featurize_dataframe(
+                df,
+                "Input data|structure",
+                multiindex=False,
+                ignore_errors=True
+            )
+
+            fingerprint_name = fingerprint.__class__.__name__
+            if aliases:
+                fingerprint_name = aliases.get(fingerprint_name, fingerprint_name)
+            if "|" not in fingerprint_name:
+                fingerprint_name += "|"
+            df.columns = [f"{fingerprint_name}{x}" if "|" not in x else x for x in df.columns]
 
         return df
