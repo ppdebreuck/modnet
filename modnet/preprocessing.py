@@ -10,6 +10,7 @@ and functions to compute normalized mutual information (NMI) and relevance redun
 import os
 import logging
 from pathlib import Path
+from collections import namedtuple
 
 from pymatgen import Structure
 from sklearn.feature_selection import mutual_info_regression
@@ -27,7 +28,7 @@ Dataset = namedtuple("Dataset", ("url", "filename", "md5"))
 DATASETS = {
     "MP_2018.6": Dataset(
         url="https://ndownloader.figshare.com/files/24364571",
-        filename="MP_2018.6.zip"
+        filename="MP_2018.6.zip",
         md5="06280c4e539508bbcc5266f07698f8d1"
     ),
 }
@@ -664,7 +665,7 @@ class MODData:
         )
 
     @classmethod
-    def load_precomputed(cls, dataset: str):
+    def load_precomputed(cls, dataset_name: str):
         """ Load a `MODData` object from a pre-computed dataset.
 
         Note:
@@ -679,19 +680,28 @@ class MODData:
             MODData: the precomputed dataset.
 
         """
-        from collections import namedtuple
         import urllib
 
-        if dataset not in DATASETS:
-            raise ValueError(f"No dataset {dataset} found, must be one of {list(DATASETS.keys())}")
+        if dataset_name not in DATASETS:
+            raise ValueError(f"No dataset {dataset_name} found, must be one of {list(DATASETS.keys())}")
 
-        model_path = Path(__file__).parent.parent.joinpath(f"moddata/{DATASETS[dataset].filename}")
+        dataset = DATASETS[dataset_name]
+
+        model_path = Path(__file__).parent.parent.joinpath(f"moddata/{dataset.filename}")
         if not model_path.is_file():
-            logging.info(f"Downloading featurized dataset {dataset} from {DATASETS[dataset].url} into {model_path}")
+            logging.info(f"Downloading featurized dataset {dataset_name} from {dataset.url} into {model_path}")
             try:
-                zip_file, response = urllib.request.urlretrieve(DATASETS[dataset].url, model_path)
+                zip_file, response = urllib.request.urlretrieve(dataset.url, model_path)
             except (urllib.error.URLError, urllib.error.HTTPError) as exc:
-                raise ValueError(f"There was a problem downloading {DATASETS[dataset].url}: {exc.reason}")
+                raise ValueError(f"There was a problem downloading {dataset.url}: {exc.reason}")
+
+        if dataset.md5 is not None:
+            from modnet.utils import get_hash_of_file
+            file_md5 = get_hash_of_file(model_path, algo="md5")
+            if file_md5 != dataset.md5:
+                raise RuntimeError(
+                    "Precomputed MODData did not match expected MD5 from {dataset.url}, will not unpickled."
+                )
 
         return cls.load(str(model_path))
 
