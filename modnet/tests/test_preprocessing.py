@@ -1,13 +1,9 @@
 #!/usr/bin/env python
-
-
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
 
 from modnet.preprocessing import get_cross_nmi, nmi_target, MODData
-from .utils import get_sha512_of_file
 
 
 def test_nmi_target():
@@ -190,20 +186,11 @@ def test_get_cross_nmi():
     assert df_cross_nmi.loc['y']['x'] == pytest.approx(0.3417665092162398)
 
 
-def test_load_moddata_zip():
+def test_load_moddata_zip(subset_moddata):
     """ This test checks that older MODData objects can still be loaded. """
 
-    data_file = Path(__file__).parent.joinpath("data/MP_2018.6_subset.zip")
+    data = subset_moddata
 
-    # Loading pickles can be dangerous, so lets at least check that the MD5 matches
-    # what it was when created
-    assert (
-        get_sha512_of_file(data_file) ==
-        "d7d75e646dbde539645c8c0b065fd82cbe93f81d3500809655bd13d0acf2027c"
-        "1786091a73f53985b08868c5be431a3c700f7f1776002df28ebf3a12a79ab1a1"
-    )
-
-    data = MODData.load(data_file)
     assert len(data.structures) == 100
     assert len(data.mpids) == 100
     assert len(data.df_structure) == 100
@@ -212,19 +199,10 @@ def test_load_moddata_zip():
     assert len(data.df_targets) == 100
 
 
-def test_small_moddata_featurization():
+def test_small_moddata_featurization(small_moddata):
     """ This test creates a new MODData from the MP 2018.6 structures. """
-    data_file = Path(__file__).parent.joinpath("data/MP_2018.6_small.zip")
 
-    # Loading pickles can be dangerous, so lets at least check that the MD5 matches
-    # what it was when created
-    assert (
-        get_sha512_of_file(data_file) ==
-        "937a29dad32d18e47c84eb7c735ed8af09caede21d2339c379032"
-        "fbd40c463d8ca377d9e3a777710b5741295765f6c12fbd7ab56f9176cc0ca11c9120283d878"
-    )
-
-    old = MODData.load(data_file)
+    old = small_moddata
     structures = old.structures
     targets = old.targets
 
@@ -289,3 +267,12 @@ def test_merge_ranked():
 
     expected = ["a", "d", "c", "b", 0, 2, "e", "g", "0"]
     assert merge_ranked(test_features) == expected
+
+def test_load_precomputed():
+    """Tries to load and unpack the dataset on figshare.
+
+    Requies ~10 GB of memory.
+
+    """
+
+    MODData.load_precomputed("MP_2018.6")
