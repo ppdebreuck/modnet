@@ -654,7 +654,7 @@ class MODData:
 
         if isinstance(pickled_data, MODData):
             if not hasattr(pickled_data, "__modnet_version__"):
-                pickled_data.__modnet_version__ = "<= 0.1.6"
+                pickled_data.__modnet_version__ = "<=0.1.7"
             logging.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
             return pickled_data
 
