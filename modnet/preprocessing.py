@@ -78,7 +78,7 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     # Prepare the output DataFrame and compute the mutual information
     target_name = df_target.columns[0]
     out_df = pd.DataFrame([], columns=[target_name], index=df_feat.columns)
-    out_df.loc[:, target_name] = (mutual_info_regression(df_feat, df_target[target_name], **kwargs))
+    out_df.loc[:, target_name] = mutual_info_regression(df_feat, df_target[target_name], **kwargs)
 
     # Compute the "self" mutual information (i.e. information entropy) of the target variable and of the input features
     target_mi = mutual_info_regression(df_target[target_name].values.reshape(-1, 1),
@@ -561,13 +561,13 @@ class MODData:
             if os.path.isfile(dp):
                 cross_nmi = pd.read_pickle(dp)
 
-        # if cross_nmi is None:
-        #        logging.info('Computing cross NMI between all features...')
-        #        df = self.df_featurized.copy()
-        #        cross_nmi = get_cross_nmi(df)
+        if cross_nmi is None:
+            logging.info('Computing cross NMI between all features...')
+            df = self.df_featurized.copy()
+            cross_nmi = get_cross_nmi(df)
 
         for i, name in enumerate(self.names):
-            logging.info("Starting target {}/{}: {} ...".format(i+1, len(self.names), self.names[i]))
+            logging.info(f"Starting target {i+1}/{len(self.names)}: {self.names[i]} ...")
 
             # Computing mutual information with target
             logging.info("Computing mutual information between features and target...")
