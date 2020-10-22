@@ -43,6 +43,28 @@ class MODFeaturizer(abc.ABC):
     site_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     site_stats: Tuple[str] = ("mean", "std_dev")
 
+    def __init__(self, n_jobs=None):
+        """ Initialise the MODFeaturizer object with a requested
+        number of threads to use during featurization.
+
+        Arguments:
+            n_jobs: The number of threads to use. If `None`, matminer
+            will use `multiprocessing.cpu_count()` by default.
+
+        """
+        self.set_njobs(n_jobs)
+
+    def set_njobs(self, n_jobs: Optional[int]):
+        """ Set the no. of threads to pass to matminer for featurizer
+        initialisation.
+
+        Arguments:
+            n_jobs: The number of threads to use. If `None`, matminer
+            will use `multiprocessing.cpu_count()` by default.
+
+        """
+        self._n_jobs = n_jobs
+
     def featurize(self, df: pd.DataFrame) -> pd.DataFrame:
         """ Run all of the preset featurizers on the input dataframe.
 
@@ -89,7 +111,12 @@ class MODFeaturizer(abc.ABC):
         else:
             _featurizers = MultipleFeaturizer(featurizers)
 
-        return _featurizers.featurize_dataframe(df, column, multiindex=True, ignore_errors=True)
+        if self._n_jobs is not None:
+            _featurizers.set_njobs(self._n_jobs)
+
+        return _featurizers.featurize_dataframe(
+            df, column, multiindex=True, ignore_errors=True
+        )
 
     def featurize_composition(self, df: pd.DataFrame) -> pd.DataFrame:
         """ Decorate input `pandas.DataFrame` of structures with composition
