@@ -9,15 +9,16 @@ and functions to compute normalized mutual information (NMI) and relevance redun
 
 import os
 import logging
+
 from pathlib import Path
 from collections import namedtuple
+from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable
 
 from pymatgen import Structure
 from sklearn.feature_selection import mutual_info_regression
 import pandas as pd
 import numpy as np
-
-from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable
+import tqdm
 
 from modnet.featurizers import MODFeaturizer
 from modnet import __version__
@@ -33,6 +34,7 @@ DATASETS = {
     ),
 }
 
+EPS = 1e-16
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -78,8 +80,8 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
 
     # Prepare the output DataFrame and compute the mutual information
     target_name = df_target.columns[0]
-    out_df = pd.DataFrame([], columns=[target_name], index=df_feat.columns)
-    out_df.loc[:, target_name] = mutual_info_regression(df_feat, df_target[target_name], **kwargs)
+    mutual_info = pd.DataFrame([], columns=[target_name], index=df_feat.columns)
+    mutual_info.loc[:, target_name] = mutual_info_regression(df_feat, df_target[target_name], **kwargs)
 
     # Compute the "self" mutual information (i.e. information entropy) of the target variable and of the input features
     target_mi = mutual_info_regression(df_target[target_name].values.reshape(-1, 1),
@@ -89,10 +91,10 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
         diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
 
     # Normalize the mutual information
-    for x in out_df.index:
-        out_df.loc[x, target_name] = out_df.loc[x, target_name] / ((target_mi + diag[x])/2)
+    for x in mutual_info.index:
+        mutual_info.loc[x, target_name] = mutual_info.loc[x, target_name] / ((target_mi + diag[x])/2)
 
-    return out_df
+    return mutual_info
 
 
 def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -108,31 +110,46 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: pandas.DataFrame containing the Normalized Mutual Information between features.
+
     """
+
+    logging.info('Computing cross NMI between all features...')
+
+    if kwargs.get("random_state"):
+        seed = kwargs.pop("random_state")
+    else:
+        seed = np.random.RandomState()
+
     # Prepare the output DataFrame and compute the mutual information
-    out_df = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
-    for ifeat, feat_name in enumerate(out_df.columns, start=1):
-        logging.info('Computing MI of feature #{:d}/{:d} ({}) with all other features'.format(ifeat,
-                                                                                              len(out_df.columns),
-                                                                                              feat_name))
-        out_df.loc[:, feat_name] = (mutual_info_regression(df_feat, df_feat[feat_name], **kwargs))
+    mutual_info = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
 
     # Compute the "self" mutual information (i.e. information entropy) of the features
     logging.info('Computing "self" MI (i.e. information entropy) of features')
     diag = {}
-    for x in df_feat.columns:
-        diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
+    for x_feat in df_feat.columns:
+        diag[x_feat] = mutual_info_regression(
+            df_feat[x_feat].values.reshape(-1, 1),
+            df_feat[x_feat],
+            random_state=seed,
+            **kwargs
+        )[0]
+        if diag[x_feat] < 0.2 or abs(df_feat[x_feat].max() - df_feat[x_feat].min()) < EPS:
+            mutual_info.loc[x_feat, x_feat] = np.nan
+        else:
+            mutual_info.loc[x_feat, x_feat] = 1.0
 
-    # Normalize the mutual information between features
-    logging.info('Normalizing MI')
-    for feat1 in out_df.index:
-        for feat2 in out_df.columns:
-            out_df.loc[feat1, feat2] = out_df.loc[feat1, feat2] / ((diag[feat1] + diag[feat2]) / 2)
-        logging.debug('  => Computed NMI of feature "{}" with all other features :\n'
-                      '{}'.format(feat1, '\n'.join(['      {} : {:.4f}'.format(feat2,
-                                                                               out_df.loc[feat1, feat2])
-                                                    for feat2 in out_df.loc[feat1, :].index])))
-    return out_df
+    for idx, x_feat in tqdm.tqdm(enumerate(mutual_info.columns), total=len(mutual_info.columns)):
+        for _, y_feat in enumerate(mutual_info.columns[idx+1:]):
+            I_xy = mutual_info_regression(
+                df_feat[y_feat].values.reshape(-1, 1),
+                df_feat[x_feat],
+                random_state=seed,
+                **kwargs
+            )[0]
+            I_xy /= 0.5 * (diag[x_feat] + diag[y_feat])
+            mutual_info.loc[y_feat, x_feat] = mutual_info.loc[x_feat, y_feat] = I_xy
+
+    return mutual_info
 
 
 def get_rr_p_parameter_default(nn: int) -> float:
@@ -423,11 +440,13 @@ class MODData:
         from modnet.featurizers.presets import FEATURIZER_PRESETS
         self.__modnet_version__ = __version__
         self.df_featurized = df_featurized
+        self.cross_nmi = None
+        self.target_nmi = None
 
         if structures is not None and self.df_featurized is not None:
-            raise RuntimeError(
-                "Only one of `structures` or `df_featurized` should be passed to `MODData`."
-            )
+            if len(structures) != len(self.df_featurized):
+                raise RuntimeError("Mismatched shape of structures and passed df_featurized")
+
         if structures is None and self.df_featurized is None:
             raise RuntimeError(
                 "At least one of `structures` or `df_featurized` should be passed to `MODData`."
@@ -469,7 +488,8 @@ class MODData:
                 raise ValueError("List of IDs (`structure_ids`) must have same length as list of structure.")
 
         else:
-            structure_ids = [f"id{i}" for i in range(len(structures))]
+            num_entries = len(structures) if structures is not None else len(df_featurized)
+            structure_ids = [f"id{i}" for i in range(num_entries)]
 
         if targets is not None:
             # set up dataframe for targets with columns (id, property_1, ..., property_n)
@@ -558,27 +578,29 @@ class MODData:
         ranked_lists = []
         optimal_features_by_target = {}
 
+        self.cross_nmi = cross_nmi
+
         # Loading mutual information between features
-        if cross_nmi is None:
+        if self.cross_nmi is None:
             this_dir, this_filename = os.path.split(__file__)
             dp = os.path.join(this_dir, "data", "Features_cross")
             if os.path.isfile(dp):
-                cross_nmi = pd.read_pickle(dp)
+                logging.info("Loading cross NMI from 'Features_cross' file.")
+                self.cross_nmi = pd.read_pickle(dp)
 
-        if cross_nmi is None:
-            logging.info('Computing cross NMI between all features...')
+        if self.cross_nmi is None:
             df = self.df_featurized.copy()
-            cross_nmi = get_cross_nmi(df)
+            self.cross_nmi = get_cross_nmi(df)
 
         for i, name in enumerate(self.names):
             logging.info(f"Starting target {i+1}/{len(self.names)}: {self.names[i]} ...")
 
             # Computing mutual information with target
             logging.info("Computing mutual information between features and target...")
-            y_nmi = nmi_target(self.df_featurized, self.df_targets[[name]])[name]
+            self.target_nmi = nmi_target(self.df_featurized, self.df_targets[[name]])[name]
 
             logging.info('Computing optimal features...')
-            optimal_features_by_target[name] = get_features_dyn(n, cross_nmi, y_nmi)
+            optimal_features_by_target[name] = get_features_dyn(n, self.cross_nmi, self.target_nmi)
             ranked_lists.append(optimal_features_by_target[name])
 
             logging.info("Done with target {}/{}: {}.".format(i+1, len(self.targets), name))

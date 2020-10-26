@@ -35,7 +35,7 @@ setuptools.setup(
           'pymatgen>=2020.3.13,<2020.9',
           'matminer>=0.6.2',
           'numpy>=1.18.3',
-          'scikit-learn>=0.23'
+          'scikit-learn>=0.23',
         ],
     tests_require=tests_require,
     test_suite="modnet.tests",

@@ -150,10 +150,13 @@ def test_get_cross_nmi():
 
     df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
     assert df_cross_nmi.shape == (4, 4)
-    for idx in df_cross_nmi.index:
-        for col in df_cross_nmi.columns:
-            expected = 0.0 if idx == 'c' or col == 'c' else 1.0
-            assert df_cross_nmi.loc[idx][col] == pytest.approx(expected)
+    expected = np.ones((4, 4))
+    expected[3, :] = expected[:, 3] = 0
+    expected[3, 3] = np.nan
+    np.testing.assert_allclose(
+        np.array(df_cross_nmi, dtype=np.float64),
+        expected,
+    )
 
     # Test with unrelated data (grid)
     x = np.linspace(start=2, stop=5, num=4)
