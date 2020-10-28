@@ -299,14 +299,17 @@ def get_features_relevance_redundancy(
 
 def get_features_dyn(n_feat, cross_nmi, target_nmi):
 
-    first_feature = target_nmi.nlargest(1).index[0]
-    feature_set = [first_feature]
-
-    get_p = get_rr_p_parameter_default
-    get_c = get_rr_c_parameter_default
-
     missing = [x for x in cross_nmi.index if x not in target_nmi.index]
     cross_nmi = cross_nmi.drop(missing, axis=0).drop(missing, axis=1)
+
+    missing = [x for x in target_nmi.index if x not in cross_nmi.index]
+    target_nmi = target_nmi.drop(missing, axis=0)
+    target_nmi = target_nmi.replace([np.inf, -np.inf, np.nan], 0)
+
+    first_feature = target_nmi.nlargest(1).index[0]
+    feature_set = [first_feature]
+    get_p = get_rr_p_parameter_default
+    get_c = get_rr_c_parameter_default
 
     if n_feat == -1:
         n_feat = len(cross_nmi.index)

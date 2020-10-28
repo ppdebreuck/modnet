@@ -153,8 +153,16 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
             "hexagonal": 4, "trigonal": 5, "monoclinic": 6, "triclinic": 7
         }
 
+        def _int_map(x):
+            if x == np.nan:
+                return 0
+            elif x:
+                return 1
+            else:
+                return 0
+
         df["GlobalSymmetryFeatures|crystal_system"] = df["GlobalSymmetryFeatures|crystal_system"].map(_crystal_system)
-        df["GlobalSymmetryFeatures|is_centrosymmetric"] = df["GlobalSymmetryFeatures|is_centrosymmetric"].map(int)
+        df["GlobalSymmetryFeatures|is_centrosymmetric"] = df["GlobalSymmetryFeatures|is_centrosymmetric"].map(_int_map)
 
         return modnet.featurizers.clean_df(df)
 
