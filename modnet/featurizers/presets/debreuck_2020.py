@@ -141,7 +141,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         """
         df = super().featurize_structure(df)
 
-        dist = df["RadialDistributionFunction|radial distribution function"][1]['distances'][:50]
+        dist = df["RadialDistributionFunction|radial distribution function"][0]['distances'][:50]
         for i, d in enumerate(dist):
             _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)
             df[_rdf_key] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
