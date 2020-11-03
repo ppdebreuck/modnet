@@ -1,18 +1,22 @@
+import logging
+logging.getLogger().setLevel(logging.INFO)
 import pandas as pd
 import numpy as np
-import keras
-from keras.layers import *
-from keras.callbacks import EarlyStopping, LambdaCallback, ModelCheckpoint, ReduceLROnPlateau
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Dense, BatchNormalization
+from tensorflow.keras.callbacks import EarlyStopping, LambdaCallback, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import pickle
-import keras.backend as K
-from keras.models import model_from_json
+import tensorflow.keras.backend as K
+from tensorflow.keras.models import model_from_json
 from modnet.preprocessing import MODData
+from modnet.model_presets import MODNET_PRESETS
 
 class MODNetModel:
     
-    def __init__(self,targets,weights,num_neurons=[[64],[32],[16],[16]], n_feat=300, loss='mse',act='relu'):
-        
+    def __init__(self,targets,weights,num_neurons=[[64],[32],[16],[16]], n_feat=300,act='relu'):
+
+        self.targets = targets
         self.n_feat = n_feat
         self.weights = weights
 
@@ -64,10 +68,9 @@ class MODNetModel:
                     out = Dense(1,activation='linear',name=group[prop_idx][pi])(previous_layer)
                     final_out.append(out)
 
-        self.model = keras.models.Model(inputs=f_input, outputs=final_out)
+        self.model = tf.keras.models.Model(inputs=f_input, outputs=final_out)
 
-        
-    def fit(self,data:MODData, val_fraction = 0.0, val_key = None, lr=0.001, epochs = 200, batch_size = 128, xscale='minmax',yscale=None):
+    def fit(self,data:MODData, val_fraction = 0.0, val_key = None, lr=0.001, epochs = 200, batch_size = 128, xscale='minmax', loss='mse', callbacks=None, verbose=1):
         
         if self.n_feat > len(data.get_optimal_descriptors()):
             raise RuntimeError("The model requires more features than computed in data. Please reduce n_feat below or equal to {}".format(len(data.get_optimal_descriptors())))
@@ -75,9 +78,9 @@ class MODNetModel:
         self.target_names = data.names
         self.optimal_descriptors = data.get_optimal_descriptors()
         x = data.get_featurized_df()[self.optimal_descriptors[:self.n_feat]].values
-        print(x.shape)
+        #print(x.shape)
         y = data.get_target_df()[self.targets_flatten].values.transpose()
-        print(y.shape)
+        #print(y.shape)
         
         #Scale the input features:
         if self.xscale == 'minmax':
@@ -91,34 +94,74 @@ class MODNetModel:
 
         x = np.nan_to_num(x)
         
-        if val_fraction > 0:
-            if self.PP:
+        if verbose and self.PP:
+            if val_fraction>0:
                 print_callback = LambdaCallback(
                   on_epoch_end=lambda epoch,logs: print("epoch {}: loss: {:.3f}, val_loss:{:.3f} val_{}:{:.3f}".format(epoch,logs['loss'],logs['val_loss'],val_key,logs['val_{}_mae'.format(val_key)])))
+                verbose = 0
             else:
                 print_callback = LambdaCallback(
-                  on_epoch_end=lambda epoch,logs: print("epoch {}: loss: {:.3f}, val_loss:{:.3f} val_{}:{:.3f}".format(epoch,logs['loss'],logs['val_loss'],val_key,logs['val_mae'])))
-        else:
-            print_callback = LambdaCallback(
-              on_epoch_end=lambda epoch,logs: print("epoch {}: loss: {:.3f}".format(epoch,logs['loss']))) 
+                    on_epoch_end=lambda epoch,logs: print("epoch {}: loss: {:.3f}".format(epoch,logs['loss'])))
+                verbose = 0
+            if callbacks is None:
+                callbacks = [print_callback]
+            else:
+                callbacks += [print_callback]
 
-        
         fit_params = {
-                      'x': x,
-                      'y': list(y),
-                      'epochs': epochs,
-                      'batch_size': batch_size,
-                      'verbose': 0,
-                      'validation_split' : val_fraction,
-                      'callbacks':[print_callback]
-                  }
-        print('compile',flush=True)
-        self.model.compile(loss = 'mse',optimizer=keras.optimizers.Adam(lr=lr),metrics=['mae'],loss_weights=self.weights)
-        print('fit',flush=True)     
+            'x': x,
+            'y': list(y),
+            'epochs': epochs,
+            'batch_size': batch_size,
+            'verbose': verbose,
+            'validation_split': val_fraction,
+            'callbacks': callbacks
+        }
+
+        #print('compile',flush=True)
+        self.model.compile(loss = loss, optimizer=tf.keras.optimizers.Adam(lr=lr), metrics=['mae'], loss_weights=self.weights)
+        #print('fit',flush=True)
         
-        self.model.fit(**fit_params)
-        
-        
+        history = self.model.fit(**fit_params)
+
+        return history
+
+
+    def fit_preset(self, data:MODData,verbose=0):
+        """
+        Chooses an optimal hyper-parametered MODNet model from different presets .
+        The data is first fitted on several well working MODNet presets with a validation set (20% of the furnished data).
+        The best validating preset is then fitted again on the whole data, and the current model is updated accordingly.
+        Args:
+            data: MODData object contain training and validation samples.
+
+        Returns: None, object is updated to fit the data.
+
+        """
+        rlr = ReduceLROnPlateau(monitor="loss", factor=0.5, patience=20, verbose=verbose, mode="auto", min_delta=0)
+        es = EarlyStopping(monitor="loss", min_delta=0.001, patience=300, verbose=verbose, mode="auto", baseline=None,
+                           restore_best_weights=True)
+        callbacks = [rlr,es]
+        val_losses = np.empty((len(MODNET_PRESETS),))
+        for i,params in enumerate(MODNET_PRESETS):
+            logging.info("Training preset #{}/{}".format(i+1,len(MODNET_PRESETS)))
+            n_feat = min(len(data.get_optimal_descriptors()),params['n_feat'])
+            self.model = MODNetModel(self.targets,self.weights,num_neurons=params['num_neurons'],n_feat=n_feat, act=params['act']).model
+            self.n_feat = n_feat
+            hist = self.fit(data, val_fraction=0.2, lr=params['lr'], epochs=params['epochs'], batch_size=params['batch_size'], loss=params['loss'], callbacks=callbacks, verbose=verbose)
+            val_loss = np.array(hist.history['val_loss'])[-20:].mean()
+            val_losses[i] = val_loss
+            logging.info("Validation loss: {:.3f}".format(val_loss))
+        best_preset = val_losses.argmin()
+        logging.info("Preset #{} resulted in lowest validation loss.\nFitting all data...".format(best_preset+1))
+        n_feat = min(len(data.get_optimal_descriptors()), MODNET_PRESETS[best_preset]['n_feat'])
+        self.model = MODNetModel(self.targets, self.weights, num_neurons=MODNET_PRESETS[best_preset]['num_neurons'], n_feat=n_feat,
+                                 act=MODNET_PRESETS[best_preset]['act']).model
+        self.n_feat = n_feat
+        self.fit(data, val_fraction=0.2, lr=MODNET_PRESETS[best_preset]['lr'], epochs=MODNET_PRESETS[best_preset]['epochs'],
+                        batch_size=MODNET_PRESETS[best_preset]['batch_size'], loss=MODNET_PRESETS[best_preset]['loss'], callbacks=callbacks, verbose=verbose)
+
+
     def predict(self,data):
         
         x = data.get_featurized_df()[self.optimal_descriptors[:self.n_feat]].values
