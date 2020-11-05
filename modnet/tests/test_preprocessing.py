@@ -271,6 +271,8 @@ def test_merge_ranked():
     expected = ["a", "d", "c", "b", 0, 2, "e", "g", "0"]
     assert merge_ranked(test_features) == expected
 
+
+@pytest.mark.slow
 def test_load_precomputed():
     """Tries to load and unpack the dataset on figshare.
 
