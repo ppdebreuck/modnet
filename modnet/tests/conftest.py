@@ -32,7 +32,7 @@ def _load_moddata(filename):
     return MODData.load(data_file)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def subset_moddata():
     """Loads the 100-structure featurized subset of MP.2018.6 for use
     in other tests, checking only the hash.
@@ -41,7 +41,7 @@ def subset_moddata():
     return _load_moddata("MP_2018.6_subset.zip")
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def small_moddata():
     """Loads the small 5-structure featurized subset of MP.2018.6 for use
     in other tests, checking only the hash.

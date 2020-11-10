@@ -1,6 +1,6 @@
 import pickle
 import logging
-from typing import List, Tuple, Dict, Optional, Callable
+from typing import List, Tuple, Dict, Optional, Callable, Any
 
 import pandas as pd
 import numpy as np
@@ -9,7 +9,6 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import tensorflow.keras as keras
 
 from modnet.preprocessing import MODData
-from modnet.model_presets import MODNET_PRESETS
 from modnet import __version__
 
 logging.getLogger().setLevel(logging.INFO)
@@ -65,6 +64,7 @@ class MODNetModel:
         self._scaler = None
         self.optimal_descriptors = None
         self.target_names = None
+        self.targets = targets
         self.model = None
 
         f_temp = [x for subl in targets for x in subl]
@@ -151,7 +151,8 @@ class MODNetModel:
         self,
         training_data: MODData,
         val_fraction: float = 0.0,
-        val_key: str = None,
+        val_key: Optional[str] = None,
+        val_data: Optional[MODData] = None,
         lr: float = 0.001,
         epochs: int = 200,
         batch_size: int = 128,
@@ -194,13 +195,13 @@ class MODNetModel:
             )
 
         self.xscale = xscale
-        self.target_names = training_data.names
+        self.target_names = list(self.weights.keys())
         self.optimal_descriptors = training_data.get_optimal_descriptors()
 
         x = training_data.get_featurized_df()[
-            self.optimal_descriptors[: self.n_feat]
+            self.optimal_descriptors[:self.n_feat]
         ].values
-        y = training_data.get_target_df()[self.targets_flatten].values.transpose()
+        y = training_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False)
 
         # Scale the input features:
         if self.xscale == "minmax":
@@ -212,8 +213,16 @@ class MODNetModel:
         x = self._scaler.fit_transform(x)
         x = np.nan_to_num(x)
 
-        if val_fraction > 0:
-            if self._multi_target:
+        if val_data is not None:
+            val_x = val_data.get_featurized_df()[self.optimal_descriptors[:self.n_feat]].values
+            val_x = self._scaler.transform(val_x)
+            val_y = list(val_data.get_target_df()[self.targets_flatten].values.transpose())
+            validation_data = (val_x, val_y)
+        else:
+            validation_data = None
+
+        if val_fraction > 0 or validation_data:
+            if self._multi_target and val_key is not None:
                 val_metric_key = f"val_{val_key}_mae"
             else:
                 val_metric_key = "val_mae"
@@ -227,22 +236,24 @@ class MODNetModel:
         else:
             print_callback = keras.callbacks.LambdaCallback(
                 on_epoch_end=lambda epoch, logs: print(
-                    "epoch {epoch}: loss: {logs['loss']:.3f}"
+                    f"epoch {epoch}: loss: {logs['loss']:.3f}"
                 )
             )
 
-        if callbacks is None:
-            callbacks = [print_callback]
-        else:
-            callbacks.append(print_callback)
+        if verbose:
+            if callbacks is None:
+                callbacks = [print_callback]
+            else:
+                callbacks.append(print_callback)
 
         fit_params = {
             "x": x,
-            "y": list(y),
+            "y": y,
             "epochs": epochs,
             "batch_size": batch_size,
             "verbose": verbose,
             "validation_split": val_fraction,
+            "validation_data": validation_data,
             "callbacks": callbacks,
         }
 
@@ -255,17 +266,30 @@ class MODNetModel:
         )
 
         logging.info("Fitting model...")
-        self.model.fit(**fit_params)
+        self.history = self.model.fit(**fit_params)
 
-    def fit_preset(self, data: MODData, verbose: int = 0) -> None:
-        """Chooses an optimal hyper-parametered MODNet model from different presets .
-        The data is first fitted on several well working MODNet presets with a validation set (20% of the furnished data).
-        The best validating preset is then fitted again on the whole data, and the current model is updated accordingly.
+    def fit_preset(
+        self,
+        data: MODData,
+        presets: List[Dict[str, Any]] = None,
+        val_fraction: float = 0.1,
+        verbose: int = 0
+    ) -> None:
+        """Chooses an optimal hyper-parametered MODNet model from different presets.
+
+        The data is first fitted on several well working MODNet presets
+        with a validation set (10% of the furnished data by default).
+
+        Sets the `self.model` attribute to the model with the lowest loss.
+
         Args:
             data: MODData object contain training and validation samples.
-            verbose: verbosity level to pass to Keras
+            presets: A list of dictionaries containing custom presets.
+            verbose: The verbosity level to pass to Keras
+            val_fraction: The fraction of the data to use for validation.
 
         """
+
         rlr = keras.callbacks.ReduceLROnPlateau(
             monitor="loss",
             factor=0.5,
@@ -284,10 +308,18 @@ class MODNetModel:
             restore_best_weights=True,
         )
         callbacks = [rlr, es]
-        val_losses = np.empty((len(MODNET_PRESETS),))
 
-        for i, params in enumerate(MODNET_PRESETS):
-            logging.info("Training preset #{}/{}".format(i + 1, len(MODNET_PRESETS)))
+        if presets is None:
+            from modnet.model_presets import MODNET_PRESETS
+            presets = MODNET_PRESETS
+
+        val_losses = 1e20 * np.ones((len(presets),))
+
+        best_model = None
+        best_n_feat = None
+
+        for i, params in enumerate(presets):
+            logging.info("Training preset #{}/{}".format(i + 1, len(presets)))
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
             self.model = MODNetModel(
                 self.targets,
@@ -297,9 +329,9 @@ class MODNetModel:
                 act=params["act"],
             ).model
             self.n_feat = n_feat
-            hist = self.fit(
+            self.fit(
                 data,
-                val_fraction=0.2,
+                val_fraction=val_fraction,
                 lr=params["lr"],
                 epochs=params["epochs"],
                 batch_size=params["batch_size"],
@@ -307,36 +339,23 @@ class MODNetModel:
                 callbacks=callbacks,
                 verbose=verbose,
             )
-            val_loss = np.array(hist.history["val_loss"])[-20:].mean()
+            val_loss = np.array(self.model.history.history["val_loss"])[-20:].mean()
+            if val_loss < min(val_losses):
+                best_model = self.model
+                best_n_feat = n_feat
+
             val_losses[i] = val_loss
+
             logging.info("Validation loss: {:.3f}".format(val_loss))
+
         best_preset = val_losses.argmin()
         logging.info(
             "Preset #{} resulted in lowest validation loss.\nFitting all data...".format(
                 best_preset + 1
             )
         )
-        n_feat = min(
-            len(data.get_optimal_descriptors()), MODNET_PRESETS[best_preset]["n_feat"]
-        )
-        self.model = MODNetModel(
-            self.targets,
-            self.weights,
-            num_neurons=MODNET_PRESETS[best_preset]["num_neurons"],
-            n_feat=n_feat,
-            act=MODNET_PRESETS[best_preset]["act"],
-        ).model
-        self.n_feat = n_feat
-        self.fit(
-            data,
-            val_fraction=0.2,
-            lr=MODNET_PRESETS[best_preset]["lr"],
-            epochs=MODNET_PRESETS[best_preset]["epochs"],
-            batch_size=MODNET_PRESETS[best_preset]["batch_size"],
-            loss=MODNET_PRESETS[best_preset]["loss"],
-            callbacks=callbacks,
-            verbose=verbose,
-        )
+        self.n_feat = best_n_feat
+        self.model = best_model
 
     def predict(self, test_data: MODData) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
@@ -352,12 +371,12 @@ class MODNetModel:
         """
 
         x = test_data.get_featurized_df()[
-            self.optimal_descriptors[: self.n_feat]
+            self.optimal_descriptors[:self.n_feat]
         ].values
 
         # Scale the input features:
         if self._scaler is not None:
-            x = self.scaler.transform(x)
+            x = self._scaler.transform(x)
 
         x = np.nan_to_num(x)
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import pytest
 
+
 def test_train_small_model_single_target(subset_moddata):
     """Tests the single target training."""
     from modnet.models import MODNetModel
@@ -45,11 +46,14 @@ def test_train_small_model_multi_target(subset_moddata):
 
 def test_train_small_model_presets(subset_moddata):
     """Tests the `fit_preset()` method."""
+    from copy import deepcopy
     from modnet.model_presets import MODNET_PRESETS
     from modnet.models import MODNetModel
 
-    for ind, preset in enumerate(MODNET_PRESETS):
-        MODNET_PRESETS[ind]["epochs"] = 5
+    modified_presets = deepcopy(MODNET_PRESETS)
+
+    for ind, preset in enumerate(modified_presets):
+        modified_presets[ind]["epochs"] = 5
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -64,7 +68,8 @@ def test_train_small_model_presets(subset_moddata):
         n_feat=10,
     )
 
-    model.fit_preset(data)
+    model.fit_preset(data, presets=modified_presets, val_fraction=0.2)
+
 
 @pytest.mark.skip(msg="Until pickle bug is fixed")
 def test_model_integration(subset_moddata):
