@@ -279,3 +279,27 @@ def test_load_precomputed():
     """
 
     MODData.load_precomputed("MP_2018.6")
+
+
+def test_moddata_splits(subset_moddata):
+    from sklearn.model_selection import KFold
+    kf = KFold(5, shuffle=True, random_state=123)
+
+    for split in kf.split(subset_moddata.df_featurized):
+        train, test = subset_moddata.split(split)
+
+        assert len(train.structure_ids) == 80
+        assert len(train.df_featurized) == 80
+        assert len(train.df_targets) == 80
+        assert len(train.df_structure) == 80
+
+        assert len(test.structure_ids) == 20
+        assert len(test.df_featurized) == 20
+        assert len(test.df_targets) == 20
+        assert len(test.df_structure) == 20
+
+        test_id_set = set(test.structure_ids)
+        for _id in train.structure_ids:
+            assert _id not in test_id_set
+
+        break

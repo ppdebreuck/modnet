@@ -7,12 +7,13 @@ and functions to compute normalized mutual information (NMI) and relevance redun
 
 """
 
+from __future__ import annotations
 import os
 import logging
 
 from pathlib import Path
 from collections import namedtuple
-from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable
+from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
 
 from pymatgen import Structure
 from sklearn.feature_selection import mutual_info_regression
@@ -402,10 +403,14 @@ class MODData:
             computed features per structure, indexed by ID.
         optimal_features (List[str]): if feature selection has been performed
             this attribute stores a list of the selected features.
-        optimal_features_by_target (Dict[str, List[str]]): if feature selection has been performed
-            this attribute stores a list of the selected features, broken down by
-            target property.
+        optimal_features_by_target (Dict[str, List[str]]): If feature selection has been performed
+            this attribute stores a list of the selected features, broken down by target property.
         featurizer (MODFeaturizer): the class used to featurize the data.
+        __modnet_version__ (str): The MODNet version number used to create the object
+        cross_nmi (pd.DataFrame): If feature selection has been performed, this attribute
+            stores the normalized mutual information between all features.
+        target_nmi (pd.DataFrame): If feature selection has been performed, this attribute
+            stores the normalized mutual information between all features and all targets.
 
     """
 
@@ -653,7 +658,7 @@ class MODData:
         logging.info(f'Data successfully saved as {filename}!')
 
     @staticmethod
-    def load(filename: Union[str, Path]):
+    def load(filename: Union[str, Path]) -> MODData:
         """ Load `MODData` object pickled by the `.save(...)` method.
 
         If the filename ends in "tgz", "bz2" or "zip", the pickle
@@ -744,3 +749,48 @@ class MODData:
 
     def get_optimal_df(self):
         return self.df_featurized[self.optimal_features].join(self.get_target_df())
+
+    def split(self, train_test_split: Tuple[List[int], List[int]]) -> Tuple[MODData, MODData]:
+        """ Create two new MODData's that contain only the data corresponding
+        to the indices passed in the `train_test_split` tuple.
+
+        Arguments:
+            train_test_split: A tuple containing two lists of integers: the
+                indices of the training data and test data respectively.
+
+        Returns:
+            The training MODData and the test MODData as a tuple.
+
+        """
+
+        train, test = train_test_split
+        train_moddata = self.from_indices(train)
+        test_moddata = self.from_indices(test)
+        return train_moddata, test_moddata
+
+    def from_indices(self, indices: List[int]) -> MODData:
+        """ Create a new MODData that contains only the data at the given
+        rows indices provided.
+
+        Arguments:
+            indices: The list of integers corresponding to the rows.
+
+        Returns:
+            A `MODData` containing only the rows passed.
+
+        """
+        split_data = MODData.__new__(MODData)
+        extensive_dataframes = ("df_structure", "df_targets", "df_featurized")
+        for attr in extensive_dataframes:
+            setattr(split_data, attr, getattr(self, attr).iloc[indices])
+
+        for attr in [_ for _ in dir(self) if _ not in extensive_dataframes]:
+            if not callable(attr) and not attr.startswith("__"):
+                try:
+                    setattr(split_data, attr, getattr(self, attr))
+                except AttributeError:
+                    pass
+
+        split_data.__modnet_version__ = __version__
+
+        return split_data
