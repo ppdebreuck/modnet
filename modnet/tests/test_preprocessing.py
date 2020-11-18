@@ -150,10 +150,13 @@ def test_get_cross_nmi():
 
     df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
     assert df_cross_nmi.shape == (4, 4)
-    for idx in df_cross_nmi.index:
-        for col in df_cross_nmi.columns:
-            expected = 0.0 if idx == 'c' or col == 'c' else 1.0
-            assert df_cross_nmi.loc[idx][col] == pytest.approx(expected)
+    expected = np.ones((4, 4))
+    expected[3, :] = expected[:, 3] = 0
+    expected[3, 3] = np.nan
+    np.testing.assert_allclose(
+        np.array(df_cross_nmi, dtype=np.float64),
+        expected,
+    )
 
     # Test with unrelated data (grid)
     x = np.linspace(start=2, stop=5, num=4)
@@ -268,6 +271,8 @@ def test_merge_ranked():
     expected = ["a", "d", "c", "b", 0, 2, "e", "g", "0"]
     assert merge_ranked(test_features) == expected
 
+
+@pytest.mark.slow
 def test_load_precomputed():
     """Tries to load and unpack the dataset on figshare.
 
@@ -276,3 +281,27 @@ def test_load_precomputed():
     """
 
     MODData.load_precomputed("MP_2018.6")
+
+
+def test_moddata_splits(subset_moddata):
+    from sklearn.model_selection import KFold
+    kf = KFold(5, shuffle=True, random_state=123)
+
+    for split in kf.split(subset_moddata.df_featurized):
+        train, test = subset_moddata.split(split)
+
+        assert len(train.structure_ids) == 80
+        assert len(train.df_featurized) == 80
+        assert len(train.df_targets) == 80
+        assert len(train.df_structure) == 80
+
+        assert len(test.structure_ids) == 20
+        assert len(test.df_featurized) == 20
+        assert len(test.df_targets) == 20
+        assert len(test.df_structure) == 20
+
+        test_id_set = set(test.structure_ids)
+        for _id in train.structure_ids:
+            assert _id not in test_id_set
+
+        break
