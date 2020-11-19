@@ -503,7 +503,7 @@ class MODData:
         self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
         self.df_structure.set_index('id', inplace=True)
 
-    def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl'):
+    def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
         """ For the input structures, construct many matminer features
         and save a featurized dataframe. If `db_file` is specified, this
         method will try to load previous feature calculations for each
@@ -522,6 +522,9 @@ class MODData:
 
         df_done = None
         df_todo = None
+
+        if n_jobs is not None:
+            self.featurizer.set_n_jobs(n_jobs)
 
         if self.df_featurized is not None:
             raise RuntimeError("Not overwriting existing featurized dataframe.")

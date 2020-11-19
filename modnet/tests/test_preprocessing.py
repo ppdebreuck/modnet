@@ -211,7 +211,7 @@ def test_small_moddata_featurization(small_moddata):
 
     names = old.names
     new = MODData(structures, targets, target_names=names)
-    new.featurize(fast=False)
+    new.featurize(fast=False, n_jobs=2)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
     old_cols = sorted(old.df_featurized.columns.tolist())
