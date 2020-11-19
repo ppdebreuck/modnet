@@ -294,11 +294,17 @@ def test_moddata_splits(subset_moddata):
         assert len(train.df_featurized) == 80
         assert len(train.df_targets) == 80
         assert len(train.df_structure) == 80
+        assert len(train.get_featurized_df()) == 80
+        assert len(train.get_structure_df()) == 80
+        assert len(train.get_target_df()) == 80
 
         assert len(test.structure_ids) == 20
         assert len(test.df_featurized) == 20
         assert len(test.df_targets) == 20
         assert len(test.df_structure) == 20
+        assert len(test.get_featurized_df()) == 20
+        assert len(test.get_structure_df()) == 20
+        assert len(test.get_target_df()) == 20
 
         test_id_set = set(test.structure_ids)
         for _id in train.structure_ids:

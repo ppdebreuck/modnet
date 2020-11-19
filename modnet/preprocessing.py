@@ -790,7 +790,7 @@ class MODData:
             setattr(split_data, attr, getattr(self, attr).iloc[indices])
 
         for attr in [_ for _ in dir(self) if _ not in extensive_dataframes]:
-            if not callable(attr) and not attr.startswith("__"):
+            if not callable(getattr(self, attr)) and not attr.startswith("__"):
                 try:
                     setattr(split_data, attr, getattr(self, attr))
                 except AttributeError:
