@@ -114,8 +114,6 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
     """
 
-    logging.info('Computing cross NMI between all features...')
-
     if kwargs.get("random_state"):
         seed = kwargs.pop("random_state")
     else:
@@ -136,9 +134,11 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
         )[0]
         if diag[x_feat] < 0.2 or abs(df_feat[x_feat].max() - df_feat[x_feat].min()) < EPS:
             mutual_info.loc[x_feat, x_feat] = np.nan
+            diag[x_feat] = np.nan
         else:
             mutual_info.loc[x_feat, x_feat] = 1.0
 
+    logging.info('Computing cross NMI between all features...')
     for idx, x_feat in tqdm.tqdm(enumerate(mutual_info.columns), total=len(mutual_info.columns)):
         for _, y_feat in enumerate(mutual_info.columns[idx+1:]):
             I_xy = mutual_info_regression(
@@ -146,8 +146,7 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
                 df_feat[x_feat],
                 random_state=seed,
                 **kwargs
-            )[0]
-            I_xy /= 0.5 * (diag[x_feat] + diag[y_feat])
+            )[0] / (0.5 * (diag[x_feat] + diag[y_feat]))
             mutual_info.loc[y_feat, x_feat] = mutual_info.loc[x_feat, y_feat] = I_xy
 
     return mutual_info
@@ -504,7 +503,7 @@ class MODData:
         self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
         self.df_structure.set_index('id', inplace=True)
 
-    def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl'):
+    def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
         """ For the input structures, construct many matminer features
         and save a featurized dataframe. If `db_file` is specified, this
         method will try to load previous feature calculations for each
@@ -523,6 +522,9 @@ class MODData:
 
         df_done = None
         df_todo = None
+
+        if n_jobs is not None:
+            self.featurizer.set_n_jobs(n_jobs)
 
         if self.df_featurized is not None:
             raise RuntimeError("Not overwriting existing featurized dataframe.")
@@ -583,7 +585,10 @@ class MODData:
         ranked_lists = []
         optimal_features_by_target = {}
 
-        self.cross_nmi = cross_nmi
+        if cross_nmi is not None:
+            self.cross_nmi = cross_nmi
+        elif getattr(self, "cross_nmi") is None:
+            self.cross_nmi = None
 
         # Loading mutual information between features
         if self.cross_nmi is None:
@@ -785,7 +790,7 @@ class MODData:
             setattr(split_data, attr, getattr(self, attr).iloc[indices])
 
         for attr in [_ for _ in dir(self) if _ not in extensive_dataframes]:
-            if not callable(attr) and not attr.startswith("__"):
+            if not callable(getattr(self, attr)) and not attr.startswith("__"):
                 try:
                     setattr(split_data, attr, getattr(self, attr))
                 except AttributeError:

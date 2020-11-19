@@ -151,7 +151,7 @@ def test_get_cross_nmi():
     df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
     assert df_cross_nmi.shape == (4, 4)
     expected = np.ones((4, 4))
-    expected[3, :] = expected[:, 3] = 0
+    expected[3, :] = expected[:, 3] = np.nan
     expected[3, 3] = np.nan
     np.testing.assert_allclose(
         np.array(df_cross_nmi, dtype=np.float64),
@@ -211,7 +211,7 @@ def test_small_moddata_featurization(small_moddata):
 
     names = old.names
     new = MODData(structures, targets, target_names=names)
-    new.featurize(fast=False)
+    new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
     old_cols = sorted(old.df_featurized.columns.tolist())
@@ -294,11 +294,17 @@ def test_moddata_splits(subset_moddata):
         assert len(train.df_featurized) == 80
         assert len(train.df_targets) == 80
         assert len(train.df_structure) == 80
+        assert len(train.get_featurized_df()) == 80
+        assert len(train.get_structure_df()) == 80
+        assert len(train.get_target_df()) == 80
 
         assert len(test.structure_ids) == 20
         assert len(test.df_featurized) == 20
         assert len(test.df_targets) == 20
         assert len(test.df_structure) == 20
+        assert len(test.get_featurized_df()) == 20
+        assert len(test.get_structure_df()) == 20
+        assert len(test.get_target_df()) == 20
 
         test_id_set = set(test.structure_ids)
         for _id in train.structure_ids:
