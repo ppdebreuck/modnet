@@ -48,3 +48,15 @@ def small_moddata():
 
     """
     return _load_moddata("MP_2018.6_small.zip")
+
+
+@pytest.fixture(scope="module")
+def tf_session():
+    """This fixture can be used to sandbox tests that require tensorflow."""
+    import tensorflow
+
+    tensorflow.compat.v1.disable_eager_execution()
+    with tensorflow.device("/device:CPU:0") as session:
+        yield session
+
+    tensorflow.keras.backend.clear_session()

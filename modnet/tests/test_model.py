@@ -2,7 +2,7 @@
 import pytest
 
 
-def test_train_small_model_single_target(subset_moddata):
+def test_train_small_model_single_target(subset_moddata, tf_session):
     """Tests the single target training."""
     from modnet.models import MODNetModel
 
@@ -23,7 +23,7 @@ def test_train_small_model_single_target(subset_moddata):
     model.predict(data)
 
 
-def test_train_small_model_multi_target(subset_moddata):
+def test_train_small_model_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""
     from modnet.models import MODNetModel
 
@@ -44,7 +44,7 @@ def test_train_small_model_multi_target(subset_moddata):
     model.predict(data)
 
 
-def test_train_small_model_presets(subset_moddata):
+def test_train_small_model_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from copy import deepcopy
     from modnet.model_presets import MODNET_PRESETS
@@ -72,7 +72,7 @@ def test_train_small_model_presets(subset_moddata):
 
 
 @pytest.mark.skip(msg="Until pickle bug is fixed")
-def test_model_integration(subset_moddata):
+def test_model_integration(subset_moddata, tf_session):
     """Tests training, saving, loading and predictions."""
     from modnet.models import MODNetModel
 
