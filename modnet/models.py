@@ -157,7 +157,7 @@ class MODNetModel:
         epochs: int = 200,
         batch_size: int = 128,
         xscale: Optional[str] = "minmax",
-        metrics: Tuple[str] = ("mae",),
+        metrics: List[str] = ["mae"],
         callbacks: List[Callable] = None,
         verbose: int = 0,
         loss: str = "mse",
@@ -201,7 +201,7 @@ class MODNetModel:
         x = training_data.get_featurized_df()[
             self.optimal_descriptors[:self.n_feat]
         ].values
-        y = training_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False)
+        y = [training_data.df_targets[targ].values.astype(np.float, copy=False) for targ in self.targets_flatten]
 
         # Scale the input features:
         if self.xscale == "minmax":
