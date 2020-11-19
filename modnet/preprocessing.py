@@ -114,8 +114,6 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
     """
 
-    logging.info('Computing cross NMI between all features...')
-
     if kwargs.get("random_state"):
         seed = kwargs.pop("random_state")
     else:
@@ -136,9 +134,11 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
         )[0]
         if diag[x_feat] < 0.2 or abs(df_feat[x_feat].max() - df_feat[x_feat].min()) < EPS:
             mutual_info.loc[x_feat, x_feat] = np.nan
+            diag[x_feat] = np.nan
         else:
             mutual_info.loc[x_feat, x_feat] = 1.0
 
+    logging.info('Computing cross NMI between all features...')
     for idx, x_feat in tqdm.tqdm(enumerate(mutual_info.columns), total=len(mutual_info.columns)):
         for _, y_feat in enumerate(mutual_info.columns[idx+1:]):
             I_xy = mutual_info_regression(
@@ -146,8 +146,7 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
                 df_feat[x_feat],
                 random_state=seed,
                 **kwargs
-            )[0]
-            I_xy /= 0.5 * (diag[x_feat] + diag[y_feat])
+            )[0] / (0.5 * (diag[x_feat] + diag[y_feat]))
             mutual_info.loc[y_feat, x_feat] = mutual_info.loc[x_feat, y_feat] = I_xy
 
     return mutual_info
@@ -583,7 +582,10 @@ class MODData:
         ranked_lists = []
         optimal_features_by_target = {}
 
-        self.cross_nmi = cross_nmi
+        if cross_nmi is not None:
+            self.cross_nmi = cross_nmi
+        elif getattr(self, "cross_nmi") is None:
+            self.cross_nmi = None
 
         # Loading mutual information between features
         if self.cross_nmi is None:
