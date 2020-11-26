@@ -36,6 +36,7 @@ class MODNetModel:
         targets: List,
         weights: Dict[str, float],
         num_neurons=([64], [32], [16], [16]),
+        task_type: Optional[Dict[str,int]] = None,
         n_feat=300,
         act="relu",
     ):
@@ -46,6 +47,9 @@ class MODNetModel:
             targets: A nested list of targets names that defines the hierarchy
                 of the output layers.
             weights: The relative loss weights to apply for each target.
+            task_type: Dictionary defining the target types (classification or regression).
+                Should be constructed as follows: key: string giving the target name; value: integer n,
+                 with n=0 for regression and n>=2 for classification with n the number of classes.
             num_neurons: A specification of the model layers, as a 4-tuple
                 of lists of integers. Hidden layers are split into four
                 blocks of `keras.layers.Dense`, with neuron count specified
@@ -60,6 +64,7 @@ class MODNetModel:
 
         self.n_feat = n_feat
         self.weights = weights
+        self.task_type = task_type
 
         self._scaler = None
         self.optimal_descriptors = None
@@ -69,15 +74,20 @@ class MODNetModel:
 
         f_temp = [x for subl in targets for x in subl]
         self.targets_flatten = [x for subl in f_temp for x in subl]
+        if task_type is None:
+            self.task_type = {name: 0 for name in self.targets_flatten}
+        else:
+            self.task_type = task_type
         self._multi_target = len(self.targets_flatten) > 1
 
-        self.build_model(targets, n_feat, num_neurons, act=act)
+        self.build_model(targets, n_feat, num_neurons, act=act, task_type = self.task_type)
 
     def build_model(
         self,
         targets: List,
         n_feat: int,
         num_neurons: Tuple[List[int], List[int], List[int], List[int]],
+        task_type: Optional[Dict[str, int]] = None,
         act: str = "relu",
     ):
         """Builds the Keras model and sets the `self.model` attribute.
@@ -90,6 +100,9 @@ class MODNetModel:
                 of lists of integers. Hidden layers are split into four
                 blocks of `keras.layers.Dense`, with neuron count specified
                 by the elements of the `num_neurons` argument.
+            task_type: Dictionary defining the target types (classification or regression).
+                Should be constructed as follows: key: string giving the target name; value: integer n,
+                with n=0 for regression and n>=2 for classification with n the number of classes.
             act: A string defining a Keras activation function to pass to use
                 in the `keras.layers.Dense` layers.
 
@@ -140,9 +153,15 @@ class MODNetModel:
                         previous_layer = keras.layers.Dense(num_neurons[3][li])(
                             previous_layer
                         )
-                    out = keras.layers.Dense(
-                        1, activation="linear", name=group[prop_idx][pi]
-                    )(previous_layer)
+                    n = task_type[group[prop_idx][pi]]
+                    if n >= 2:
+                        out = keras.layers.Dense(
+                            n,activation='softmax',name=group[prop_idx][pi]
+                            )(previous_layer)
+                    else:
+                        out = keras.layers.Dense(
+                            1, activation="linear", name=group[prop_idx][pi]
+                            )(previous_layer)
                     final_out.append(out)
 
         self.model = keras.models.Model(inputs=f_input, outputs=final_out)
@@ -201,7 +220,14 @@ class MODNetModel:
         x = training_data.get_featurized_df()[
             self.optimal_descriptors[:self.n_feat]
         ].values
-        y = [training_data.df_targets[targ].values.astype(np.float, copy=False) for targ in self.targets_flatten]
+
+        y = []
+        for targ in self.targets_flatten:
+            if self.task_type[targ] >= 2: # Classification
+                y_inner = keras.utils.to_categorical(training_data.df_targets[targ].values,num_classes=self.task_type[targ])
+            else:
+                y_inner = training_data.df_targets[targ].values.astype(np.float, copy=False)
+            y.append(y_inner)
 
         # Scale the input features:
         if self.xscale == "minmax":

@@ -16,7 +16,7 @@ from collections import namedtuple
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
 
 from pymatgen import Structure
-from sklearn.feature_selection import mutual_info_regression
+from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
 import pandas as pd
 import numpy as np
 import tqdm
@@ -41,7 +41,7 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
-               drop_constant_features: bool = True, **kwargs) -> pd.DataFrame:
+               task_type: int = 0, drop_constant_features: bool = True, **kwargs) -> pd.DataFrame:
     """
     Computes the Normalized Mutual Information (NMI) between a list of
     input features and a target variable.
@@ -52,6 +52,7 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
         df_target (pandas.DataFrame): Dataframe containing the target variable.
             This DataFrame should contain only one column and have the same
             size as `df_feat`.
+        task_type (integer): 0 for regression, 1 for classification
         drop_constant_features (bool): If True, the features that are constant
             across the entire data set will be dropped.
         **kwargs: Keyword arguments to be passed down to the
@@ -79,14 +80,25 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
         to_drop = frange[frange == 0].index
         df_feat = df_feat.drop(to_drop, axis=1)
 
+    # Take right MI fun depending on classif/regression
+    if task_type: # Classification
+        _mifun = mutual_info_classif
+    else: # Regression
+        _mifun = mutual_info_regression
+
     # Prepare the output DataFrame and compute the mutual information
     target_name = df_target.columns[0]
     mutual_info = pd.DataFrame([], columns=[target_name], index=df_feat.columns)
-    mutual_info.loc[:, target_name] = mutual_info_regression(df_feat, df_target[target_name], **kwargs)
+
+    mutual_info.loc[:, target_name] =_mifun(df_feat, df_target[target_name], **kwargs)
 
     # Compute the "self" mutual information (i.e. information entropy) of the target variable and of the input features
-    target_mi = mutual_info_regression(df_target[target_name].values.reshape(-1, 1),
-                                       df_target[target_name], **kwargs)[0]
+    if task_type:
+        target_mi = _mifun(df_target[target_name].values.reshape(-1, 1),
+                                       df_target[target_name], discrete_features=True, **kwargs)[0]
+    else:
+        target_mi = _mifun(df_target[target_name].values.reshape(-1, 1),
+                           df_target[target_name], **kwargs)[0]
     diag = {}
     for x in df_feat.columns:
         diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
@@ -410,7 +422,8 @@ class MODData:
             stores the normalized mutual information between all features.
         target_nmi (pd.DataFrame): If feature selection has been performed, this attribute
             stores the normalized mutual information between all features and all targets.
-
+        task_type: optional list of integers, which has the same length as the number of targets (properties).
+                The inner values of the list are set to  1 for a classification task and 0 for a regression task.
     """
 
     def __init__(
@@ -419,6 +432,7 @@ class MODData:
         targets: Optional[Union[List[float], np.ndarray]] = None,
         target_names: Optional[Iterable] = None,
         structure_ids: Optional[Iterable] = None,
+        task_type: Optional[List[int]] = None,
         df_featurized: Optional[pd.DataFrame] = None,
         featurizer: Optional[Union[MODFeaturizer, str]] = None,
     ):
@@ -434,6 +448,9 @@ class MODData:
              is a ndarray where each column corresponds to a target, i.e. of shape (n_materials,n_targets).
             target_names: optional Iterable (e.g. list) of names of target properties to use in the dataframe.
             structure_ids: optional Iterable of unique IDs to use instead of generated integers.
+            task_type: optional list of integers, which has the same length as the number of targets (properties).
+                The inner values of the list are set to  1 for a classification task and 0 for a regression task.
+                If left to None, all tasks are considered regressions.
             df_featurized: optional featurized dataframe to use instead of
                 featurizing a new one. Should be passed without structures.
             featurizer: optional MODFeaturizer object to use for featurization, or string
@@ -446,6 +463,14 @@ class MODData:
         self.df_featurized = df_featurized
         self.cross_nmi = None
         self.target_nmi = None
+
+        if task_type is not None:
+            self.task_type = task_type
+        else:
+            self.task_type = [0]*(np.shape(targets)[-1])
+
+        if task_type is not None and len(task_type) !=  np.shape(targets)[-1]:
+            raise ValueError("Task type must be supplied for every target.")
 
         if structures is not None and self.df_featurized is not None:
             if len(structures) != len(self.df_featurized):
@@ -607,7 +632,7 @@ class MODData:
 
             # Computing mutual information with target
             logging.info("Computing mutual information between features and target...")
-            self.target_nmi = nmi_target(self.df_featurized, self.df_targets[[name]])[name]
+            self.target_nmi = nmi_target(self.df_featurized, self.df_targets[[name]],self.task_type[i])[name]
 
             logging.info('Computing optimal features...')
             optimal_features_by_target[name] = get_features_dyn(n, self.cross_nmi, self.target_nmi)
