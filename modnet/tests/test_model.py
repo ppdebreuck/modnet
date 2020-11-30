@@ -41,7 +41,7 @@ def test_train_small_model_single_target_classif(subset_moddata, tf_session):
         [[["is_metal"]]],
         weights={"is_metal": 1},
         num_neurons=([16], [8], [8], [4]),
-        task_type={'is_metal':2},
+        num_classes={'is_metal':2},
         n_feat=10,
     )
 

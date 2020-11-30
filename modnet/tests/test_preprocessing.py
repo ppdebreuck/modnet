@@ -116,7 +116,7 @@ def test_nmi_target_classif():
 
     df_feat = pd.DataFrame({'x': x, 'y': y})
     df_target = pd.DataFrame({'z': z})
-    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type=1, n_neighbors=2)
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", n_neighbors=2)
 
     assert df_nmi_target.shape == (2, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0,0.02)
@@ -134,7 +134,7 @@ def test_nmi_target_classif():
     df_feat = pd.DataFrame({'x': xs, 'y': ys})
     df_target = pd.DataFrame({'z': zs})
 
-    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type=1, n_neighbors=2)
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", n_neighbors=2)
 
     assert df_nmi_target.shape == (2, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0,0.02)
@@ -145,12 +145,12 @@ def test_nmi_target_classif():
     df_feat = pd.DataFrame({'x': x, 'y': y, 'c': c})
     df_target = pd.DataFrame({'z': z})
 
-    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type=1, n_neighbors=2)
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", n_neighbors=2)
     assert df_nmi_target.shape == (2, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0, 0.02)
     assert df_nmi_target.loc['y']['z'] == pytest.approx(1.0, 0.02)
 
-    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type=1, drop_constant_features=False, n_neighbors=2)
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", drop_constant_features=False, n_neighbors=2)
     assert df_nmi_target.shape == (3, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0, 0.02)
     assert df_nmi_target.loc['y']['z'] == pytest.approx(1.0, 0.02)
@@ -165,7 +165,7 @@ def test_nmi_target_classif():
     df_feat = pd.DataFrame({'x': x})
     df_target = pd.DataFrame({'z': z})
 
-    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type=1)
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification")
     assert df_nmi_target.shape == (1, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(0.0, 0.02)
 
@@ -309,7 +309,7 @@ def test_small_moddata_feature_selection_classif(small_moddata):
     c_nmi = pd.DataFrame([[1, 0, 0.5, 0.5], [0, 1, 0.5, 0.5], [0.5, 0.5, 1, 0.5], [0.5, 0.5, 0.5, 1]],
                              columns=['f1','f2','f3','f4'], index=['f1','f2','f3','f4'])
 
-    classif_md = MODData(['dummy']*1500, targets, target_names=names, task_type=[2])
+    classif_md = MODData(['dummy']*1500, targets, target_names=names, num_classes={"my_classes":3})
     classif_md.df_featurized = pd.DataFrame(features,columns=['f1','f2','f3','f4'])
     classif_md.feature_selection(n=3,cross_nmi=c_nmi)
     assert len(classif_md.get_optimal_descriptors())==3
