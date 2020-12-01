@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+ #!/usr/bin/env python
 import pytest
 
 
@@ -22,6 +22,30 @@ def test_train_small_model_single_target(subset_moddata, tf_session):
     model.fit(data, epochs=5)
     model.predict(data)
 
+def test_train_small_model_single_target_classif(subset_moddata, tf_session):
+    """Tests the single target training."""
+    from modnet.models import MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+    def is_metal(egap):
+        if egap == 0:
+            return 1
+        else:
+            return 0
+    data.df_targets['is_metal'] = data.df_targets['egap'].apply(is_metal)
+    model = MODNetModel(
+        [[["is_metal"]]],
+        weights={"is_metal": 1},
+        num_neurons=([16], [8], [8], [4]),
+        num_classes={'is_metal':2},
+        n_feat=10,
+    )
+
+    model.fit(data, epochs=5)
 
 def test_train_small_model_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""

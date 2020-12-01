@@ -105,6 +105,70 @@ def test_nmi_target():
     assert df_nmi_target.shape == (1, 1)
     assert df_nmi_target.loc['x']['z'] == pytest.approx(0.3417665092162398)
 
+def test_nmi_target_classif():
+    # Test with linear discrete data (should get 1.0 mutual information, or very close due to algorithm used
+    # in mutual_info_regression)
+    npoints = 1500
+    x = np.array([0]*500+[1]*500+[20]*500,dtype='float')
+    y = 2 * x
+    z = np.array(x,dtype='int')
+    print(z)
+
+    df_feat = pd.DataFrame({'x': x, 'y': y})
+    df_target = pd.DataFrame({'z': z})
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", n_neighbors=2)
+
+    assert df_nmi_target.shape == (2, 1)
+    assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0,0.02)
+    assert df_nmi_target.loc['y']['z'] == pytest.approx(1.0,0.02)
+
+    # Same data shuffled
+    # Shuffle the x, y and z
+    indices = np.arange(npoints)
+    np.random.seed(42)
+    np.random.shuffle(indices)
+    xs = x.take(indices)
+    ys = y.take(indices)
+    zs = z.take(indices)
+
+    df_feat = pd.DataFrame({'x': xs, 'y': ys})
+    df_target = pd.DataFrame({'z': zs})
+
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", n_neighbors=2)
+
+    assert df_nmi_target.shape == (2, 1)
+    assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0,0.02)
+    assert df_nmi_target.loc['y']['z'] == pytest.approx(1.0,0.02)
+
+    # Test with one constant feature
+    c = np.ones(npoints) * 1.4
+    df_feat = pd.DataFrame({'x': x, 'y': y, 'c': c})
+    df_target = pd.DataFrame({'z': z})
+
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", n_neighbors=2)
+    assert df_nmi_target.shape == (2, 1)
+    assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0, 0.02)
+    assert df_nmi_target.loc['y']['z'] == pytest.approx(1.0, 0.02)
+
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification", drop_constant_features=False, n_neighbors=2)
+    assert df_nmi_target.shape == (3, 1)
+    assert df_nmi_target.loc['x']['z'] == pytest.approx(1.0, 0.02)
+    assert df_nmi_target.loc['y']['z'] == pytest.approx(1.0, 0.02)
+
+    # Test with unrelated data (grid)
+    x = np.linspace(start=2, stop=5, num=4)
+    z = np.linspace(start=3, stop=7, num=5)
+    x, z = np.meshgrid(x, z)
+    x = x.flatten()
+    z = z.flatten()
+    z = np.array(z / 10, dtype='int')
+    df_feat = pd.DataFrame({'x': x})
+    df_target = pd.DataFrame({'z': z})
+
+    df_nmi_target = nmi_target(df_feat=df_feat, df_target=df_target, task_type="classification")
+    assert df_nmi_target.shape == (1, 1)
+    assert df_nmi_target.loc['x']['z'] == pytest.approx(0.0, 0.02)
+
 
 def test_get_cross_nmi():
 
@@ -230,6 +294,26 @@ def test_small_moddata_featurization(small_moddata):
             new.df_featurized[col].to_numpy(),
             old.df_featurized[col].to_numpy(),
         )
+
+def test_small_moddata_feature_selection_classif(small_moddata):
+    """ This test creates classifier MODData and test the feature selection method """
+
+    x1 = np.array([0]*500+[1]*500+[2]*500,dtype='float')
+    x2 = np.random.choice(2,1500)
+    x3 = x1*x2
+    x4 = x1+(x2*0.5)
+    targets = np.array(x1,dtype='int').reshape(-1,1)
+    features = np.array([x1,x2,x3,x4]).T
+    names = ['my_classes']
+
+    c_nmi = pd.DataFrame([[1, 0, 0.5, 0.5], [0, 1, 0.5, 0.5], [0.5, 0.5, 1, 0.5], [0.5, 0.5, 0.5, 1]],
+                             columns=['f1','f2','f3','f4'], index=['f1','f2','f3','f4'])
+
+    classif_md = MODData(['dummy']*1500, targets, target_names=names, num_classes={"my_classes":3})
+    classif_md.df_featurized = pd.DataFrame(features,columns=['f1','f2','f3','f4'])
+    classif_md.feature_selection(n=3,cross_nmi=c_nmi)
+    assert len(classif_md.get_optimal_descriptors())==3
+    assert classif_md.get_optimal_descriptors() == ['f1','f4','f3']
 
 
 def test_merge_ranked():
