@@ -31,8 +31,8 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
           'pandas>=0.25.3',
-          'tensorflow>=2.0',
-          'pymatgen>=2020.3.13,<2020.9',
+          'tensorflow>=2.2',
+          'pymatgen>=2020,<2020.9',
           'matminer>=0.6.2',
           'numpy>=1.18.3',
           'scikit-learn>=0.23',
