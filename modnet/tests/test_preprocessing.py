@@ -395,3 +395,13 @@ def test_moddata_splits(subset_moddata):
             assert _id not in test_id_set
 
         break
+
+def test_precomputed_cross_nmi(small_moddata):
+
+    new = MODData(
+        structures=small_moddata.structures,
+        targets=small_moddata.targets,
+        target_names=small_moddata.names,
+        df_featurized=small_moddata.df_featurized,
+    )
+    new.feature_selection(5, use_precomputed_cross_nmi=True)

@@ -7,14 +7,16 @@ into the user's installation.
 """
 
 import logging
+import os
 from collections import namedtuple
 from enum import Enum, auto
 from pathlib import Path
+from typing import Union
 
 
 class Usage(Enum):
-    MODData: auto()
-    cross_nmi: auto()
+    MODData = auto()
+    cross_nmi = auto()
 
 
 Dataset = namedtuple("Dataset", ("url", "description", "filename", "md5", "usage"))
@@ -27,12 +29,22 @@ DATASETS = {
         ),
         filename="MP_2018.6.zip",
         md5="06280c4e539508bbcc5266f07698f8d1",
-        usage=Usage.MODData,
+        usage=Usage["MODData"]
+    ),
+    "MP_2018.6_CROSS_NMI": Dataset(
+        url="https://ndownloader.figshare.com/files/25584803",
+        description=(
+            "Pickled dataframe containing the Normalized Mutual Information (NMI) between matminer features "
+            "computed on the Materials Project."
+        ),
+        filename="Features_cross",
+        md5="b83e0bd43f71ec53c4d69ee0764acfbe",
+        usage=Usage["cross_nmi"],
     ),
 }
 
 
-def load_ext_dataset(dataset_name, expected_type):
+def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
     """Load one of the preset datasets from the `DATASETS` constant. Will not
     overwrite any existing local data with remote datasets. Checks hashes against
     what is expected and will not depickle if unrecognised.
@@ -46,7 +58,8 @@ def load_ext_dataset(dataset_name, expected_type):
         The path to the downloaded or previously installed model.
 
     """
-    import urllib
+    import urllib.request
+    import urllib.error
 
     if dataset_name not in DATASETS:
         raise ValueError(
@@ -54,16 +67,22 @@ def load_ext_dataset(dataset_name, expected_type):
         )
 
     dataset = DATASETS[dataset_name]
+    if isinstance(expected_type, str):
+        expected_type = Usage[expected_type]
     if dataset.usage != expected_type:
         raise ValueError(
             f"Cannot load {dataset_name} as it has the wrong type {dataset.usage}."
         )
 
-    model_path = Path(__file__).parent.parent.joinpath(f"moddata/{dataset.filename}")
+    data_dir = Path(__file__).parent.joinpath("data")
+    model_path = data_dir.joinpath(dataset.filename)
     if not model_path.is_file():
         logging.info(
             f"Downloading featurized dataset {dataset_name} from {dataset.url} into {model_path}"
         )
+        if not data_dir.is_dir():
+            os.makedirs(data_dir)
+
         try:
             zip_file, response = urllib.request.urlretrieve(dataset.url, model_path)
         except (urllib.error.URLError, urllib.error.HTTPError) as exc:

@@ -8,7 +8,6 @@ and functions to compute normalized mutual information (NMI) and relevance redun
 """
 
 from __future__ import annotations
-import os
 import logging
 
 from pathlib import Path
@@ -410,11 +409,9 @@ class MODData:
         __modnet_version__ (str): The MODNet version number used to create the object
         cross_nmi (pd.DataFrame): If feature selection has been performed, this attribute
             stores the normalized mutual information between all features.
-        num_classes (pd.DataFrame): If feature selection has been performed, this attribute
-            stores the normalized mutual information between all features and all targets.
         num_classes: Dictionary defining the target types (classification or regression).
-                Should be constructed as follows: key: string giving the target name; value: integer n,
-                 with n=0 for regression and n>=2 for classification with n the number of classes.
+            Should be constructed as follows: key: string giving the target name; value: integer n,
+            with n=0 for regression and n>=2 for classification with n the number of classes.
     """
 
     def __init__(
@@ -452,6 +449,7 @@ class MODData:
         from modnet.featurizers.presets import FEATURIZER_PRESETS
         self.__modnet_version__ = __version__
         self.df_featurized = df_featurized
+        self.featurizer = featurizer
         self.cross_nmi = None
 
         if structures is not None and self.df_featurized is not None:
@@ -512,8 +510,7 @@ class MODData:
 
         self.num_classes = {name: 0 for name in self.target_names}
         if num_classes is not None:
-            for k,v in num_classes.items():
-                self.num_classes[k] = v
+            self.num_classes.update(num_classes)
 
     def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
         """ For the input structures, construct many matminer features
@@ -575,7 +572,12 @@ class MODData:
         self.df_featurized = df_final
         logging.info('Data has successfully been featurized!')
 
-    def feature_selection(self, n: int = 1500, cross_nmi: Optional[pd.DataFrame] = None):
+    def feature_selection(
+        self,
+        n: int = 1500,
+        cross_nmi: Optional[pd.DataFrame] = None,
+        use_precomputed_cross_nmi: bool = False
+    ):
         """ Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
         features.
@@ -587,11 +589,14 @@ class MODData:
             n: number of desired features.
             cross_nmi: specify the cross NMI between features as a
                 dataframe.
+            use_precomputed_cross_nmi: Whether or not to use the cross NMI
+                that was computed on Materials Project features, instead of
+                precomputing.
 
         """
-        if getattr(self, "df_featurized") is None:
+        if getattr(self, "df_featurized", None) is None:
             raise RuntimeError("Mutual information feature selection requiresd featurized data, please call `.featurize()`")
-        if getattr(self, "df_targets") is None:
+        if getattr(self, "df_targets", None) is None:
             raise RuntimeError("Mutual information feature selection requires target properties")
 
         ranked_lists = []
@@ -599,16 +604,22 @@ class MODData:
 
         if cross_nmi is not None:
             self.cross_nmi = cross_nmi
-        elif getattr(self, "cross_nmi") is None:
+        elif getattr(self, "cross_nmi", None) is None:
             self.cross_nmi = None
 
         # Loading mutual information between features
-        if self.cross_nmi is None:
-            this_dir, this_filename = os.path.split(__file__)
-            dp = os.path.join(this_dir, "data", "Features_cross")
-            if os.path.isfile(dp):
-                logging.info("Loading cross NMI from 'Features_cross' file.")
-                self.cross_nmi = pd.read_pickle(dp)
+        if use_precomputed_cross_nmi:
+            logging.info("Loading cross NMI from 'Features_cross' file.")
+            from modnet.ext_data import load_ext_dataset
+            cnmi_path = load_ext_dataset("MP_2018.6_CROSS_NMI", "cross_nmi")
+            self.cross_nmi = pd.read_pickle(cnmi_path)
+            precomputed_cols = set(self.cross_nmi.columns)
+            featurized_cols = set(self.df_featurized.columns)
+            if len(precomputed_cols | featurized_cols) > len(precomputed_cols):
+                logging.warning(
+                    "Feature mismatch between precomputed `Features_cross` and `df_featurized`. "
+                    f"Missing columns: {featurized_cols - precomputed_cols}"
+                )
 
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
@@ -619,7 +630,7 @@ class MODData:
 
             # Computing mutual information with target
             logging.info("Computing mutual information between features and target...")
-            if self.num_classes[name] >=2:
+            if getattr(self, "num_classes", None) and self.num_classes[name] >= 2:
                 task_type = "classification"
             else:
                 task_type = "regression"
