@@ -12,7 +12,6 @@ import os
 import logging
 
 from pathlib import Path
-from collections import namedtuple
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
 from functools import partial
 
@@ -27,14 +26,6 @@ from modnet import __version__
 
 DATABASE = pd.DataFrame([])
 
-Dataset = namedtuple("Dataset", ("url", "filename", "md5"))
-DATASETS = {
-    "MP_2018.6": Dataset(
-        url="https://ndownloader.figshare.com/files/24364571",
-        filename="MP_2018.6.zip",
-        md5="06280c4e539508bbcc5266f07698f8d1"
-    ),
-}
 
 EPS = 1e-16
 
@@ -740,29 +731,8 @@ class MODData:
             MODData: the precomputed dataset.
 
         """
-        import urllib
-
-        if dataset_name not in DATASETS:
-            raise ValueError(f"No dataset {dataset_name} found, must be one of {list(DATASETS.keys())}")
-
-        dataset = DATASETS[dataset_name]
-
-        model_path = Path(__file__).parent.parent.joinpath(f"moddata/{dataset.filename}")
-        if not model_path.is_file():
-            logging.info(f"Downloading featurized dataset {dataset_name} from {dataset.url} into {model_path}")
-            try:
-                zip_file, response = urllib.request.urlretrieve(dataset.url, model_path)
-            except (urllib.error.URLError, urllib.error.HTTPError) as exc:
-                raise ValueError(f"There was a problem downloading {dataset.url}: {exc.reason}")
-
-        if dataset.md5 is not None:
-            from modnet.utils import get_hash_of_file
-            file_md5 = get_hash_of_file(model_path, algo="md5")
-            if file_md5 != dataset.md5:
-                raise RuntimeError(
-                    "Precomputed MODData did not match expected MD5 from {dataset.url}, will not unpickled."
-                )
-
+        from modnet.ext_data import load_ext_dataset
+        model_path = load_ext_dataset(dataset_name, "MODData")
         return cls.load(str(model_path))
 
     def get_structure_df(self):
