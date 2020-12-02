@@ -83,11 +83,11 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     target_name = df_target.columns[0]
     mutual_info = pd.DataFrame([], columns=[target_name], index=df_feat.columns)
 
-    mutual_info.loc[:, target_name] =_mifun(df_feat, df_target[target_name], **kwargs)
+    mutual_info.loc[:, target_name] = _mifun(df_feat, df_target[target_name], **kwargs)
 
     # Compute the "self" mutual information (i.e. information entropy) of the target variable and of the input features
     target_mi = _self_mifun(df_target[target_name].values.reshape(-1, 1),
-                                       df_target[target_name], **kwargs)[0]
+                            df_target[target_name], **kwargs)[0]
     diag = {}
     for x in df_feat.columns:
         diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
@@ -420,7 +420,7 @@ class MODData:
         targets: Optional[Union[List[float], np.ndarray]] = None,
         target_names: Optional[Iterable] = None,
         structure_ids: Optional[Iterable] = None,
-        num_classes: Optional[Dict[str,int]] = None,
+        num_classes: Optional[Dict[str, int]] = None,
         df_featurized: Optional[pd.DataFrame] = None,
         featurizer: Optional[Union[MODFeaturizer, str]] = None,
     ):
