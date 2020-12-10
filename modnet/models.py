@@ -231,17 +231,18 @@ class MODNetModel:
             y.append(y_inner)
 
         # Scale the input features:
+        x = np.nan_to_num(x)
         if self.xscale == "minmax":
-            self._scaler = MinMaxScaler()
+            self._scaler = MinMaxScaler(feature_range=(-0.5,0.5))
 
         elif self.xscale == "standard":
             self._scaler = StandardScaler()
 
         x = self._scaler.fit_transform(x)
-        x = np.nan_to_num(x)
 
         if val_data is not None:
             val_x = val_data.get_featurized_df()[self.optimal_descriptors[:self.n_feat]].values
+            val_x = np.nan_to_num(val_x)
             val_x = self._scaler.transform(val_x)
             val_y = list(val_data.get_target_df()[self.targets_flatten].values.transpose())
             validation_data = (val_x, val_y)
@@ -384,12 +385,14 @@ class MODNetModel:
         self.n_feat = best_n_feat
         self.model = best_model
 
-    def predict(self, test_data: MODData) -> pd.DataFrame:
+    def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
+            return_prob: For a classification tasks only: whether to return the probability of each
+                class OR only return the most probable class.
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
@@ -397,23 +400,31 @@ class MODNetModel:
 
         """
 
-        x = test_data.get_featurized_df()[
+        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[ # prevents Nan predictions if some features are inf
             self.optimal_descriptors[:self.n_feat]
         ].values
 
         # Scale the input features:
+        x = np.nan_to_num(x)
         if self._scaler is not None:
             x = self._scaler.transform(x)
+            x = np.nan_to_num(x)
 
-        x = np.nan_to_num(x)
-
-        if self._multi_target:
-            p = np.array(self.model.predict(x))[:, :, 0].transpose()
-        else:
-            p = np.array(self.model.predict(x))[:, 0].transpose()
-
-        predictions = pd.DataFrame(p)
-        predictions.columns = self.targets_flatten
+        p = np.array(self.model.predict(x))
+        if len(p.shape) == 2:
+            p = np.array([p])
+        p_dic = {}
+        for i, name in enumerate(self.targets_flatten):
+            if self.num_classes[name] >= 2:
+                if return_prob:
+                    temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
+                    for j in range(temp.shape[-1]):
+                        p_dic['{}_prob_{}'.format(name, j)] = temp[:, j]
+                else:
+                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+            else:
+                p_dic[name] = p[i, :, 0]
+        predictions = pd.DataFrame(p_dic)
         predictions.index = test_data.structure_ids
 
         return predictions
@@ -440,6 +451,7 @@ class MODNetModel:
 
         model = self.model
         self.model = None
+        self.history = None
         with open(f"{filename}.pkl", "wb") as f:
             pickle.dump(self, f)
         self.model = model
