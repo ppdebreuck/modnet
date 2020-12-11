@@ -519,10 +519,11 @@ class MODData:
         self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
         self.df_structure.set_index('id', inplace=True)
 
-        self.num_classes = {name: 0 for name in self.target_names}
-        if num_classes is not None:
-            for k,v in num_classes.items():
-                self.num_classes[k] = v
+        if targets is not None:
+            self.num_classes = {name: 0 for name in self.target_names}
+            if num_classes is not None:
+                for k,v in num_classes.items():
+                    self.num_classes[k] = v
 
     def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
         """ For the input structures, construct many matminer features
@@ -638,7 +639,7 @@ class MODData:
             optimal_features_by_target[name] = get_features_dyn(n, self.cross_nmi, self.target_nmi)
             ranked_lists.append(optimal_features_by_target[name])
 
-            logging.info("Done with target {}/{}: {}.".format(i+1, len(self.targets), name))
+            logging.info("Done with target {}/{}: {}.".format(i+1, len(self.names), name))
 
         logging.info('Merging all features...')
         self.optimal_features = merge_ranked(ranked_lists)
