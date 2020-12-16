@@ -36,7 +36,7 @@ class MODNetModel:
         targets: List,
         weights: Dict[str, float],
         num_neurons=([64], [32], [16], [16]),
-        num_classes: Optional[Dict[str,int]] = None,
+        num_classes: Optional[Dict[str, int]] = None,
         n_feat=300,
         act="relu",
     ):
@@ -76,11 +76,12 @@ class MODNetModel:
         self.targets_flatten = [x for subl in f_temp for x in subl]
         self.num_classes = {name: 0 for name in self.targets_flatten}
         if num_classes is not None:
-            for k,v in num_classes.items():
-                self.num_classes[k] = v
+            self.num_classes.update(num_classes)
         self._multi_target = len(self.targets_flatten) > 1
 
-        self.build_model(targets, n_feat, num_neurons, act=act, num_classes = self.num_classes)
+        self.build_model(
+            targets, n_feat, num_neurons, act=act, num_classes=self.num_classes
+        )
 
     def build_model(
         self,
@@ -156,12 +157,12 @@ class MODNetModel:
                     n = num_classes[group[prop_idx][pi]]
                     if n >= 2:
                         out = keras.layers.Dense(
-                            n,activation='softmax',name=group[prop_idx][pi]
-                            )(previous_layer)
+                            n, activation="softmax", name=group[prop_idx][pi]
+                        )(previous_layer)
                     else:
                         out = keras.layers.Dense(
                             1, activation="linear", name=group[prop_idx][pi]
-                            )(previous_layer)
+                        )(previous_layer)
                     final_out.append(out)
 
         self.model = keras.models.Model(inputs=f_input, outputs=final_out)
@@ -218,16 +219,21 @@ class MODNetModel:
         self.optimal_descriptors = training_data.get_optimal_descriptors()
 
         x = training_data.get_featurized_df()[
-            self.optimal_descriptors[:self.n_feat]
+            self.optimal_descriptors[: self.n_feat]
         ].values
 
         y = []
         for targ in self.targets_flatten:
-            if self.num_classes[targ] >= 2: # Classification
-                y_inner = keras.utils.to_categorical(training_data.df_targets[targ].values,num_classes=self.num_classes[targ])
+            if self.num_classes[targ] >= 2:  # Classification
+                y_inner = keras.utils.to_categorical(
+                    training_data.df_targets[targ].values,
+                    num_classes=self.num_classes[targ],
+                )
                 loss = "categorical_crossentropy"
             else:
-                y_inner = training_data.df_targets[targ].values.astype(np.float, copy=False)
+                y_inner = training_data.df_targets[targ].values.astype(
+                    np.float, copy=False
+                )
             y.append(y_inner)
 
         # Scale the input features:
@@ -241,10 +247,14 @@ class MODNetModel:
         x = self._scaler.fit_transform(x)
 
         if val_data is not None:
-            val_x = val_data.get_featurized_df()[self.optimal_descriptors[:self.n_feat]].values
+            val_x = val_data.get_featurized_df()[
+                self.optimal_descriptors[: self.n_feat]
+            ].values
             val_x = np.nan_to_num(val_x)
             val_x = self._scaler.transform(val_x)
-            val_y = list(val_data.get_target_df()[self.targets_flatten].values.transpose())
+            val_y = list(
+                val_data.get_target_df()[self.targets_flatten].values.transpose()
+            )
             validation_data = (val_x, val_y)
         else:
             validation_data = None
@@ -301,7 +311,7 @@ class MODNetModel:
         data: MODData,
         presets: List[Dict[str, Any]] = None,
         val_fraction: float = 0.1,
-        verbose: int = 0
+        verbose: int = 0,
     ) -> None:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
@@ -339,6 +349,7 @@ class MODNetModel:
 
         if presets is None:
             from modnet.model_presets import MODNET_PRESETS
+
             presets = MODNET_PRESETS
 
         val_losses = 1e20 * np.ones((len(presets),))

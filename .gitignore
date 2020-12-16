@@ -3,6 +3,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+modnet/data/
 
 # Distribution / packaging
 build/
