@@ -640,7 +640,7 @@ class MODData:
             optimal_features_by_target[name] = get_features_dyn(n, self.cross_nmi, self.target_nmi)
             ranked_lists.append(optimal_features_by_target[name])
 
-            logging.info("Done with target {}/{}: {}.".format(i+1, len(self.targets), name))
+            logging.info("Done with target {}/{}: {}.".format(i+1, len(self.names), name))
 
         logging.info('Merging all features...')
         self.optimal_features = merge_ranked(ranked_lists)
