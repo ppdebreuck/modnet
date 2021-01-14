@@ -391,7 +391,7 @@ class MODNetModel:
             self.n_feat = n_feat
             self.fit(
                 data,
-                val_fraction=0.2,
+                val_fraction=0,
                 lr=best_preset['lr'],
                 epochs=best_preset['epochs'],
                 batch_size=best_preset['batch_size'],
