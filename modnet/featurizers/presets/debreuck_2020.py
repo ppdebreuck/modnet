@@ -130,7 +130,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
             lambda x: -1 if not isinstance(x, str) else Element(x).Z
         )
 
-        df = df.replace([np.inf, -np.inf, np.nan], 0)
+        # df = df.replace([np.inf, -np.inf, np.nan], 0)
 
         return modnet.featurizers.clean_df(df)
 
