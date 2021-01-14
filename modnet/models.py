@@ -310,8 +310,9 @@ class MODNetModel:
         self,
         data: MODData,
         presets: List[Dict[str, Any]] = None,
-        val_fraction: float = 0.1,
+        val_fraction: float = 0.15,
         verbose: int = 0,
+        refit=True,
     ) -> None:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
@@ -328,29 +329,11 @@ class MODNetModel:
 
         """
 
-        rlr = keras.callbacks.ReduceLROnPlateau(
-            monitor="loss",
-            factor=0.5,
-            patience=20,
-            verbose=verbose,
-            mode="auto",
-            min_delta=0,
-        )
-        es = keras.callbacks.EarlyStopping(
-            monitor="loss",
-            min_delta=0.001,
-            patience=300,
-            verbose=verbose,
-            mode="auto",
-            baseline=None,
-            restore_best_weights=True,
-        )
-        callbacks = [rlr, es]
-
+        callbacks = []
         if presets is None:
-            from modnet.model_presets import MODNET_PRESETS
+            from modnet.model_presets import gen_presets
+            presets = gen_presets(self.n_feat,len(data.df_targets))
 
-            presets = MODNET_PRESETS
 
         val_losses = 1e20 * np.ones((len(presets),))
 
@@ -366,6 +349,7 @@ class MODNetModel:
                 num_neurons=params["num_neurons"],
                 n_feat=n_feat,
                 act=params["act"],
+                num_classes=self.num_classes
             ).model
             self.n_feat = n_feat
             self.fit(
@@ -387,14 +371,35 @@ class MODNetModel:
 
             logging.info("Validation loss: {:.3f}".format(val_loss))
 
-        best_preset = val_losses.argmin()
+        best_preset_idx = val_losses.argmin()
+        best_preset = presets[best_preset_idx]
         logging.info(
             "Preset #{} resulted in lowest validation loss.\nFitting all data...".format(
-                best_preset + 1
+                best_preset_idx + 1
             )
         )
-        self.n_feat = best_n_feat
-        self.model = best_model
+
+        if refit:
+            n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
+            self.model = MODNetModel(
+                self.targets,
+                self.weights,
+                num_neurons=best_preset['num_neurons'],
+                n_feat=n_feat,
+                act=best_preset['act']).model
+            self.n_feat = n_feat
+            self.fit(
+                data,
+                val_fraction=0.2,
+                lr=best_preset['lr'],
+                epochs=best_preset['epochs'],
+                batch_size=best_preset['batch_size'],
+                loss=best_preset['loss'],
+                callbacks=callbacks,
+                verbose=verbose)
+        else:
+            self.n_feat = best_n_feat
+            self.model = best_model
 
     def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
