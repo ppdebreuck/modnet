@@ -144,7 +144,7 @@ class MODFeaturizer(abc.ABC):
             logging.info("Applying composition featurizers...")
             df['composition'] = df['structure'].apply(lambda s: s.composition)
             df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
-            # df = df.replace([np.inf, -np.inf, np.nan], 0)
+            df = df.replace([np.inf, -np.inf, np.nan], 0)
             df = df.rename(columns={'Input Data': ''})
             df.columns = df.columns.map('|'.join).str.strip('|')
 
