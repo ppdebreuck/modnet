@@ -386,7 +386,8 @@ class MODNetModel:
                 self.weights,
                 num_neurons=best_preset['num_neurons'],
                 n_feat=n_feat,
-                act=best_preset['act']).model
+                act=best_preset['act'],
+                num_classes=self.num_classes).model
             self.n_feat = n_feat
             self.fit(
                 data,
