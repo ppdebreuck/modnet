@@ -6,10 +6,7 @@ def gen_presets(n_feat,n_samples):
     losses = ["mae"]
     activations = ["elu"]
 
-    if n_feat<500: # For compounds with limited knowledge, e.g. composition only
-        n_feat_list = [60, 110]
-    else:
-        n_feat_list = [320, 520]
+    n_feat_list = (min(0.2*n_feat, 50), max(0.5*n_feat, 500))
 
     archs = []
     for nf in n_feat_list:
