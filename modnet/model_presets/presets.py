@@ -46,7 +46,7 @@ def gen_presets(n_feat: int, n_samples: int) -> List[Dict[str, Any]]:
     losses = ["mae"]
     activations = ["elu"]
 
-    n_feat_list = (min(0.2 * n_feat, 50), max(0.5 * n_feat, 500))
+    n_feat_list = (min(n_feat // 5, 50), max(n_feat // 2, 500))
 
     archs = []
     for nf in n_feat_list:
