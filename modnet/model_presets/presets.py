@@ -42,28 +42,30 @@ def gen_presets(n_feat: int, n_samples: int) -> List[Dict[str, Any]]:
 
     batch_sizes = [32, 64]
     learning_rates = [0.01, 0.005]
-    epochs = [500]
+    epochs = [1000]
     losses = ["mae"]
     activations = ["elu"]
 
-    n_feat_list = (min(n_feat // 5, 50), max(n_feat // 2, 500))
+    n_feat_list = (max(n_feat // 5, 30), min(n_feat // 2, 500))
 
     archs = []
     for nf in n_feat_list:
         if n_samples < 2000:
             archs += [
                 (nf, [[nf * 2], [nf], [nf // 4], [nf // 4]]),
+                (nf, [[nf], [nf // 2], [nf // 4], [nf // 4]]),
                 (nf, [[nf // 2], [nf // 2], [nf // 4], [nf // 4]]),
             ]
         else:
             archs += [
                 (nf, [[nf * 2], [nf, nf], [nf // 4], [nf // 4]]),
+                (nf, [[nf], [nf // 2, nf // 2], [nf // 4], [nf // 4]]),
                 (nf, [[nf // 2], [nf // 2, nf // 2], [nf // 4], [nf // 4]]),
             ]
 
     hyperparam_presets = []
-    for bs, lr, a, e, l, act in itertools.product(
-        batch_sizes, learning_rates, archs, epochs, losses, activations
+    for a, bs, lr, e, l, act in itertools.product(
+        archs, batch_sizes, learning_rates, epochs, losses, activations
     ):
         preset = {
             "batch_size": bs,

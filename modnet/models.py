@@ -37,7 +37,7 @@ class MODNetModel:
         weights: Dict[str, float],
         num_neurons=([64], [32], [16], [16]),
         num_classes: Optional[Dict[str, int]] = None,
-        n_feat=300,
+        n_feat=-1,
         act="relu",
     ):
         """Initialise the model on the passed targets with the desired
@@ -239,7 +239,7 @@ class MODNetModel:
         # Scale the input features:
         x = np.nan_to_num(x)
         if self.xscale == "minmax":
-            self._scaler = MinMaxScaler(feature_range=(-0.5,0.5))
+            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
 
         elif self.xscale == "standard":
             self._scaler = StandardScaler()
@@ -332,16 +332,16 @@ class MODNetModel:
         callbacks = []
         if presets is None:
             from modnet.model_presets import gen_presets
-            presets = gen_presets(self.n_feat,len(data.df_targets))
-
+            presets = gen_presets(self.n_feat, len(data.df_targets))
 
         val_losses = 1e20 * np.ones((len(presets),))
 
         best_model = None
         best_n_feat = None
+        models = []
 
         for i, params in enumerate(presets):
-            logging.info("Training preset #{}/{}".format(i + 1, len(presets)))
+            logging.info("Training preset #{}/{}: {}".format(i + 1, len(presets), params))
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
             self.model = MODNetModel(
                 self.targets,
@@ -369,13 +369,15 @@ class MODNetModel:
 
             val_losses[i] = val_loss
 
+            models.append(self.model)
+
             logging.info("Validation loss: {:.3f}".format(val_loss))
 
         best_preset_idx = val_losses.argmin()
         best_preset = presets[best_preset_idx]
         logging.info(
-            "Preset #{} resulted in lowest validation loss.\nFitting all data...".format(
-                best_preset_idx + 1
+            "Preset #{} resulted in lowest validation loss with params {}\nFitting all data...".format(
+                best_preset_idx + 1, params
             )
         )
 
@@ -401,6 +403,8 @@ class MODNetModel:
         else:
             self.n_feat = best_n_feat
             self.model = best_model
+
+        return models, val_losses
 
     def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
