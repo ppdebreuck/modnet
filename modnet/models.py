@@ -381,6 +381,7 @@ class MODNetModel:
         models = []
         learning_curves = []
         best_presets = []
+        best_scaler = None
 
         for i, params in enumerate(presets):
             LOG.info("Initialising preset #{}/{}: {}".format(i + 1, len(presets), params))
@@ -439,6 +440,7 @@ class MODNetModel:
             if val_loss < min(val_losses):
                 best_model = self.model
                 best_n_feat = n_feat
+                best_scaler = self._scaler
 
             val_losses[i] = val_loss
 
@@ -480,6 +482,7 @@ class MODNetModel:
         else:
             self.n_feat = best_n_feat
             self.model = best_model
+            self._scaler = best_scaler
 
         return models, val_losses, best_learning_curve, learning_curves, best_presets
 
