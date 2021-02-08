@@ -1,13 +1,14 @@
 import abc
-import logging
 from typing import Optional, Iterable, Tuple, Dict
+
+import pandas as pd
+import numpy as np
 
 from matminer.featurizers.base import MultipleFeaturizer, BaseFeaturizer
 from matminer.featurizers.structure import SiteStatsFingerprint
 from matminer.featurizers.conversions import CompositionToOxidComposition
 
-import pandas as pd
-import numpy as np
+from modnet.utils import LOG
 
 
 __all__ = ("MODFeaturizer", )
@@ -105,7 +106,7 @@ class MODFeaturizer(abc.ABC):
             pandas.DataFrame: the decorated DataFrame.
 
         """
-        logging.info(f"Applying featurizers {featurizers} to column {column!r}.")
+        LOG.info(f"Applying featurizers {featurizers} to column {column!r}.")
         if fit_to_df:
             _featurizers = MultipleFeaturizer([feat.fit(df[column]) for feat in featurizers])
         else:
@@ -141,7 +142,7 @@ class MODFeaturizer(abc.ABC):
         df = df.copy()
 
         if self.composition_featurizers:
-            logging.info("Applying composition featurizers...")
+            LOG.info("Applying composition featurizers...")
             df['composition'] = df['structure'].apply(lambda s: s.composition)
             df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
             df = df.replace([np.inf, -np.inf, np.nan], 0)
@@ -149,7 +150,7 @@ class MODFeaturizer(abc.ABC):
             df.columns = df.columns.map('|'.join).str.strip('|')
 
         if self.oxide_composition_featurizers:
-            logging.info("Applying oxidation state featurizers...")
+            LOG.info("Applying oxidation state featurizers...")
             df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
             df = self._fit_apply_featurizers(df, self.oxide_composition_featurizers, "composition_oxid")
             df = df.rename(columns={'Input Data': ''})
@@ -175,7 +176,7 @@ class MODFeaturizer(abc.ABC):
         if not self.structure_featurizers:
             return pd.DataFrame([])
 
-        logging.info("Applying structure featurizers...")
+        LOG.info("Applying structure featurizers...")
         df = df.copy()
         df = self._fit_apply_featurizers(df, self.structure_featurizers, "structure")
         df.columns = df.columns.map('|'.join).str.strip('|')
@@ -201,7 +202,7 @@ class MODFeaturizer(abc.ABC):
         if not self.site_featurizers:
             return pd.DataFrame([])
 
-        logging.info("Applying site featurizers...")
+        LOG.info("Applying site featurizers...")
 
         df = df.copy()
         df.columns = ["Input data|" + x for x in df.columns]

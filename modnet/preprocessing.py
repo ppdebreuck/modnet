@@ -8,7 +8,6 @@ and functions to compute normalized mutual information (NMI) and relevance redun
 """
 
 from __future__ import annotations
-import logging
 
 from pathlib import Path
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
@@ -22,13 +21,13 @@ import tqdm
 
 from modnet.featurizers import MODFeaturizer
 from modnet import __version__
+from modnet.utils import LOG
 
 DATABASE = pd.DataFrame([])
 
 
-EPS = 1e-16
 
-logging.getLogger().setLevel(logging.INFO)
+EPS = 1e-16
 
 
 def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
@@ -124,7 +123,7 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
     mutual_info = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
 
     # Compute the "self" mutual information (i.e. information entropy) of the features
-    logging.info('Computing "self" MI (i.e. information entropy) of features')
+    LOG.info('Computing "self" MI (i.e. information entropy) of features')
     diag = {}
     for x_feat in df_feat.columns:
         diag[x_feat] = mutual_info_regression(
@@ -139,7 +138,7 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
         else:
             mutual_info.loc[x_feat, x_feat] = 1.0
 
-    logging.info('Computing cross NMI between all features...')
+    LOG.info('Computing cross NMI between all features...')
     for idx, x_feat in tqdm.tqdm(enumerate(mutual_info.columns), total=len(mutual_info.columns)):
         for _, y_feat in enumerate(mutual_info.columns[idx+1:]):
             I_xy = mutual_info_regression(
@@ -279,9 +278,9 @@ def get_features_relevance_redundancy(
     cross_nmi = cross_nmi.drop(missing, axis=0).drop(missing, axis=1)
     # Loop on the number of features
     for n in range(1, n_feat):
-        logging.debug("In selection of feature {}/{} features...".format(n+1, n_feat))
+        LOG.debug("In selection of feature {}/{} features...".format(n+1, n_feat))
         if (n+1) % 50 == 0:
-            logging.info("Selected {}/{} features...".format(n, n_feat))
+            LOG.info("Selected {}/{} features...".format(n, n_feat))
         p = get_p(n)
         c = get_c(n)
 
@@ -336,7 +335,7 @@ def get_features_dyn(n_feat, cross_nmi, target_nmi):
 
     for n in range(n_feat-1):
         if (n+1) % 50 == 0:
-            logging.info("Selected {}/{} features...".format(n+1, n_feat))
+            LOG.info("Selected {}/{} features...".format(n+1, n_feat))
 
         p = get_p(n)
         c = get_c(n)
@@ -478,7 +477,7 @@ class MODData:
             self.featurizer = FEATURIZER_PRESETS["DeBreuck2020"]()
 
         if self.featurizer is not None:
-            logging.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
+            LOG.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
 
         if target_names is not None:
             if np.shape(targets)[-1] != len(target_names):
@@ -527,7 +526,7 @@ class MODData:
 
         """
 
-        logging.info('Computing features, this can take time...')
+        LOG.info('Computing features, this can take time...')
 
         df_done = None
         df_todo = None
@@ -539,7 +538,7 @@ class MODData:
             raise RuntimeError("Not overwriting existing featurized dataframe.")
 
         if fast:
-            logging.info('Fast featurization on, retrieving from database...')
+            LOG.info('Fast featurization on, retrieving from database...')
 
             global DATABASE
             if DATABASE.empty:
@@ -547,7 +546,7 @@ class MODData:
 
             ids_done = [x for x in self.structure_ids if x in DATABASE.index]
 
-            logging.info(f"Retrieved features for {len(ids_done)} out of {len(self.structure_ids)} materials")
+            LOG.info(f"Retrieved features for {len(ids_done)} out of {len(self.structure_ids)} materials")
             df_done = DATABASE.loc[ids_done]
             df_todo = self.df_structure.drop(ids_done, axis=0)
 
@@ -570,7 +569,7 @@ class MODData:
         df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
 
         self.df_featurized = df_final
-        logging.info('Data has successfully been featurized!')
+        LOG.info('Data has successfully been featurized!')
 
     def feature_selection(
         self,
@@ -609,14 +608,14 @@ class MODData:
 
         # Loading mutual information between features
         if use_precomputed_cross_nmi:
-            logging.info("Loading cross NMI from 'Features_cross' file.")
+            LOG.info("Loading cross NMI from 'Features_cross' file.")
             from modnet.ext_data import load_ext_dataset
             cnmi_path = load_ext_dataset("MP_2018.6_CROSS_NMI", "cross_nmi")
             self.cross_nmi = pd.read_pickle(cnmi_path)
             precomputed_cols = set(self.cross_nmi.columns)
             featurized_cols = set(self.df_featurized.columns)
             if len(precomputed_cols | featurized_cols) > len(precomputed_cols):
-                logging.warning(
+                LOG.warning(
                     "Feature mismatch between precomputed `Features_cross` and `df_featurized`. "
                     f"Missing columns: {featurized_cols - precomputed_cols}"
                 )
@@ -626,26 +625,26 @@ class MODData:
             self.cross_nmi = get_cross_nmi(df)
 
         for i, name in enumerate(self.names):
-            logging.info(f"Starting target {i+1}/{len(self.names)}: {self.names[i]} ...")
+            LOG.info(f"Starting target {i+1}/{len(self.names)}: {self.names[i]} ...")
 
             # Computing mutual information with target
-            logging.info("Computing mutual information between features and target...")
+            LOG.info("Computing mutual information between features and target...")
             if getattr(self, "num_classes", None) and self.num_classes[name] >= 2:
                 task_type = "classification"
             else:
                 task_type = "regression"
             self.target_nmi = nmi_target(self.df_featurized, self.df_targets[[name]], task_type)[name]
 
-            logging.info('Computing optimal features...')
+            LOG.info('Computing optimal features...')
             optimal_features_by_target[name] = get_features_dyn(n, self.cross_nmi, self.target_nmi)
             ranked_lists.append(optimal_features_by_target[name])
 
-            logging.info("Done with target {}/{}: {}.".format(i+1, len(self.names), name))
+            LOG.info("Done with target {}/{}: {}.".format(i+1, len(self.names), name))
 
-        logging.info('Merging all features...')
+        LOG.info('Merging all features...')
         self.optimal_features = merge_ranked(ranked_lists)
         self.optimal_features_by_target = optimal_features_by_target
-        logging.info('Done.')
+        LOG.info('Done.')
 
     def shuffle(self):
         # caution, not fully implemented
@@ -687,7 +686,7 @@ class MODData:
 
         """
         pd.to_pickle(self, filename)
-        logging.info(f'Data successfully saved as {filename}!')
+        LOG.info(f'Data successfully saved as {filename}!')
 
     @staticmethod
     def load(filename: Union[str, Path]) -> MODData:
@@ -718,7 +717,7 @@ class MODData:
         if isinstance(pickled_data, MODData):
             if not hasattr(pickled_data, "__modnet_version__"):
                 pickled_data.__modnet_version__ = "<=0.1.7"
-            logging.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
+            LOG.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
             return pickled_data
 
         raise ValueError(

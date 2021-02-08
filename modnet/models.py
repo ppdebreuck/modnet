@@ -1,17 +1,15 @@
 import pickle
-import logging
 from typing import List, Tuple, Dict, Optional, Callable, Any
 
 import pandas as pd
 import numpy as np
-
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import tensorflow.keras as keras
 
 from modnet.preprocessing import MODData
+from modnet.utils import LOG
 from modnet import __version__
 
-logging.getLogger().setLevel(logging.INFO)
 
 __all__ = ("MODNetModel",)
 
@@ -295,7 +293,6 @@ class MODNetModel:
             "callbacks": callbacks,
         }
 
-        logging.info("Compiling model...")
         self.model.compile(
             loss=loss,
             optimizer=keras.optimizers.Adam(lr=lr),
@@ -303,7 +300,6 @@ class MODNetModel:
             loss_weights=self.weights,
         )
 
-        logging.info("Fitting model...")
         self.history = self.model.fit(**fit_params)
 
     def fit_preset(
@@ -375,13 +371,14 @@ class MODNetModel:
 
         best_preset_idx = val_losses.argmin()
         best_preset = presets[best_preset_idx]
-        logging.info(
-            "Preset #{} resulted in lowest validation loss with params {}\nFitting all data...".format(
+        LOG.info(
+            "Preset #{} resulted in lowest validation loss with params {}".format(
                 best_preset_idx + 1, params
             )
         )
 
         if refit:
+            LOG.info("Refitting with all data and parameters: {}".format(best_preset))
             n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
             self.model = MODNetModel(
                 self.targets,
@@ -464,7 +461,7 @@ class MODNetModel:
 
         """
 
-        logging.info("Saving model...")
+        LOG.info("Saving model...")
         model_json = self.model.to_json()
         with open(f"{filename}.json", "w") as f:
             f.write(model_json)
@@ -476,7 +473,7 @@ class MODNetModel:
         with open(f"{filename}.pkl", "wb") as f:
             pickle.dump(self, f)
         self.model = model
-        logging.info("Saved model to {}(.json/.h5/.pkl)".format(filename))
+        LOG.info("Saved model to {}(.json/.h5/.pkl)".format(filename))
 
     @staticmethod
     def load(filename: str):
@@ -493,7 +490,7 @@ class MODNetModel:
 
         """
 
-        logging.info("Loading model from {}(.json/.h5/.pkl)".format(filename))
+        LOG.info("Loading model from {}(.json/.h5/.pkl)".format(filename))
 
         with open(f"{filename}.pkl", "rb") as f:
             mod = pickle.load(f)
@@ -512,7 +509,7 @@ class MODNetModel:
         if not hasattr(mod, "__modnet_version__"):
             mod.__modnet_version__ = "<=0.1.7"
 
-        logging.info(
+        LOG.info(
             "Loaded `MODNetModel` created with modnet version {}.".format(
                 mod.__modnet_version__
             )
