@@ -295,7 +295,6 @@ class MODNetModel:
             "callbacks": callbacks,
         }
 
-        logging.info("Compiling model...")
         self.model.compile(
             loss=loss,
             optimizer=keras.optimizers.Adam(lr=lr),
@@ -303,7 +302,6 @@ class MODNetModel:
             loss_weights=self.weights,
         )
 
-        logging.info("Fitting model...")
         self.history = self.model.fit(**fit_params)
 
     def fit_preset(
@@ -357,8 +355,38 @@ class MODNetModel:
                 data,
                 val_fraction=val_fraction,
                 lr=params["lr"],
-                epochs=params["epochs"],
+                epochs=int(0.25*params["epochs"]),
+                batch_size=int(0.5*params["batch_size"]),
+                loss=params["loss"],
+                callbacks=callbacks,
+                verbose=verbose,
+            )
+            self.fit(
+                data,
+                val_fraction=val_fraction,
+                lr=params["lr"],
+                epochs=int(0.25*params["epochs"]),
                 batch_size=params["batch_size"],
+                loss=params["loss"],
+                callbacks=callbacks,
+                verbose=verbose,
+            )
+            self.fit(
+                data,
+                val_fraction=val_fraction,
+                lr=params["lr"],
+                epochs=int(0.25*params["epochs"]),
+                batch_size=int(2*params["batch_size"]),
+                loss=params["loss"],
+                callbacks=callbacks,
+                verbose=verbose,
+            )
+            self.fit(
+                data,
+                val_fraction=val_fraction,
+                lr=params["lr"],
+                epochs=int(0.25*params["epochs"]),
+                batch_size=int(4*params["batch_size"]),
                 loss=params["loss"],
                 callbacks=callbacks,
                 verbose=verbose,
