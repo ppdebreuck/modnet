@@ -36,6 +36,7 @@ def gen_presets(
         losses = ["mae"]
 
     activations = ["elu"]
+    xscale = ["minmax", "standard"]
 
     n_feat_list = [64, 128, 256, 512]
     n_feat_list = [n for n in n_feat_list if n <= n_feat]
@@ -62,8 +63,8 @@ def gen_presets(
     )
 
     hyperparam_presets = []
-    for a, bs, lr, e, l, act in itertools.product(
-        archs, batch_sizes, learning_rates, epochs, losses, activations
+    for a, bs, lr, e, l, act, scaler in itertools.product(
+        archs, batch_sizes, learning_rates, epochs, losses, activations, xscale
     ):
         preset = {
             "batch_size": bs,
@@ -73,6 +74,7 @@ def gen_presets(
             "epochs": e,
             "loss": l,
             "act": act,
+            "xscale": scaler,
         }
         hyperparam_presets.append(preset)
 
