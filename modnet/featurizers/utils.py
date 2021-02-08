@@ -1,10 +1,10 @@
 import numpy as np
 
-__all__ = ("clean_df", )
+__all__ = ("clean_df",)
 
 
 def clean_df(df):
-    """ Cleans dataframe by dropping missing values, replacing NaN's and infinities
+    """Cleans dataframe by dropping missing values, replacing NaN's and infinities
     and selecting only columns containing numerical data.
 
     Args:
@@ -15,8 +15,8 @@ def clean_df(df):
 
     """
 
-    df = df.dropna(axis=1, how='all')
+    df = df.dropna(axis=1, how="all")
     df = df.replace([np.inf, -np.inf, np.nan], -1)
-    df = df.select_dtypes(include='number')
+    df = df.select_dtypes(include="number")
 
     return df
