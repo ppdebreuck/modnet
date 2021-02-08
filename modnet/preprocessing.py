@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
 from functools import partial
 
-from pymatgen import Structure
+from pymatgen import Structure, Composition
+
 from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
 import pandas as pd
 import numpy as np
@@ -25,6 +26,11 @@ from modnet.utils import LOG
 
 DATABASE = pd.DataFrame([])
 
+
+class CompositionContainer:
+    """A simple compatbility wrapper class for structure-less pymatgen `Structure`s."""
+    def __init__(self, composition):
+        self.composition = composition
 
 
 EPS = 1e-16
@@ -415,7 +421,7 @@ class MODData:
 
     def __init__(
         self,
-        structures: Optional[List[Structure]] = None,
+        structures: Optional[List[Union[Structure, Composition]]] = None,
         targets: Optional[Union[List[float], np.ndarray]] = None,
         target_names: Optional[Iterable] = None,
         structure_ids: Optional[Iterable] = None,
@@ -467,6 +473,10 @@ class MODData:
             if np.shape(targets)[0] != len(structures):
                 raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(structures)}")
 
+        if structures is not None and isinstance(structures[0], Composition):
+            structures = [CompositionContainer(s) for s in structures]
+            self._composition_only = True
+
         if isinstance(featurizer, str):
             self.featurizer = FEATURIZER_PRESETS.get(featurizer)()
             if self.featurizer is None:
@@ -474,7 +484,10 @@ class MODData:
         elif isinstance(featurizer, MODFeaturizer):
             self.featurizer = featurizer
         elif featurizer is None and self.df_featurized is None:
-            self.featurizer = FEATURIZER_PRESETS["DeBreuck2020"]()
+            if getattr(self, "_composition_only", False):
+                self.featurizer = FEATURIZER_PRESETS["CompositionOnly"]()
+            else:
+                self.featurizer = FEATURIZER_PRESETS["DeBreuck2020"]()
 
         if self.featurizer is not None:
             LOG.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
@@ -653,7 +666,7 @@ class MODData:
         self.df_targets = self.df_targets.loc[self.df_featurized.index]
 
     @property
-    def structures(self) -> List[Structure]:
+    def structures(self) -> List[Union[Structure, CompositionContainer]]:
         """Returns the list of `pymatgen.Structure` objects. """
         return list(self.df_structure["structure"])
 
