@@ -6,62 +6,60 @@ of hyperparameter optimisation.
 from typing import List, Dict, Any
 import itertools
 
+from modnet.utils import LOG
 
-def gen_presets(n_feat: int, n_samples: int) -> List[Dict[str, Any]]:
-    """ "Generates sensible preset architectures and learning parameters
-    based on number of samples and features:
 
-      * Small limit, e.g. 100 features and 1000 samples yields architectures
-        - [200, 100, 25, 25]
-        - [50, 50, 25, 25].
-
-      * Crossover, e.g. 100 features, ~2000 samples yields:
-
-        If just above 2000 samples:
-
-        - [200, [100, 100], 25, 25]
-        - [50, [50, 50], 25, 25]
-
-        or if just below 2000 samples:
-
-        - [200, 100, 25, 25]
-        - [50, 50, 25, 25].
-
-      * Large limit, e.g. 500 features, 50000 samples yields architectures
-        - [1000, [500, 500], 125, 125]
-        - [250, [250, 250], 125, 125]
+def gen_presets(
+    n_feat: int, n_samples: int, classification: bool = False
+) -> List[Dict[str, Any]]:
+    """Generates sensible preset architectures and learning parameters
+    based on number of samples and features.
 
     Arguments:
         n_feat: The number of training features available to the model.
         n_samples: The number of training samples available to the model.
 
     Returns:
-        List of dictionaries to pass as keywords to `model.fit(...)`.
+        List of dictionaries to individually pass as kwargs to `model.fit(...)`.
 
     """
-
-    batch_sizes = [32, 64]
-    learning_rates = [0.01, 0.005]
+    if n_samples < 1000:
+        batch_sizes = [32, 64]
+    else:
+        batch_sizes = [64]
+    learning_rates = [0.001, 0.005, 0.01]
     epochs = [1000]
-    losses = ["mae"]
+
+    if classification:
+        losses = ["categorical_crossentropy"]
+    else:
+        losses = ["mae"]
+
     activations = ["elu"]
 
-    n_feat_list = (max(n_feat // 5, 30), min(n_feat // 2, 500))
+    n_feat_list = [64, 128, 256, 512]
+    n_feat_list = [n for n in n_feat_list if n <= n_feat]
+    n_feat_list = [n for n in n_feat_list if n > n_feat / 20]
+    if len(n_feat_list) == 1:
+        n_feat_list.append(n_feat)
+
+    if len(n_feat_list) < 3:
+        n_feat_list.append((n_feat_list[0] + n_feat_list[1]) // 2)
+    n_feat_list = sorted(n_feat_list)
 
     archs = []
     for nf in n_feat_list:
-        if n_samples < 2000:
-            archs += [
-                (nf, [[nf * 2], [nf], [nf // 4], [nf // 4]]),
-                (nf, [[nf], [nf // 2], [nf // 4], [nf // 4]]),
-                (nf, [[nf // 2], [nf // 2], [nf // 4], [nf // 4]]),
-            ]
-        else:
-            archs += [
-                (nf, [[nf * 2], [nf, nf], [nf // 4], [nf // 4]]),
-                (nf, [[nf], [nf // 2, nf // 2], [nf // 4], [nf // 4]]),
-                (nf, [[nf // 2], [nf // 2, nf // 2], [nf // 4], [nf // 4]]),
-            ]
+        archs += [
+            (nf, [[nf * 2], [nf // 2], [nf // 8], [nf // 8]]),
+            (nf, [[nf], [nf // 2], [nf // 8], [nf // 8]]),
+            (nf, [[nf // 2], [nf // 4], [nf // 8], [nf // 8]]),
+        ]
+
+    LOG.info(
+        "Proceeding with grid search: archs: {}, batch sizes: {}, learning_rates: {}".format(
+            archs, batch_sizes, learning_rates
+        )
+    )
 
     hyperparam_presets = []
     for a, bs, lr, e, l, act in itertools.product(
