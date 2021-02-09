@@ -327,11 +327,29 @@ class MODNetModel:
 
         """
 
-        callbacks = []
-        if presets is None:
-            from modnet.model_presets import gen_presets
-            presets = gen_presets(self.n_feat,len(data.df_targets))
+        rlr = keras.callbacks.ReduceLROnPlateau(
+            monitor="loss",
+            factor=0.5,
+            patience=20,
+            verbose=verbose,
+            mode="auto",
+            min_delta=0,
+        )
+        es = keras.callbacks.EarlyStopping(
+            monitor="loss",
+            min_delta=0.001,
+            patience=300,
+            verbose=verbose,
+            mode="auto",
+            baseline=None,
+            restore_best_weights=True,
+        )
+        callbacks = [rlr, es]
 
+        if presets is None:
+            from modnet.model_presets import MODNET_PRESETS
+
+            presets = MODNET_PRESETS
 
         val_losses = 1e20 * np.ones((len(presets),))
 
