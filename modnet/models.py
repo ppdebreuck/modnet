@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Tuple, Dict, Optional, Callable, Any
+from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
 import pandas as pd
 import numpy as np
@@ -326,7 +326,7 @@ class MODNetModel:
         classification: bool = False,
         refit: bool = True,
         fast: bool = False,
-        nested: bool = False,
+        nested: [Union[bool, int]] = 5,
     ) -> None:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
@@ -350,7 +350,8 @@ class MODNetModel:
             fast: Used for debugging. If `True`, only fit the first 2 presets and
                 reduce the number of epochs.
             nested: Whether or not to perform full nested CV. If `True`, set validation
-                data based on the chosen folds, ignoring the `val_fraction` argument.
+                data based on the chosen folds, ignoring the `val_fraction` argument. If
+                an integer, use this number of inner CV folds.
 
         """
 
@@ -375,6 +376,9 @@ class MODNetModel:
 
         val_losses = 1e20 * np.ones((len(presets),))
 
+        if nested and isinstance(nested, bool):
+            nested = 5
+
         best_model = None
         best_n_feat = None
         best_learning_curve = None
@@ -387,7 +391,7 @@ class MODNetModel:
             LOG.info("Initialising preset #{}/{}: {}".format(i + 1, len(presets), params))
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
 
-            splits = matbench_kfold_splits(data, classification=classification)
+            splits = matbench_kfold_splits(data, n_splits=nested, classification=classification)
             if not nested:
                 splits = [next(splits)]
 
