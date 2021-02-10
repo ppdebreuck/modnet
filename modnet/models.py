@@ -223,6 +223,11 @@ class MODNetModel:
             self.optimal_descriptors[: self.n_feat]
         ].values
 
+        # For compatibility with MODNet 0.1.7; if there is only one target in the training data,
+        # use that for the name of the target too.
+        if len(self.targets_flatten) == 1 and len(training_data.df_targets.columns) == 1:
+            self.targets_flatten = list(training_data.df_targets.columns)
+
         y = []
         for targ in self.targets_flatten:
             if self.num_classes[targ] >= 2:  # Classification
@@ -232,12 +237,6 @@ class MODNetModel:
                 )
                 loss = "categorical_crossentropy"
             else:
-                # This is a compatibility thing: we have some pre-featurized data that has differing
-                # column names that we would like to use. Most of this is single-target, so using just the
-                # one column name will always work. Otherwise this will raise a missing column error unless
-                # columns are renamed.
-                if len(self.targets_flatten) == 1:
-                    targ = list(training_data.df_targets.columns)[0]
                 y_inner = training_data.df_targets[targ].values.astype(
                     np.float, copy=False
                 )
@@ -327,6 +326,7 @@ class MODNetModel:
         refit: bool = True,
         fast: bool = False,
         nested: [Union[bool, int]] = 5,
+        callbacks: List[Any] = None,
     ) -> None:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
@@ -355,16 +355,18 @@ class MODNetModel:
 
         """
 
-        es = keras.callbacks.EarlyStopping(
-            monitor="loss",
-            min_delta=0.001,
-            patience=100,
-            verbose=verbose,
-            mode="auto",
-            baseline=None,
-            restore_best_weights=True,
-        )
-        callbacks = [es]
+        if callbacks is None:
+            es = keras.callbacks.EarlyStopping(
+                monitor="loss",
+                min_delta=0.001,
+                patience=100,
+                verbose=verbose,
+                mode="auto",
+                baseline=None,
+                restore_best_weights=True,
+            )
+            callbacks = [es]
+
         if presets is None:
             from modnet.model_presets import gen_presets
             presets = gen_presets(self.n_feat, len(data.df_targets), classification=classification)
