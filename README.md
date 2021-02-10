@@ -23,9 +23,14 @@ This repository contains the python package implementing the Material Optimal De
 
 This repository also contains two pretrained models that can be used for predicting the refractive index and vibrational thermodynamics for any crystal structure.
 
-See the MODNet paper for more details: 
+See the MODNet papers and repositories below for more details: 
 
-_Machine learning materials properties for small datasets_, De Breuck *et al.* (2020), [arXiv:2004.14766](https://arxiv.org/abs/2004.14766).
+- _Machine learning materials properties for small datasets_, De Breuck *et al.* (2020), [arXiv:2004.14766](https://arxiv.org/abs/2004.14766).
+
+- _Robust model benchmarking and bias-imbalance in data-driven materials science: a case study on MODNet_, De Breuck *et al.* (2021), [arXiv:2102.02263](https://arxiv.org/abs/2102.02263).
+
+- Matbench benchmarking data repository: [ml-evs/modnet-matbench](https://github.com/ml-evs/modnet-matbench).
+
 
 
 <p align='center'>
@@ -258,7 +263,7 @@ A dataframe containing the predictions is returned.
 
 <a name="author"></a>
 ## Author
-This software is written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be)
+The first versions of this software were written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be), with contributions from Matthew Evans (v0.1.7+).
 
 <a name="License"></a>
 ## License
