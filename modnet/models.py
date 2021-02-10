@@ -404,7 +404,7 @@ class MODNetModel:
                     train_data, test_data = data.split((train, test))
                     val_params["val_data"] = test_data
                 else:
-                    val_params["val_fraction"] = 0.15
+                    val_params["val_fraction"] = val_fraction
                     train_data = data
 
                 self.model = MODNetModel(
