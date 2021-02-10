@@ -2,6 +2,6 @@
     in the fit_preset function.
 """
 
-from .presets import hyperparam_presets
+from .presets import gen_presets
 
-MODNET_PRESETS = hyperparam_presets
+#MODNET_PRESETS = hyperparam_presets

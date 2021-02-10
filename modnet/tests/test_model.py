@@ -71,10 +71,10 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
 def test_train_small_model_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from copy import deepcopy
-    from modnet.model_presets import MODNET_PRESETS
+    from modnet.model_presets import gen_presets
     from modnet.models import MODNetModel
 
-    modified_presets = deepcopy(MODNET_PRESETS)
+    modified_presets = gen_presets(100, 100)[:2]
 
     for ind, preset in enumerate(modified_presets):
         modified_presets[ind]["epochs"] = 5

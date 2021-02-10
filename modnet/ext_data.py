@@ -6,12 +6,13 @@ into the user's installation.
 
 """
 
-import logging
 import os
 from collections import namedtuple
 from enum import Enum, auto
 from pathlib import Path
 from typing import Union
+
+from modnet.utils import LOG
 
 
 class Usage(Enum):
@@ -77,7 +78,7 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
     data_dir = Path(__file__).parent.joinpath("data")
     model_path = data_dir.joinpath(dataset.filename)
     if not model_path.is_file():
-        logging.info(
+        LOG.info(
             f"Downloading featurized dataset {dataset_name} from {dataset.url} into {model_path}"
         )
         if not data_dir.is_dir():
