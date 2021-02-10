@@ -74,7 +74,7 @@ def test_train_small_model_presets(subset_moddata, tf_session):
     from modnet.model_presets import gen_presets
     from modnet.models import MODNetModel
 
-    modified_presets = gen_presets(100,100)
+    modified_presets = gen_presets(100, 100)[:2]
 
     for ind, preset in enumerate(modified_presets):
         modified_presets[ind]["epochs"] = 5
