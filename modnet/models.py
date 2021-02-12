@@ -258,13 +258,13 @@ class MODNetModel:
             ].values
             val_x = np.nan_to_num(val_x)
             val_x = self._scaler.transform(val_x)
-            if len(self.targets_flatten) == 1:
-                val_y = list(
-                    val_data.get_target_df().values.transpose()
-                )
-            else:
+            try:
                 val_y = list(
                     val_data.get_target_df()[self.targets_flatten].values.transpose()
+                )
+            except Exception:
+                val_y = list(
+                    val_data.get_target_df().values.transpose()
                 )
             validation_data = (val_x, val_y)
         else:
@@ -378,8 +378,9 @@ class MODNetModel:
 
         val_losses = 1e20 * np.ones((len(presets),))
 
-        if nested and isinstance(nested, bool):
-            nested = 5
+        num_nested_folds = 5
+        if isinstance(nested, int):
+            num_nested_folds = nested
 
         best_model = None
         best_n_feat = None
@@ -393,7 +394,7 @@ class MODNetModel:
             LOG.info("Initialising preset #{}/{}: {}".format(i + 1, len(presets), params))
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
 
-            splits = matbench_kfold_splits(data, n_splits=nested, classification=classification)
+            splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
             if not nested:
                 splits = [next(splits)]
 
@@ -436,8 +437,8 @@ class MODNetModel:
                     mean_val_loss = np.mean(learning_curve[-20:])
                     LOG.info(f"Taking loss {val_loss:3.3f} from EarlyStopping vs mean {mean_val_loss:3.3f}")
                 else:
-                    LOG.info(f"Loss from curve {val_loss:3.3f}")
                     val_loss = np.mean(learning_curve[-20:])
+                    LOG.info(f"Loss from curve {val_loss:3.3f}")
 
                 nested_val_losses.append(val_loss)
 
