@@ -4,6 +4,7 @@ from traceback import print_exc
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
+from joblib import Parallel, delayed
 
 from modnet.preprocessing import MODData
 from modnet.utils import LOG
@@ -32,7 +33,7 @@ def matbench_benchmark(
     data: MODData,
     target: List[str],
     target_weights: Dict[str, float],
-    fit_settings: Dict[str, Any],
+    fit_settings: Optional[Dict[str, Any]] = None,
     classification: bool = False,
     save_folds: bool = False,
     save_models: bool = False,
@@ -75,6 +76,9 @@ def matbench_benchmark(
 
     """
 
+    if fit_settings is None:
+        fit_settings = {}
+
     if not fit_settings.get("n_feat"):
         nf = len(data.df_featurized.columns)
         fit_settings["n_feat"] = nf
@@ -108,19 +112,18 @@ def matbench_benchmark(
         "classification": classification,
         "save_folds": save_folds,
         "presets": presets,
-        "multi_target": bool(len(target) - 1),
         "save_models": save_models,
         "nested": nested,
     }
-    if n_jobs is not None and n_jobs > 1:
-        from joblib import Parallel, delayed
-        if n_jobs > len(fold_data):
-            n_jobs = len(fold_data)
 
-        fold_results = Parallel(n_jobs=n_jobs)(delayed(train_fold)(fold, *args, **kwargs) for fold in enumerate(fold_data))
-    else:
-        for fold in enumerate(fold_data):
-            fold_results = train_fold(fold, *args, **kwargs)
+    if n_jobs is None:
+        n_jobs = 1
+    n_jobs = min(n_jobs, len(fold_data))
+
+    fold_results = Parallel(n_jobs=n_jobs)(
+        delayed(train_fold)(fold, *args, **kwargs)
+        for fold in enumerate(fold_data)
+    )
 
     for fold in fold_results:
         for key in fold:
@@ -167,10 +170,7 @@ def train_fold(
     model = MODNetModel(
         target,
         target_weights,
-        n_feat=fit_settings["n_feat"],
-        num_neurons=fit_settings["num_neurons"],
-        act=fit_settings["act"],
-        num_classes=fit_settings.get("num_classes", None)
+        **fit_settings
     )
 
     if hp_optimization:
