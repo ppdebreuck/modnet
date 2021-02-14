@@ -379,7 +379,7 @@ class MODNetModel:
         val_losses = 1e20 * np.ones((len(presets),))
 
         num_nested_folds = 5
-        if isinstance(nested, int):
+        if isinstance(nested, int) and nested != True:
             num_nested_folds = nested
 
         best_model = None
