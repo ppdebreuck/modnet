@@ -1,14 +1,18 @@
 from random import randint
+import os
+import copy
 import random
 from typing import List, Optional
 import tensorflow.keras as keras
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error as mae
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.model_selection import train_test_split
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
+from modnet.utils import LOG
 
 
 class FitGenetic:
@@ -36,6 +40,61 @@ class FitGenetic:
         self.num_epochs = num_epochs
         self.prob_mut = prob_mut
         self.data = data
+
+
+    def shuffle_MD(
+        self,
+        data: MODData,
+        random_state: int=10
+        ):
+
+        """Shuffles the MODData data.
+        
+        Parameters:
+            data: A 'MODData' that has been featurized and feature selected.
+            random_state: It affects the ordering of the indices, which controls the randomness of each fold.
+        """
+
+        data = copy.deepcopy(data)
+        ids = data.df_targets.sample(frac=1,random_state=random_state).index
+        data.df_featurized = data.df_featurized.loc[ids]
+        data.df_targets = data.df_targets.loc[ids]
+        data.df_structure = data.df_structure.loc[ids]
+    
+        return data
+
+
+    def MDKsplit(
+        self,
+        data: MODData,
+        n_splits: int=10,
+        random_state: int=10
+        ):
+
+        """Provides train/test indices to split data in train/test sets. Splits MODData dataset into k consecutive folds.
+
+        Parameters:
+            data: A 'MODData' that has been featurized and feature selected.
+            n_splits: Number of folds.
+            random_state: It affects the ordering of the indices, which controls the randomness of each fold.
+        """
+
+        data = self.shuffle_MD(data,random_state=random_state)
+        ids = np.array(data.structure_ids)
+        kf = KFold(n_splits=n_splits,shuffle=True,random_state=random_state)
+        folds = []
+        for train_idx, val_idx in kf.split(ids):
+            data_train = MODData(data.df_structure.iloc[train_idx]['structure'].values,data.df_targets.iloc[train_idx].values,target_names=data.df_targets.columns,structure_ids=ids[train_idx])
+            data_train.df_featurized = data.df_featurized.iloc[train_idx]
+            #data_train.optimal_features = data.optimal_features
+        
+            data_val = MODData(data.df_structure.iloc[val_idx]['structure'].values,data.df_targets.iloc[val_idx].values,target_names=data.df_targets.columns,structure_ids=ids[val_idx])
+            data_val.df_featurized = data.df_featurized.iloc[val_idx]
+            #data_val.optimal_features = data.optimal_features
+
+            folds.append((data_train,data_val))
+        
+        return folds    
 
 
     def train_val_split(
@@ -70,10 +129,10 @@ class FitGenetic:
         """
 
         self.pop =  [[]]*size_pop
-        activation = ['relu', 'elu']
-        loss = ['mae', 'mse']
-        xscale = ['minmax', 'normal']
-        lr = [0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001]
+        activation = ['elu']
+        loss = ['mae']
+        xscale = ['minmax', 'standard']
+        lr = [0.02, 0.01, 0.005]
         initial_batch_size = [8, 16, 32, 64, 128]
         fraction = [1, 0.75, 0.5, 0.25]
         self.pop = [[10*randint(1,int(len(self.X_train.get_optimal_descriptors())/10)), 32*randint(1,10), random.choice(fraction), random.choice(fraction), random.choice(fraction), random.choice(activation), random.choice(loss), random.choice(xscale), random.choice(lr), random.choice(initial_batch_size)] for i in range(0, size_pop)]
@@ -93,14 +152,15 @@ class FitGenetic:
             father: List containing the gentic information of the second parent.
         """
 
-        child = [mother[0], father[1], mother[2], father[3], mother[4], father[5], mother[6], father[7], mother[8], father[9]]   
+        genes_from_mother = random.sample(range(10), k=5)
+        child = [mother[i] if i in genes_from_mother else father[i] for i in range(10)]   
         return child
 
 
     def mutation(
         self,
         child: List,
-        prob_mut: float = 0.8
+        prob_mut: float = 0.5
         )->None:
 
         """Performs mutation in the genetic information in order to maintain diversity in the population. 
@@ -140,14 +200,6 @@ class FitGenetic:
 
         self.fitness = []
         j = 0
-        rlr = keras.callbacks.ReduceLROnPlateau(
-            monitor="loss",
-            factor=0.5,
-            patience=20,
-            verbose=0,
-            mode="auto",
-            min_delta=0,
-        )
         es = keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
@@ -157,14 +209,12 @@ class FitGenetic:
             baseline=None,
             restore_best_weights=True,
         )
-        callbacks = [rlr, es]
+        callbacks = [es]
         for w in self.pop:
             modnet_model = MODNetModel([[['BV_Ea']]], {'BV_Ea':1}, n_feat=w[0], num_neurons=[[int(w[1])],[int(w[1]*w[2])],[int(w[1]*w[2]*w[3])],[int(w[1]*w[2]*w[3]*w[4])]], act=w[5])
             try:
-                modnet_model.fit(X_train,val_fraction=0, val_key='BV_Ea',loss=w[6], lr=w[8], epochs = 250, batch_size = w[9], xscale=w[7], callbacks=callbacks, verbose=0)
-                modnet_model.fit(X_train,val_fraction=0, val_key='BV_Ea',loss=w[6], lr=w[8], epochs = 250, batch_size = 2*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
-                modnet_model.fit(X_train,val_fraction=0, val_key='BV_Ea',loss=w[6], lr=w[8], epochs = 250, batch_size = 4*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
-                modnet_model.fit(X_train,val_fraction=0, val_key='BV_Ea',loss=w[6], lr=w[8], epochs = 250, batch_size = 8*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
+                for i in range(4):
+                    modnet_model.fit(X_train,val_fraction=0, val_key='BV_Ea',loss=w[6], lr=w[8], epochs = 250, batch_size = (2**i)*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
                 f = mse(modnet_model.predict(X_val),y_val)
                 print('MSE = ', f)
                 self.fitness.append([f, modnet_model, w])
@@ -181,7 +231,7 @@ class FitGenetic:
         y_val: pd.DataFrame,
         size_pop: int,
         num_epochs: int,
-        prob_mut: float = 0.8
+        prob_mut: float = 0.5
         )->None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MSE on the validation set.
@@ -196,7 +246,7 @@ class FitGenetic:
             prob_mut: Probability the mutation occurs.
         """
 
-        print('Generation number 0')
+        LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
         fitness = self.function_fitness(pop,  X_train, y_train, X_val, y_val)
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
@@ -240,7 +290,7 @@ class FitGenetic:
         """
 
         X_train, X_val, y_train, y_val = self.train_val_split(data)
-        self.best_individual = self.gen_alg(X_train, y_train, X_val, y_val, size_pop, num_epochs, prob_mut=0.8)
+        self.best_individual = self.gen_alg(X_train, y_train, X_val, y_val, size_pop, num_epochs, prob_mut=0.5)
 
         return self.best_individual
 
