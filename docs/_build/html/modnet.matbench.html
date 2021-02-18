@@ -1,0 +1,310 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>modnet.matbench package &mdash; modnet  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="modnet.model_presets package" href="modnet.model_presets.html" />
+    <link rel="prev" title="modnet.featurizers.presets package" href="modnet.featurizers.presets.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> modnet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modnet.html">modnet package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="modnet.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="modnet.featurizers.html">modnet.featurizers package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">modnet.matbench package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-modnet.matbench.benchmark">modnet.matbench.benchmark module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-modnet.matbench">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modnet.model_presets.html">modnet.model_presets package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modnet.tests.html">modnet.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#module-modnet.ext_data">modnet.ext_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#module-modnet.models">modnet.models module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#module-modnet.preprocessing">modnet.preprocessing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#module-modnet.sklearn">modnet.sklearn module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#module-modnet.utils">modnet.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.html#module-modnet">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">modnet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="modnet.html">modnet package</a> &raquo;</li>
+        
+      <li>modnet.matbench package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/modnet.matbench.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="modnet-matbench-package">
+<h1>modnet.matbench package<a class="headerlink" href="#modnet-matbench-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-modnet.matbench.benchmark">
+<span id="modnet-matbench-benchmark-module"></span><h2>modnet.matbench.benchmark module<a class="headerlink" href="#module-modnet.matbench.benchmark" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="modnet.matbench.benchmark.matbench_benchmark">
+<code class="sig-prename descclassname"><span class="pre">modnet.matbench.benchmark.</span></code><code class="sig-name descname"><span class="pre">matbench_benchmark</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="modnet.html#modnet.preprocessing.MODData" title="modnet.preprocessing.MODData"><span class="pre">modnet.preprocessing.MODData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_settings</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classification</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_folds</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_models</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hp_optimization</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inner_feat_selection</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_precomputed_cross_nmi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">presets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nested</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">dict</span><a class="headerlink" href="#modnet.matbench.benchmark.matbench_benchmark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train and cross-validate a model against Matbench data splits, optionally
+performing hyperparameter optimisation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – The entire dataset as a <cite>MODData</cite>.</p></li>
+<li><p><strong>target</strong> – The list of target names to train on.</p></li>
+<li><p><strong>target_weights</strong> – The target weights to use for the <cite>MODNetModel</cite>.</p></li>
+<li><p><strong>fit_settings</strong> – Any settings to pass to <cite>model.fit(…)</cite> directly
+(typically when not performing hyperparameter optimisation).</p></li>
+<li><p><strong>classification</strong> – Whether all tasks are classification rather than regression.</p></li>
+<li><p><strong>save_folds</strong> – Whether to save dataframes with pre-processed fold
+data (e.g. feature selection).</p></li>
+<li><p><strong>save_models</strong> – Whether to pickle all trained models according to
+their fold index and performance.</p></li>
+<li><p><strong>hp_optimization</strong> – Whether to perform hyperparameter optimisation.</p></li>
+<li><p><strong>inner_feat_selection</strong> – Whether to perform split-level feature
+selection or try to use pre-computed values.</p></li>
+<li><p><strong>use_precomputed_cross_nmi</strong> – Whether to use the precmputed cross NMI
+from the Materials Project dataset, or recompute per fold.</p></li>
+<li><p><strong>presets</strong> – Override the built-in hyperparameter grid with these presets.</p></li>
+<li><p><strong>fast</strong> – Whether to perform debug training, i.e. reduced presets and epochs.</p></li>
+<li><p><strong>n_jobs</strong> – Try to parallelize the 5-fold CV over this number of
+processes. Maxes out at number of CV folds.</p></li>
+<li><p><strong>nested</strong> – Whether to perform nested CV for hyperparameter optimisation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary containing all the results from the training, broken</dt><dd><p>down by model and by fold.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.matbench.benchmark.matbench_kfold_splits">
+<code class="sig-prename descclassname"><span class="pre">modnet.matbench.benchmark.</span></code><code class="sig-name descname"><span class="pre">matbench_kfold_splits</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="modnet.html#modnet.preprocessing.MODData" title="modnet.preprocessing.MODData"><span class="pre">modnet.preprocessing.MODData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_splits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classification</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.matbench.benchmark.matbench_kfold_splits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the pre-defined k-fold splits to use when reporting matbench results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> – The featurized MODData.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.matbench.benchmark.train_fold">
+<code class="sig-prename descclassname"><span class="pre">modnet.matbench.benchmark.</span></code><code class="sig-name descname"><span class="pre">train_fold</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fold</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="modnet.html#modnet.preprocessing.MODData" title="modnet.preprocessing.MODData"><span class="pre">modnet.preprocessing.MODData</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="modnet.html#modnet.preprocessing.MODData" title="modnet.preprocessing.MODData"><span class="pre">modnet.preprocessing.MODData</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_settings</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">presets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hp_optimization</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classification</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_folds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_models</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nested</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">dict</span><a class="headerlink" href="#modnet.matbench.benchmark.train_fold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train one fold of a CV.</p>
+<p>Unless stated, all arguments have the same meaning as in <cite>matbench_benchmark(…)</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>fold</strong> – A tuple containing the fold index, and another tuple of the
+training MODData and test MODData.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A dictionary summarising the fold results.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-modnet.matbench">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-modnet.matbench" title="Permalink to this headline">¶</a></h2>
+<p>This submodule contains some useful functions for
+benchmarking MODNet according to the matbench procedure.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="modnet.model_presets.html" class="btn btn-neutral float-right" title="modnet.model_presets package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="modnet.featurizers.presets.html" class="btn btn-neutral float-left" title="modnet.featurizers.presets package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Pierre-Paul De Breuck, Matthew L. Evans.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

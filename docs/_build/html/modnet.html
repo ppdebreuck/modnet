@@ -1,0 +1,1152 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>modnet package &mdash; modnet  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="modnet.featurizers package" href="modnet.featurizers.html" />
+    <link rel="prev" title="Welcome to modnet’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> modnet
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">modnet package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modnet.featurizers.html">modnet.featurizers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modnet.matbench.html">modnet.matbench package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modnet.model_presets.html">modnet.model_presets package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modnet.tests.html">modnet.tests package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-modnet.ext_data">modnet.ext_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-modnet.models">modnet.models module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-modnet.preprocessing">modnet.preprocessing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-modnet.sklearn">modnet.sklearn module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-modnet.utils">modnet.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-modnet">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">modnet</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>modnet package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/modnet.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="modnet-package">
+<h1>modnet package<a class="headerlink" href="#modnet-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modnet.featurizers.html">modnet.featurizers package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modnet.featurizers.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modnet.featurizers.presets.html">modnet.featurizers.presets package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modnet.featurizers.presets.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modnet.featurizers.presets.html#module-modnet.featurizers.presets.debreuck_2020">modnet.featurizers.presets.debreuck_2020 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modnet.featurizers.presets.html#module-modnet.featurizers.presets">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.featurizers.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.featurizers.html#module-modnet.featurizers.featurizers">modnet.featurizers.featurizers module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.featurizers.html#module-modnet.featurizers.utils">modnet.featurizers.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.featurizers.html#module-modnet.featurizers">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modnet.matbench.html">modnet.matbench package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modnet.matbench.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.matbench.html#module-modnet.matbench.benchmark">modnet.matbench.benchmark module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.matbench.html#module-modnet.matbench">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modnet.model_presets.html">modnet.model_presets package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modnet.model_presets.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.model_presets.html#module-modnet.model_presets.presets">modnet.model_presets.presets module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.model_presets.html#module-modnet.model_presets">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modnet.tests.html">modnet.tests package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#modnet-tests-conftest-module">modnet.tests.conftest module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#module-modnet.tests.test_benchmark">modnet.tests.test_benchmark module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#modnet-tests-test-ext-data-module">modnet.tests.test_ext_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#modnet-tests-test-model-module">modnet.tests.test_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#modnet-tests-test-preprocessing-module">modnet.tests.test_preprocessing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#module-modnet.tests.test_sklearn">modnet.tests.test_sklearn module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modnet.tests.html#module-modnet.tests">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-modnet.ext_data">
+<span id="modnet-ext-data-module"></span><h2>modnet.ext_data module<a class="headerlink" href="#module-modnet.ext_data" title="Permalink to this headline">¶</a></h2>
+<p>This module defines some remote datasets that can be downloaded
+into the user’s installation.</p>
+<dl class="py class">
+<dt id="modnet.ext_data.Dataset">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.ext_data.</span></code><code class="sig-name descname"><span class="pre">Dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">md5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">usage</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.ext_data.Dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<dl class="py attribute">
+<dt id="modnet.ext_data.Dataset.description">
+<code class="sig-name descname"><span class="pre">description</span></code><a class="headerlink" href="#modnet.ext_data.Dataset.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.ext_data.Dataset.filename">
+<code class="sig-name descname"><span class="pre">filename</span></code><a class="headerlink" href="#modnet.ext_data.Dataset.filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.ext_data.Dataset.md5">
+<code class="sig-name descname"><span class="pre">md5</span></code><a class="headerlink" href="#modnet.ext_data.Dataset.md5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.ext_data.Dataset.url">
+<code class="sig-name descname"><span class="pre">url</span></code><a class="headerlink" href="#modnet.ext_data.Dataset.url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.ext_data.Dataset.usage">
+<code class="sig-name descname"><span class="pre">usage</span></code><a class="headerlink" href="#modnet.ext_data.Dataset.usage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="modnet.ext_data.Usage">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.ext_data.</span></code><code class="sig-name descname"><span class="pre">Usage</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.ext_data.Usage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="modnet.ext_data.Usage.MODData">
+<code class="sig-name descname"><span class="pre">MODData</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#modnet.ext_data.Usage.MODData" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.ext_data.Usage.cross_nmi">
+<code class="sig-name descname"><span class="pre">cross_nmi</span></code><em class="property"> <span class="pre">=</span> <span class="pre">2</span></em><a class="headerlink" href="#modnet.ext_data.Usage.cross_nmi" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.ext_data.load_ext_dataset">
+<code class="sig-prename descclassname"><span class="pre">modnet.ext_data.</span></code><code class="sig-name descname"><span class="pre">load_ext_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#modnet.ext_data.Usage" title="modnet.ext_data.Usage"><span class="pre">modnet.ext_data.Usage</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.ext_data.load_ext_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load one of the preset datasets from the <cite>DATASETS</cite> constant. Will not
+overwrite any existing local data with remote datasets. Checks hashes against
+what is expected and will not depickle if unrecognised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset_name</strong> – The name (key) of the dataset in <cite>DATASETS</cite>.</p></li>
+<li><p><strong>expected_type</strong> – A string representing the expected usage of the dataset,
+e.g. <cite>‘MODData’</cite> or <cite>‘cross_nmi’</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The path to the downloaded or previously installed model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-modnet.models">
+<span id="modnet-models-module"></span><h2>modnet.models module<a class="headerlink" href="#module-modnet.models" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="modnet.models.MODNetModel">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.models.</span></code><code class="sig-name descname"><span class="pre">MODNetModel</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">targets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_neurons</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">([64],</span> <span class="pre">[32],</span> <span class="pre">[16],</span> <span class="pre">[16])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_feat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">act</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'relu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.models.MODNetModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Container class for the underlying Keras <cite>Model</cite>, that handles
+setting up the architecture, activations, training and learning curve.</p>
+<dl class="py attribute">
+<dt id="modnet.models.MODNetModel.n_feat">
+<code class="sig-name descname"><span class="pre">n_feat</span></code><a class="headerlink" href="#modnet.models.MODNetModel.n_feat" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of features used in the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.models.MODNetModel.weights">
+<code class="sig-name descname"><span class="pre">weights</span></code><a class="headerlink" href="#modnet.models.MODNetModel.weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>The relative loss weights for each target.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.models.MODNetModel.optimal_descriptors">
+<code class="sig-name descname"><span class="pre">optimal_descriptors</span></code><a class="headerlink" href="#modnet.models.MODNetModel.optimal_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of column names used
+in training the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.models.MODNetModel.model">
+<code class="sig-name descname"><span class="pre">model</span></code><a class="headerlink" href="#modnet.models.MODNetModel.model" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <cite>keras.model.Model</cite> of the network itself.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.models.MODNetModel.target_names">
+<code class="sig-name descname"><span class="pre">target_names</span></code><a class="headerlink" href="#modnet.models.MODNetModel.target_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of targets names that the model
+was trained for.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.models.MODNetModel.build_model">
+<code class="sig-name descname"><span class="pre">build_model</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">targets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_feat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_neurons</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">act</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'relu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.models.MODNetModel.build_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the Keras model and sets the <cite>self.model</cite> attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>targets</strong> – A nested list of targets names that defines the hierarchy
+of the output layers.</p></li>
+<li><p><strong>n_feat</strong> – The number of features to use as model inputs.</p></li>
+<li><p><strong>num_neurons</strong> – A specification of the model layers, as a 4-tuple
+of lists of integers. Hidden layers are split into four
+blocks of <cite>keras.layers.Dense</cite>, with neuron count specified
+by the elements of the <cite>num_neurons</cite> argument.</p></li>
+<li><p><strong>num_classes</strong> – Dictionary defining the target types (classification or regression).
+Should be constructed as follows: key: string giving the target name; value: integer n,
+with n=0 for regression and n&gt;=2 for classification with n the number of classes.</p></li>
+<li><p><strong>act</strong> – A string defining a Keras activation function to pass to use
+in the <cite>keras.layers.Dense</cite> layers.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.models.MODNetModel.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">training_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">modnet.preprocessing.MODData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_fraction</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">modnet.preprocessing.MODData</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xscale</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'minmax'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">['mae']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callbacks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'mse'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">fit_params</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">None</span><a class="headerlink" href="#modnet.models.MODNetModel.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Train the model on the passed training <cite>MODData</cite> object.</p>
+<dl>
+<dt>Paramters:</dt><dd><dl class="simple">
+<dt>training_data: A <cite>MODData</cite> that has been featurized and</dt><dd><p>feature selected. The first <cite>self.n_feat</cite> entries in
+<cite>training_data.get_optimal_descriptors()</cite> will be used
+for training.</p>
+</dd>
+<dt>val_fraction: The fraction of the training data to use as a</dt><dd><p>validation set for tracking model performance during
+training.</p>
+</dd>
+<dt>val_key: The target name to track on the validation set</dt><dd><p>during training, if performing multi-target learning.</p>
+</dd>
+</dl>
+<p>lr: The learning rate.
+epochs: The maximum number of epochs to train for.
+batch_size: The batch size to use for training.
+xscale: The feature scaler to use, either <cite>None</cite>,</p>
+<blockquote>
+<div><p><cite>‘minmax’</cite> or <cite>‘standard’</cite>.</p>
+</div></blockquote>
+<p>metrics: A list of Keras metrics to pass to <cite>compile(…)</cite>.
+loss: The built-in Keras loss to pass to <cite>compile(…)</cite>.
+fit_params: Any additional parameters to pass to <cite>fit(…)</cite>,</p>
+<blockquote>
+<div><p>these will be overwritten by the explicit keyword
+arguments above.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.models.MODNetModel.fit_preset">
+<code class="sig-name descname"><span class="pre">fit_preset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">modnet.preprocessing.MODData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">presets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_fraction</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classification</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refit</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nested</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="p"><span class="pre">[</span></span><span class="pre">typing.Union</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callbacks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">None</span><a class="headerlink" href="#modnet.models.MODNetModel.fit_preset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Chooses an optimal hyper-parametered MODNet model from different presets.</p>
+<p>This function implements the “inner loop” of a cross-validation workflow. It can
+either be run in full nested mode (i.e. train n_fold * n_preset models) or just
+with a simple random hold-out set.</p>
+<p>The data is first fitted on several well working MODNet presets
+with a validation set (10% of the furnished data by default).</p>
+<p>Sets the <cite>self.model</cite> attribute to the model with the lowest loss.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – MODData object contain training and validation samples.</p></li>
+<li><p><strong>presets</strong> – A list of dictionaries containing custom presets.</p></li>
+<li><p><strong>verbose</strong> – The verbosity level to pass to Keras</p></li>
+<li><p><strong>val_fraction</strong> – The fraction of the data to use for validation.</p></li>
+<li><p><strong>classification</strong> – Whether or not we are performing classification.</p></li>
+<li><p><strong>refit</strong> – Whether or not to refit the final model for each fold with
+the best-performing settings.</p></li>
+<li><p><strong>fast</strong> – Used for debugging. If <cite>True</cite>, only fit the first 2 presets and
+reduce the number of epochs.</p></li>
+<li><p><strong>nested</strong> – Whether or not to perform full nested CV. If <cite>True</cite>, set validation
+data based on the chosen folds, ignoring the <cite>val_fraction</cite> argument. If
+an integer, use this number of inner CV folds.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.models.MODNetModel.load">
+<em class="property"><span class="pre">static</span> </em><code class="sig-name descname"><span class="pre">load</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.models.MODNetModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the <cite>MODNetModel</cite> from 3 files with the same base
+filename:</p>
+<ul class="simple">
+<li><p>&lt;filename&gt;.json contains the Keras model JSON dump.</p></li>
+<li><p>&lt;filename&gt;.pkl contains the <cite>MODNetModel</cite> object, excluding the
+Keras model.</p></li>
+<li><p>&lt;filename&gt;.h5 contains the model weights.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The loaded <cite>MODNetModel</cite> object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.models.MODNetModel.predict">
+<code class="sig-name descname"><span class="pre">predict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">modnet.preprocessing.MODData</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_prob</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="headerlink" href="#modnet.models.MODNetModel.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict the target values for the passed MODData.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>test_data</strong> – A featurized and feature-selected <cite>MODData</cite>
+object containing the descriptors used in training.</p></li>
+<li><p><strong>return_prob</strong> – For a classification tasks only: whether to return the probability of each
+class OR only return the most probable class.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <cite>pandas.DataFrame</cite> containing the predicted values of the targets.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.models.MODNetModel.save">
+<code class="sig-name descname"><span class="pre">save</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.models.MODNetModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the <cite>MODNetModel</cite> across 3 files with the same base
+filename:</p>
+<ul class="simple">
+<li><p>&lt;filename&gt;.json contains the Keras model JSON dump.</p></li>
+<li><p>&lt;filename&gt;.pkl contains the <cite>MODNetModel</cite> object, excluding the
+Keras model.</p></li>
+<li><p>&lt;filename&gt;.h5 contains the model weights.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filename</strong> – The base filename to save to.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-modnet.preprocessing">
+<span id="modnet-preprocessing-module"></span><h2>modnet.preprocessing module<a class="headerlink" href="#module-modnet.preprocessing" title="Permalink to this headline">¶</a></h2>
+<p>This module defines the <code class="xref py py-class docutils literal notranslate"><span class="pre">MODData</span></code> class, featurizer functions
+and functions to compute normalized mutual information (NMI) and relevance redundancy
+(RR) between descriptors.</p>
+<dl class="py class">
+<dt id="modnet.preprocessing.CompositionContainer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">CompositionContainer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">composition</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.CompositionContainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A simple compatbility wrapper class for structure-less pymatgen <a href="#id1"><span class="problematic" id="id2">`</span></a>Structure`s.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="modnet.preprocessing.MODData">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">MODData</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">structures</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">pymatgen.core.structure.Structure</span><span class="p"><span class="pre">,</span> </span><span class="pre">pymatgen.core.composition.Composition</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_names</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Iterable</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure_ids</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Iterable</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df_featurized</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">featurizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="modnet.featurizers.html#modnet.featurizers.featurizers.MODFeaturizer" title="modnet.featurizers.featurizers.MODFeaturizer"><span class="pre">modnet.featurizers.featurizers.MODFeaturizer</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The MODData class takes takes a list of <cite>pymatgen.Structure</cite>
+objects and creates a <cite>pandas.DataFrame</cite> that contains many matminer
+features per structure. It then uses mutual information between
+features and targets, and between the features themselves, to
+perform feature selection using relevance-redundancy indices.</p>
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.df_structure">
+<code class="sig-name descname"><span class="pre">df_structure</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.df_structure" title="Permalink to this definition">¶</a></dt>
+<dd><p>dataframe storing the <cite>pymatgen.Structure</cite>
+representations for each structured, indexed by ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.df_targets">
+<code class="sig-name descname"><span class="pre">df_targets</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.df_targets" title="Permalink to this definition">¶</a></dt>
+<dd><p>dataframe storing the prediction targets
+per structure, indexed by ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.Dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.df_featurized">
+<code class="sig-name descname"><span class="pre">df_featurized</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.df_featurized" title="Permalink to this definition">¶</a></dt>
+<dd><p>dataframe with columns storing all
+computed features per structure, indexed by ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.optimal_features">
+<code class="sig-name descname"><span class="pre">optimal_features</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.optimal_features" title="Permalink to this definition">¶</a></dt>
+<dd><p>if feature selection has been performed
+this attribute stores a list of the selected features.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.optimal_features_by_target">
+<code class="sig-name descname"><span class="pre">optimal_features_by_target</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.optimal_features_by_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>If feature selection has been performed
+this attribute stores a list of the selected features, broken down by target property.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>Dict[str, List[str]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.featurizer">
+<code class="sig-name descname"><span class="pre">featurizer</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.featurizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>the class used to featurize the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="modnet.featurizers.html#modnet.featurizers.featurizers.MODFeaturizer" title="modnet.featurizers.featurizers.MODFeaturizer">MODFeaturizer</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.__modnet_version__">
+<code class="sig-name descname"><span class="pre">__modnet_version__</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.__modnet_version__" title="Permalink to this definition">¶</a></dt>
+<dd><p>The MODNet version number used to create the object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.cross_nmi">
+<code class="sig-name descname"><span class="pre">cross_nmi</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.cross_nmi" title="Permalink to this definition">¶</a></dt>
+<dd><p>If feature selection has been performed, this attribute
+stores the normalized mutual information between all features.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.preprocessing.MODData.num_classes">
+<code class="sig-name descname"><span class="pre">num_classes</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.num_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dictionary defining the target types (classification or regression).
+Should be constructed as follows: key: string giving the target name; value: integer n,
+with n=0 for regression and n&gt;=2 for classification with n the number of classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.feature_selection">
+<code class="sig-name descname"><span class="pre">feature_selection</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_nmi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">pandas.core.frame.DataFrame</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_precomputed_cross_nmi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.feature_selection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the mutual information between features and targets,
+then apply relevance-redundancy rankings to choose the top <cite>n</cite>
+features.</p>
+<p>Sets the <cite>self.optimal_features</cite> attribute to a list of feature
+names.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> – number of desired features.</p></li>
+<li><p><strong>cross_nmi</strong> – specify the cross NMI between features as a
+dataframe.</p></li>
+<li><p><strong>use_precomputed_cross_nmi</strong> – Whether or not to use the cross NMI
+that was computed on Materials Project features, instead of
+precomputing.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.featurize">
+<code class="sig-name descname"><span class="pre">featurize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fast</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_file</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'feature_database.pkl'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.featurize" title="Permalink to this definition">¶</a></dt>
+<dd><p>For the input structures, construct many matminer features
+and save a featurized dataframe. If <cite>db_file</cite> is specified, this
+method will try to load previous feature calculations for each
+structure ID instead of recomputing.</p>
+<p>Sets the <cite>self.df_featurized</cite> attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fast</strong> (<em>bool</em>) – whether or not to try to load from a backup.</p></li>
+<li><p><strong>db_file</strong> (<em>str</em>) – filename of a pickled dataframe containing
+with the same ID index as this <cite>MODData</cite> object.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.from_indices">
+<code class="sig-name descname"><span class="pre">from_indices</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">modnet.preprocessing.MODData</span><a class="headerlink" href="#modnet.preprocessing.MODData.from_indices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new MODData that contains only the data at the given
+rows indices provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>indices</strong> – The list of integers corresponding to the rows.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <cite>MODData</cite> containing only the rows passed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.get_featurized_df">
+<code class="sig-name descname"><span class="pre">get_featurized_df</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.get_featurized_df" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.get_optimal_descriptors">
+<code class="sig-name descname"><span class="pre">get_optimal_descriptors</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.get_optimal_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.get_optimal_df">
+<code class="sig-name descname"><span class="pre">get_optimal_df</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.get_optimal_df" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.get_structure_df">
+<code class="sig-name descname"><span class="pre">get_structure_df</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.get_structure_df" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.get_target_df">
+<code class="sig-name descname"><span class="pre">get_target_df</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.get_target_df" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.load">
+<em class="property"><span class="pre">static</span> </em><code class="sig-name descname"><span class="pre">load</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">pathlib.Path</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">modnet.preprocessing.MODData</span><a class="headerlink" href="#modnet.preprocessing.MODData.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load <cite>MODData</cite> object pickled by the <cite>.save(…)</cite> method.</p>
+<p>If the filename ends in “tgz”, “bz2” or “zip”, the pickle
+will be decompressed accordingly by <cite>pandas.read_pickle(…)</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.load_precomputed">
+<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">load_precomputed</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.load_precomputed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a <cite>MODData</cite> object from a pre-computed dataset.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Datasets may require significant (~10 GB) amounts of memory
+to load.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dataset</strong> – the name of the precomputed dataset to load.
+Currently available: ‘MP_2018.6’.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>the precomputed dataset.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>MODData</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.names">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">names</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of prediction target field names.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.save">
+<code class="sig-name descname"><span class="pre">save</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pickle the contents of the <cite>MODData</cite> object
+so that it can be loaded in  with <cite>MODData.load()</cite>.</p>
+<p>If the filename ends in “tgz”, “bz2” or “zip”, the pickle
+will be compressed accordingly by <cite>pandas.to_pickle(…)</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.shuffle">
+<code class="sig-name descname"><span class="pre">shuffle</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.MODData.shuffle" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.split">
+<code class="sig-name descname"><span class="pre">split</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_test_split</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">modnet.preprocessing.MODData</span><span class="p"><span class="pre">,</span> </span><span class="pre">modnet.preprocessing.MODData</span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#modnet.preprocessing.MODData.split" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create two new MODData’s that contain only the data corresponding
+to the indices passed in the <cite>train_test_split</cite> tuple.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>train_test_split</strong> – A tuple containing two lists of integers: the
+indices of the training data and test data respectively.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The training MODData and the test MODData as a tuple.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.structure_ids">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">structure_ids</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.structure_ids" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of prediction target field names.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.structures">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">structures</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.structures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of <cite>pymatgen.Structure</cite> objects.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.target_names">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">target_names</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.target_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of prediction target field names.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.preprocessing.MODData.targets">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">targets</span></code><a class="headerlink" href="#modnet.preprocessing.MODData.targets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a ndarray of prediction targets.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.get_cross_nmi">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">get_cross_nmi</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df_feat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="headerlink" href="#modnet.preprocessing.get_cross_nmi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the Normalized Mutual Information (NMI) between input features.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df_feat</strong> (<em>pandas.DataFrame</em>) – Dataframe containing the input features for
+which the NMI with the target variable is to be computed.</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed down to the
+<code class="xref py py-func docutils literal notranslate"><span class="pre">mutual_info_regression()</span></code> function from scikit-learn. This
+can be useful e.g. for testing purposes.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>pandas.DataFrame containing the Normalized Mutual Information between features.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.get_features_dyn">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">get_features_dyn</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_feat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_nmi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_nmi</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.preprocessing.get_features_dyn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.get_features_relevance_redundancy">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">get_features_relevance_redundancy</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_nmi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_nmi</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_feat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rr_parameters</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_pc</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">List</span><a class="headerlink" href="#modnet.preprocessing.get_features_relevance_redundancy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select features from the Relevance Redundancy (RR) score between the input
+features and the target output.</p>
+<p>The RR is defined following Equation 2 of De Breuck et al, arXiv:2004:14766,
+with default values,</p>
+<p>..math:: p = max{0.1, 4.5 -  n^{0.4}},</p>
+<p>and</p>
+<p>..math:: c = 10^{-6} n^3,</p>
+<p>where <span class="math notranslate nohighlight">\(n\)</span> is the number of features in the “chosen” subset for that iteration.
+These values can be overriden with the <cite>rr_parameters</cite> dictionary argument.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_nmi</strong> (<em>pandas.DataFrame</em>) – dataframe  containing the Normalized
+Mutual Information (NMI) between a list of input features and a
+target variable, as computed from <code class="xref py py-func docutils literal notranslate"><span class="pre">nmi_target()</span></code>.</p></li>
+<li><p><strong>cross_nmi</strong> (<em>pandas.DataFrame</em>) – dataframe containing the NMI between the
+input features, as computed from <code class="xref py py-func docutils literal notranslate"><span class="pre">get_cross_nmi()</span></code>.</p></li>
+<li><p><strong>n_feat</strong> (<em>int</em>) – Number of features for which the RR score needs to be computed (default: all features).</p></li>
+<li><p><strong>rr_parameters</strong> (<em>dict</em>) – Allows tuning of p and c parameters. Currently
+allows fixing of p and c to constant values instead of using the
+dynamical evaluation. Expects to find keys <cite>“p”</cite> and <cite>“c”</cite>, containing
+either a callable that takes <cite>n</cite> as an argument and returns the
+desired <cite>p</cite> or <cite>c</cite>, or another dictionary containing the key <cite>“value”</cite>
+that stores a constant value of <cite>p</cite> or <cite>c</cite>.</p></li>
+<li><p><strong>return_pc</strong> – Whether to return p and c values in the output dictionaries.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>List of dictionaries containing the results of the relevance-redundancy selection algorithm.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.get_rr_c_parameter_default">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">get_rr_c_parameter_default</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">float</span><a class="headerlink" href="#modnet.preprocessing.get_rr_c_parameter_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns c for the default expression outlined in arXiv:2004:14766.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>nn</strong> (<em>int</em>) – number of features currently in chosen subset.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>the value for p.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.get_rr_p_parameter_default">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">get_rr_p_parameter_default</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nn</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">float</span><a class="headerlink" href="#modnet.preprocessing.get_rr_p_parameter_default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns p for the default expression outlined in arXiv:2004:14766.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>nn</strong> (<em>int</em>) – number of features currently in chosen subset.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>the value for p.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.merge_ranked">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">merge_ranked</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lists</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Hashable</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Hashable</span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#modnet.preprocessing.merge_ranked" title="Permalink to this definition">¶</a></dt>
+<dd><p>For multiple lists of ranked feature names/IDs (e.g. for different
+targets), work through the lists and merge them such that each
+feature is included once according to its highest rank across each
+list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>lists</strong> (<em>List</em><em>[</em><em>List</em><em>[</em><em>Hashable</em><em>]</em><em>]</em>) – the list of lists to merge.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of merged and ranked feature names/IDs.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>List[Hashable]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="modnet.preprocessing.nmi_target">
+<code class="sig-prename descclassname"><span class="pre">modnet.preprocessing.</span></code><code class="sig-name descname"><span class="pre">nmi_target</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df_feat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df_target</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">pandas.core.frame.DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'regression'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_constant_features</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">pandas.core.frame.DataFrame</span><a class="headerlink" href="#modnet.preprocessing.nmi_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the Normalized Mutual Information (NMI) between a list of
+input features and a target variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df_feat</strong> (<em>pandas.DataFrame</em>) – Dataframe containing the input features for
+which the NMI with the target variable is to be computed.</p></li>
+<li><p><strong>df_target</strong> (<em>pandas.DataFrame</em>) – Dataframe containing the target variable.
+This DataFrame should contain only one column and have the same
+size as <cite>df_feat</cite>.</p></li>
+<li><p><strong>task_type</strong> (<em>integer</em>) – 0 for regression, 1 for classification</p></li>
+<li><p><strong>drop_constant_features</strong> (<em>bool</em>) – If True, the features that are constant
+across the entire data set will be dropped.</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed down to the
+<code class="xref py py-func docutils literal notranslate"><span class="pre">mutual_info_regression()</span></code> function from scikit-learn. This
+can be useful e.g. for testing purposes.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dataframe containing the NMI between each of</dt><dd><p>the input features and the target variable.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-modnet.sklearn">
+<span id="modnet-sklearn-module"></span><h2>modnet.sklearn module<a class="headerlink" href="#module-modnet.sklearn" title="Permalink to this headline">¶</a></h2>
+<p>sklearn API of modnet</p>
+<p>This version implements the RR class of the sklearn API
+Still TODO: MODNetFeaturizer and MODNet classes</p>
+<p>The general pipeline will be:
+from sklearn.pipeline import Pipeline
+modnet_featurizer = MODNetFeaturizer(…arguments here…)
+rr_analysis = RR(…arguments here…)
+modnet_model = MODNet(…arguments here…)
+p = Pipeline([(‘featurizer’, modnet_featurizer), (‘rr’, rr_analysis), (‘modnet’, modnet_model)])</p>
+<ul class="simple">
+<li><p>One note about scikit learn’s steps when performing cross-validation:
+A given transformer (e.g. PCA, or RR) will not be executed at each step of the cross validation if you cache it, i.e.
+scikit-learn detects that the inputs are the same (if they are indeed the same) and does not do it several times
+(see <a class="reference external" href="https://scikit-learn.org/stable/modules/compose.html#caching-transformers-avoid-repeated-computation">https://scikit-learn.org/stable/modules/compose.html#caching-transformers-avoid-repeated-computation</a>).</p></li>
+<li><p>Another note about the fit method of a Pipeline object:
+It is possible to pass fit parameters to each step of a Pipeline object
+(see <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html#sklearn.pipeline.Pipeline.fit">https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html#sklearn.pipeline.Pipeline.fit</a>)</p></li>
+<li><p>Another note about the __init__ method of sklearn derived estimators:
+The method should ONLY set the instance variables. In particular, “every keyword argument accepted by __init__
+should correspond to an attribute on the instance” (as stated in sklearn’s developer documentation)
+(see <a class="reference external" href="https://scikit-learn.org/stable/developers/develop.html#instantiation">https://scikit-learn.org/stable/developers/develop.html#instantiation</a>).</p></li>
+</ul>
+<dl class="py class">
+<dt id="modnet.sklearn.MODNet">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.sklearn.</span></code><code class="sig-name descname"><span class="pre">MODNet</span></code><a class="headerlink" href="#modnet.sklearn.MODNet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.RegressorMixin</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code></p>
+<p>MODNet model.</p>
+<p>Blabla.</p>
+<p class="rubric">Notes</p>
+<p>No assumption on the features here, just a list of numbers.
+What makes a MODNet model special with respect to using directly keras ? I would say that it is always doing
+some joint learning, maybe something else ?</p>
+<dl class="py method">
+<dt id="modnet.sklearn.MODNet.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.MODNet.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit a MODNet regression model.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.sklearn.MODNet.predict">
+<code class="sig-name descname"><span class="pre">predict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.MODNet.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predict output based on a fitted MODNet regression model</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="modnet.sklearn.MODNetFeaturizer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.sklearn.</span></code><code class="sig-name descname"><span class="pre">MODNetFeaturizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matminer_featurizers</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.MODNetFeaturizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.TransformerMixin</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code></p>
+<dl class="py method">
+<dt id="modnet.sklearn.MODNetFeaturizer.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.MODNetFeaturizer.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Probably not needed except for some matminer featurizers (e.g. I think SOAP needs to be fitted before).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.sklearn.MODNetFeaturizer.from_preset">
+<em class="property"><span class="pre">classmethod</span> </em><code class="sig-name descname"><span class="pre">from_preset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">preset</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.MODNetFeaturizer.from_preset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes a MODNetFeaturizer class based on some preset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>preset</strong> – Name of the preset (e.g. “DeBreuck2020” could trigger the Structure+Composition featurizers)</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>See in matminer how it is done, e.g. SiteStatsFingerprint.from_preset method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.sklearn.MODNetFeaturizer.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.MODNetFeaturizer.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform the input data (i.e. containing the composition and/or structure to the features</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="modnet.sklearn.RR">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">modnet.sklearn.</span></code><code class="sig-name descname"><span class="pre">RR</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_feat</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rr_parameters</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span> </span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.RR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.TransformerMixin</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code></p>
+<p>Relevance-Redundancy (RR) feature selection.
+Features are ranked and selected following a relevance-redundancy ratio as developed
+by De Breuck et al. (2020), see <a class="reference external" href="https://arxiv.org/abs/2004.14766">https://arxiv.org/abs/2004.14766</a>.</p>
+<p>Use the fit method for computing the most important features.
+Then use the transform method to truncate the input data to those features.</p>
+<dl class="py attribute">
+<dt id="modnet.sklearn.RR.n_feat">
+<code class="sig-name descname"><span class="pre">n_feat</span></code><a class="headerlink" href="#modnet.sklearn.RR.n_feat" title="Permalink to this definition">¶</a></dt>
+<dd><p>int
+number of features to keep</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="modnet.sklearn.RR.optimal_descriptors">
+<code class="sig-name descname"><span class="pre">optimal_descriptors</span></code><a class="headerlink" href="#modnet.sklearn.RR.optimal_descriptors" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of length (n_feat)
+ordered list of best descriptors</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.sklearn.RR.fit">
+<code class="sig-name descname"><span class="pre">fit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmi_feats_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_nmi_feats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.RR.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ranking of the features. This is based on relevance and redundancy provided as NMI dataframes.
+If not provided (i.e set to None), the NMIs are computed here.
+Nevertheless, it is strongly recommended to compute them separately and store them locally.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> – Training input pandas dataframe of shape (n_samples,n_features)</p></li>
+<li><p><strong>y</strong> – Training output pandas dataframe of shape (n_samples,n_features)</p></li>
+<li><p><strong>nmi_feats_target</strong> – NMI between features and targets, pandas dataframe</p></li>
+<li><p><strong>cross_nmi_feats</strong> – NMI between features, pandas dataframe</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>object
+Fitted RR transformer</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="modnet.sklearn.RR.transform">
+<code class="sig-name descname"><span class="pre">transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.sklearn.RR.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform the inputs X based on a fitted RR analysis. The best n_feat features are kept and returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>X</strong> – input pandas dataframe of shape (n_samples,n_features)</p></li>
+<li><p><strong>y</strong> – ignored</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>X data containing n_feat rows (best features) as a pandas dataframe</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-modnet.utils">
+<span id="modnet-utils-module"></span><h2>modnet.utils module<a class="headerlink" href="#module-modnet.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="modnet.utils.get_hash_of_file">
+<code class="sig-prename descclassname"><span class="pre">modnet.utils.</span></code><code class="sig-name descname"><span class="pre">get_hash_of_file</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sha512'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#modnet.utils.get_hash_of_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the hexdigest of the SHA512 checksum of the
+file found at fname.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-modnet">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-modnet" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="modnet.featurizers.html" class="btn btn-neutral float-right" title="modnet.featurizers package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to modnet’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Pierre-Paul De Breuck, Matthew L. Evans.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
