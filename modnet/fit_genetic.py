@@ -137,7 +137,7 @@ class FitGenetic:
             n_features = randint(1, b) + b
         elif len(self.data.get_optimal_descriptors()) > 100 and len(self.data.get_optimal_descriptors()) < 2000:
             max = len(self.data.get_optimal_descriptors())
-            n_features = 10*randint(1,10*int(max/10))
+            n_features = 10*randint(1,int(max/10))
         else:
             max = np.sqrt(len(self.data.get_optimal_descriptors()))
             n_features = randint(1,max)**2
