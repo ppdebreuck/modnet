@@ -42,7 +42,7 @@ class FitGenetic:
     def shuffle_MD(
         self,
         data: MODData,
-        random_state: int=10
+        random_state: int
         ):
 
         """Shuffles the MODData data.
@@ -65,7 +65,7 @@ class FitGenetic:
         self,
         data: MODData,
         n_splits: int=10,
-        random_state: int=10
+        random_state: int
         ):
 
         """Provides train/test indices to split data in train/test sets. Splits MODData dataset into k consecutive folds.
@@ -104,8 +104,8 @@ class FitGenetic:
         Parameter:
             data: 'MODData' data which need to be splitted.
         """
-
-        self.X_train, self.X_val = self.MDKsplit(data, n_splits=10, random_state=10)[0]
+        i = randint(0,9)
+        self.X_train, self.X_val = self.MDKsplit(data, n_splits=10, random_state=i)[i]
         self.y_train = self.X_train.df_targets
         self.y_val = self.X_val.df_targets
 
@@ -132,14 +132,14 @@ class FitGenetic:
         self.fraction = [1, 0.75, 0.5, 0.25]
 
         n_features = 0 #initialization
-        if len(self.X_train.get_optimal_descriptors()) <= 100:
-            b = int(len(self.X_train.get_optimal_descriptors())/2)
+        if len(self.data.get_optimal_descriptors()) <= 100:
+            b = int(len(self.data.get_optimal_descriptors())/2)
             n_features = randint(1, b) + b
-        elif len(self.X_train.get_optimal_descriptors()) > 100 and len(self.X_train.get_optimal_descriptors()) < 2000:
-            max = len(self.X_train.get_optimal_descriptors())
+        elif len(self.data.get_optimal_descriptors()) > 100 and len(self.data.get_optimal_descriptors()) < 2000:
+            max = len(self.data.get_optimal_descriptors())
             n_features = 10*randint(1,10*int(max/10))
         else:
-            max = np.sqrt(len(self.X_train.get_optimal_descriptors()))
+            max = np.sqrt(len(self.data.get_optimal_descriptors()))
             n_features = randint(1,max)**2
         self.pop = [[n_features , 32*randint(1,10), random.choice(self.fraction), random.choice(self.fraction), random.choice(self.fraction), random.choice(activation), random.choice(loss), random.choice(xscale), random.choice(self.lr), random.choice(self.initial_batch_size)] for i in range(0, size_pop)]
         return self.pop
@@ -175,15 +175,15 @@ class FitGenetic:
         """
 
         for c in range(0, len(child)):
-            if child[c][0] < int(0.5*len(self.X_train.get_optimal_descriptors())):
-                child[c][0] = int(child[c][0] + randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
+            if child[c][0] < int(0.5*len(self.data.get_optimal_descriptors())):
+                child[c][0] = int(child[c][0] + randint(1, int(0.1*len(self.data.get_optimal_descriptors()))))
                 child[c][1] = child[c][1] + 32*randint(-2,2)
                 child[c][2] = random.choice(self.fraction)
                 child[c][3] = random.choice(self.fraction)
                 child[c][4] = random.choice(self.fraction)
                 child[c][8] = random.choice(self.lr)
             else:
-                child[c][0] = int(child[c][0] - randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
+                child[c][0] = int(child[c][0] - randint(1, int(0.1*len(self.data.get_optimal_descriptors()))))
                 child[c][1] = child[c][1] + 32*randint(-2,2)
                 child[c][2] = random.choice(self.fraction)
                 child[c][3] = random.choice(self.fraction)
