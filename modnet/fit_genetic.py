@@ -105,7 +105,7 @@ class FitGenetic:
             data: 'MODData' data which need to be splitted.
         """
 
-        self.X_train, self.X_val = MDKsplit(data, n_splits=10, random_state=10)
+        self.X_train, self.X_val = self.MDKsplit(data, n_splits=10, random_state=10)
         self.y_train = self.X_train.df_targets
         self.y_val = self.X_val.df_targets
 
