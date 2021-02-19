@@ -64,8 +64,8 @@ class FitGenetic:
     def MDKsplit(
         self,
         data: MODData,
-        n_splits: int=10,
-        random_state: int
+        random_state: int,
+        n_splits: int=10
         ):
 
         """Provides train/test indices to split data in train/test sets. Splits MODData dataset into k consecutive folds.
