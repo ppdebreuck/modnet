@@ -12,7 +12,6 @@ LOG.addHandler(handler)
 def get_hash_of_file(fname, algo="sha512"):
     """Returns the hexdigest of the SHA512 checksum of the
     file found at fname.
-
     """
     import hashlib
 
