@@ -83,11 +83,11 @@ class FitGenetic:
         for train_idx, val_idx in kf.split(ids):
             data_train = MODData(data.df_structure.iloc[train_idx]['structure'].values,data.df_targets.iloc[train_idx].values,target_names=data.df_targets.columns,structure_ids=ids[train_idx])
             data_train.df_featurized = data.df_featurized.iloc[train_idx]
-            #data_train.optimal_features = data.optimal_features
+            data_train.optimal_features = data.optimal_features
         
             data_val = MODData(data.df_structure.iloc[val_idx]['structure'].values,data.df_targets.iloc[val_idx].values,target_names=data.df_targets.columns,structure_ids=ids[val_idx])
             data_val.df_featurized = data.df_featurized.iloc[val_idx]
-            #data_val.optimal_features = data.optimal_features
+            data_val.optimal_features = data.optimal_features
 
             folds.append((data_train,data_val))
         
