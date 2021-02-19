@@ -175,21 +175,21 @@ class FitGenetic:
         """
 
         for c in range(0, len(child)):
-                if child[c][0] < int(0.5*len(self.X_train.get_optimal_descriptors())):
-                    child[c][0] = int(child[c][0] + randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
-                    child[c][1] = child[c][1] + 32*randint(-2,2)
-                    child[c][2] = random.choice(self.fraction)
-                    child[c][3] = random.choice(self.fraction)
-                    child[c][4] = random.choice(self.fraction)
-                    child[c][8] = random.choice(self.lr)
-                else:
-                    child[c][0] = int(child[c][0] - randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
-                    child[c][1] = child[c][1] + 32*randint(-2,2)
-                    child[c][2] = random.choice(self.fraction)
-                    child[c][3] = random.choice(self.fraction)
-                    child[c][4] = random.choice(self.fraction)
-                    child[c][8] = random.choice(self.lr)
-         return child
+            if child[c][0] < int(0.5*len(self.X_train.get_optimal_descriptors())):
+                child[c][0] = int(child[c][0] + randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
+                child[c][1] = child[c][1] + 32*randint(-2,2)
+                child[c][2] = random.choice(self.fraction)
+                child[c][3] = random.choice(self.fraction)
+                child[c][4] = random.choice(self.fraction)
+                child[c][8] = random.choice(self.lr)
+            else:
+                child[c][0] = int(child[c][0] - randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
+                child[c][1] = child[c][1] + 32*randint(-2,2)
+                child[c][2] = random.choice(self.fraction)
+                child[c][3] = random.choice(self.fraction)
+                child[c][4] = random.choice(self.fraction)
+                child[c][8] = random.choice(self.lr)
+        return child
 
 
     def function_fitness(
