@@ -127,7 +127,7 @@ class FitGenetic:
         activation = ['elu']
         loss = ['mae']
         xscale = ['minmax', 'standard']
-        selflr = [0.01, 0.005, 0.001]
+        self.lr = [0.01, 0.005, 0.001]
         self.initial_batch_size = [8, 16, 32, 64, 128]
         self.fraction = [1, 0.75, 0.5, 0.25]
 
@@ -141,6 +141,7 @@ class FitGenetic:
         else:
             max = np.sqrt(len(self.data.get_optimal_descriptors()))
             n_features = randint(1,max)**2
+        
         self.pop = [[n_features , 32*randint(1,10), random.choice(self.fraction), random.choice(self.fraction), random.choice(self.fraction), random.choice(activation), random.choice(loss), random.choice(xscale), random.choice(self.lr), random.choice(self.initial_batch_size)] for i in range(0, size_pop)]
         return self.pop
 
