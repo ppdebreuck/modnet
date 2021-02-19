@@ -135,7 +135,7 @@ class FitGenetic:
         if len(self.X_train.get_optimal_descriptors()) <= 100:
             b = int(len(self.X_train.get_optimal_descriptors())/2)
             n_features = randint(1, b) + b
-        elif len(self.X_train.get_optimal_descriptors()) > 100 && len(self.X_train.get_optimal_descriptors()) < 2000:
+        elif len(self.X_train.get_optimal_descriptors()) > 100 and len(self.X_train.get_optimal_descriptors()) < 2000:
             max = len(self.X_train.get_optimal_descriptors())
             n_features = 10*randint(1,10*int(max/10))
         else:
