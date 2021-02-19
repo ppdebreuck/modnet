@@ -105,7 +105,7 @@ class FitGenetic:
             data: 'MODData' data which need to be splitted.
         """
 
-        self.X_train, self.X_val = self.MDKsplit(data, n_splits=10, random_state=10)
+        self.X_train, self.X_val = self.MDKsplit(data, n_splits=10, random_state=10)[0,:]
         self.y_train = self.X_train.df_targets
         self.y_val = self.X_val.df_targets
 
@@ -224,10 +224,10 @@ class FitGenetic:
         )
         callbacks = [es]
         for w in self.pop:
-            modnet_model = MODNetModel([[['BV_Ea']]], {'BV_Ea':1}, n_feat=w[0], num_neurons=[[int(w[1])],[int(w[1]*w[2])],[int(w[1]*w[2]*w[3])],[int(w[1]*w[2]*w[3]*w[4])]], act=w[5])
+            modnet_model = MODNetModel([[[X_train.df_targets.columns[0]]]], {X_train.df_targets.columns[0]:1}, n_feat=w[0], num_neurons=[[int(w[1])],[int(w[1]*w[2])],[int(w[1]*w[2]*w[3])],[int(w[1]*w[2]*w[3]*w[4])]], act=w[5])
             try:
                 for i in range(4):
-                    modnet_model.fit(X_train,val_fraction=0, val_key='BV_Ea',loss=w[6], lr=w[8], epochs = 250, batch_size = (2**i)*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
+                    modnet_model.fit(X_train,val_fraction=0, val_key=X_train.df_targets.columns[0], loss=w[6], lr=w[8], epochs = 250, batch_size = (2**i)*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
                 f = mse(modnet_model.predict(X_val),y_val)
                 print('MSE = ', f)
                 self.fitness.append([f, modnet_model, w])
