@@ -23,8 +23,7 @@ class FitGenetic:
         self,
         data: MODData,
         size_pop=15,
-        num_epochs=5,
-        prob_mut=0.8
+        num_epochs=5
         ):
 
         """Initializes parameters used in this class.
@@ -32,13 +31,11 @@ class FitGenetic:
         Parameters:
             size_pop: Size of the population.
             num_epochs: Number of generations.
-            prob_mut: Probability the mutation occurs.
             data: A 'MODData' that has been featurized and feature selected.
         """
 
         self.size_pop = size_pop
         self.num_epochs = num_epochs
-        self.prob_mut = prob_mut
         self.data = data
 
 
@@ -108,9 +105,7 @@ class FitGenetic:
             data: 'MODData' data which need to be splitted.
         """
 
-        split_border = int(0.9*data.df_targets.shape[0])
-        final_border = int(data.df_targets.shape[0])
-        self.X_train, self.X_val = data.split((range(split_border),range(split_border,final_border)))
+        self.X_train, self.X_val = data.MDKsplit(data, n_splits=10, random_state=10)
         self.y_train = self.X_train.df_targets
         self.y_val = self.X_val.df_targets
 
@@ -132,10 +127,21 @@ class FitGenetic:
         activation = ['elu']
         loss = ['mae']
         xscale = ['minmax', 'standard']
-        lr = [0.02, 0.01, 0.005]
-        initial_batch_size = [8, 16, 32, 64, 128]
-        fraction = [1, 0.75, 0.5, 0.25]
-        self.pop = [[10*randint(1,int(len(self.X_train.get_optimal_descriptors())/10)), 32*randint(1,10), random.choice(fraction), random.choice(fraction), random.choice(fraction), random.choice(activation), random.choice(loss), random.choice(xscale), random.choice(lr), random.choice(initial_batch_size)] for i in range(0, size_pop)]
+        selflr = [0.01, 0.005, 0.001]
+        self.initial_batch_size = [8, 16, 32, 64, 128]
+        self.fraction = [1, 0.75, 0.5, 0.25]
+
+        n_features = 0 #initialization
+        if len(self.X_train.get_optimal_descriptors()) <= 100:
+            b = int(len(self.X_train.get_optimal_descriptors())/2)
+            n_features = randint(1, b) + b
+        elif len(self.X_train.get_optimal_descriptors()) > 100 && len(self.X_train.get_optimal_descriptors()) < 2000:
+            max = len(self.X_train.get_optimal_descriptors())
+            n_features = 10*randint(1,10*int(max/10))
+        else:
+            max = np.sqrt(len(self.X_train.get_optimal_descriptors()))
+            n_features = randint(1,max)**2
+        self.pop = [[n_features , 32*randint(1,10), random.choice(self.fraction), random.choice(self.fraction), random.choice(self.fraction), random.choice(activation), random.choice(loss), random.choice(xscale), random.choice(self.lr), random.choice(self.initial_batch_size)] for i in range(0, size_pop)]
         return self.pop
 
 
@@ -160,23 +166,30 @@ class FitGenetic:
     def mutation(
         self,
         child: List,
-        prob_mut: float = 0.5
         )->None:
 
         """Performs mutation in the genetic information in order to maintain diversity in the population. 
         
         Paramters:
             child: List containing the genetic information of the 'child'.
-            prob_mut: Probability the mutation occurs.
         """
 
         for c in range(0, len(child)):
-            if np.random.rand() > prob_mut:
-                if child[c][0] < int(0.9*len(self.X_train.get_optimal_descriptors())):
-                    child[c][0] = int(child[c][0] + 10*randint(1, 6))
+                if child[c][0] < int(0.5*len(self.X_train.get_optimal_descriptors())):
+                    child[c][0] = int(child[c][0] + randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
+                    child[c][1] = child[c][1] + 32*randint(-2,2)
+                    child[c][2] = random.choice(self.fraction)
+                    child[c][3] = random.choice(self.fraction)
+                    child[c][4] = random.choice(self.fraction)
+                    child[c][8] = random.choice(self.lr)
                 else:
-                    child[c][0] = int(child[c][0] - 10*randint(1, 6))
-        return child
+                    child[c][0] = int(child[c][0] - randint(1, int(0.1*len(self.X_train.get_optimal_descriptors()))))
+                    child[c][1] = child[c][1] + 32*randint(-2,2)
+                    child[c][2] = random.choice(self.fraction)
+                    child[c][3] = random.choice(self.fraction)
+                    child[c][4] = random.choice(self.fraction)
+                    child[c][8] = random.choice(self.lr)
+         return child
 
 
     def function_fitness(
@@ -230,8 +243,7 @@ class FitGenetic:
         X_val: MODData,
         y_val: pd.DataFrame,
         size_pop: int,
-        num_epochs: int,
-        prob_mut: float = 0.5
+        num_epochs: int
         )->None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MSE on the validation set.
@@ -243,23 +255,22 @@ class FitGenetic:
             y_val: Target values of the validation set.
             size_pop: Size of the population per generation.
             num_epochs: Number of generations.
-            prob_mut: Probability the mutation occurs.
         """
 
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
         fitness = self.function_fitness(pop,  X_train, y_train, X_val, y_val)
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
+        scaled_pop_fitness = pop_fitness_sort[:,0]/sum(pop_fitness_sort[:,0])
         for j in range(0, num_epochs):
             print('Generation number ', j+1)
             length = len(pop_fitness_sort)
             #select parents
-            parent_1 = pop_fitness_sort[:,2][:length//2]
-            parent_2 = pop_fitness_sort[:,2][length//2:]
+            parent_1 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
+            parent_2 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
             #crossover
             child_1 = [self.crossover(parent_1[i], parent_2[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
-            child_2 = [self.crossover(parent_2[i], parent_1[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
-            child_2 = self.mutation(child_2, prob_mut)
+            child_2 = self.mutation(child_1)
 
             #calculates children's fitness to choose who will pass to the next generation
             fitness_child_1 = self.function_fitness(child_1,X_train, y_train, X_val, y_val)
@@ -290,7 +301,7 @@ class FitGenetic:
         """
 
         X_train, X_val, y_train, y_val = self.train_val_split(data)
-        self.best_individual = self.gen_alg(X_train, y_train, X_val, y_val, size_pop, num_epochs, prob_mut=0.5)
+        self.best_individual = self.gen_alg(X_train, y_train, X_val, y_val, size_pop, num_epochs)
 
         return self.best_individual
 
