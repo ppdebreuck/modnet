@@ -209,20 +209,14 @@ class MODNetModel:
 
         """
 
-        try:
-            if self.n_feat > len(training_data.get_optimal_descriptors()):
-                raise RuntimeError(
-                    "The model requires more features than computed in data. "
-                    f"Please reduce n_feat below or equal to {len(training_data.get_optimal_descriptors())}"
-                )
-        except:
-            pass
+        if self.n_feat > len(training_data.get_optimal_descriptors()):
+            raise RuntimeError(
+                "The model requires more features than computed in data. "
+                f"Please reduce n_feat below or equal to {len(training_data.get_optimal_descriptors())}"
+            )
         self.xscale = xscale
         self.target_names = list(self.weights.keys())
-        try:
-            self.optimal_descriptors = training_data.get_optimal_descriptors()
-        except:
-            pass
+        self.optimal_descriptors = training_data.get_optimal_descriptors()
         x = training_data.get_featurized_df()[
             self.optimal_descriptors[: self.n_feat]
         ].values
