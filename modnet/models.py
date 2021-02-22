@@ -325,7 +325,7 @@ class MODNetModel:
         classification: bool = False,
         refit: bool = True,
         fast: bool = False,
-        nested: [Union[bool, int]] = 5,
+        nested: int = 5,
         callbacks: List[Any] = None,
     ) -> None:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
@@ -349,9 +349,10 @@ class MODNetModel:
                 the best-performing settings.
             fast: Used for debugging. If `True`, only fit the first 2 presets and
                 reduce the number of epochs.
-            nested: Whether or not to perform full nested CV. If `False` or 0,
+            nested: Int specifying whether or not to perform a full nested CV. If 0,
                 a simple validation split is performed based on val_fraction argument.
                 If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
+                Note: If set to 1, the value will be overwritten to a default of 5 folds.
         """
 
         if callbacks is None:
@@ -380,6 +381,8 @@ class MODNetModel:
         num_nested_folds = 5
         if nested:
             num_nested_folds = nested
+        if num_nested_folds <= 1:
+            num_nested_folds = 5
 
         best_model = None
         best_n_feat = None

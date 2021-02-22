@@ -96,6 +96,8 @@ def test_train_small_model_presets(subset_moddata, tf_session):
     )
 
     model.fit_preset(data, presets=modified_presets, val_fraction=0.2)
+    model.fit_preset(data, presets=modified_presets, nested=0, val_fraction=0.2)
+    model.fit_preset(data, presets=modified_presets, nested=1, val_fraction=0.2)
 
 
 @pytest.mark.skip(msg="Until pickle bug is fixed")
