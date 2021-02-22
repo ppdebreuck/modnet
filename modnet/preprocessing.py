@@ -515,14 +515,14 @@ class MODData:
         if targets is not None:
             # set up dataframe for targets with columns (id, property_1, ..., property_n)
             self.df_targets = pd.DataFrame(targets, index=structure_ids, columns=target_names)
+            # set up number of classes
+            self.num_classes = {name: 0 for name in self.target_names}
+            if num_classes is not None:
+                self.num_classes.update(num_classes)
 
         # set up dataframe for structures with columns (id, structure)
         self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
         self.df_structure.set_index('id', inplace=True)
-
-        self.num_classes = {name: 0 for name in self.target_names}
-        if num_classes is not None:
-            self.num_classes.update(num_classes)
 
     def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
         """ For the input structures, construct many matminer features
