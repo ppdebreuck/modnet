@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Tuple, Dict, Optional, Callable, Any, Union
+from typing import List, Tuple, Dict, Optional, Callable, Any
 
 import pandas as pd
 import numpy as np
@@ -327,17 +327,23 @@ class MODNetModel:
         fast: bool = False,
         nested: int = 5,
         callbacks: List[Any] = None,
-    ) -> None:
+        ) -> Tuple[List[List[Any]],
+                   List[float],
+                   Optional[List[float]],
+                   List[List[float]],
+                   Dict[str, Any]
+        ]:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
-        This function implements the "inner loop" of a cross-validation workflow. It can
-        either be run in full nested mode (i.e. train n_fold * n_preset models) or just
-        with a simple random hold-out set.
+        This function implements the "inner loop" of a cross-validation workflow. By
+        modifying the `nested` argument, it can be run in full nested mode (i.e.
+        train n_fold * n_preset models) or just with a simple random hold-out set.
 
         The data is first fitted on several well working MODNet presets
         with a validation set (10% of the furnished data by default).
 
-        Sets the `self.model` attribute to the model with the lowest loss.
+        Sets the `self.model` attribute to the model with the lowest mean validation loss across
+        all folds.
 
         Args:
             data: MODData object contain training and validation samples.
@@ -349,10 +355,18 @@ class MODNetModel:
                 the best-performing settings.
             fast: Used for debugging. If `True`, only fit the first 2 presets and
                 reduce the number of epochs.
-            nested: Int specifying whether or not to perform a full nested CV. If 0,
+            nested: integer specifying whether or not to perform a full nested CV. If 0,
                 a simple validation split is performed based on val_fraction argument.
                 If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
                 Note: If set to 1, the value will be overwritten to a default of 5 folds.
+
+        Returns:
+            - A list of length num_outer_folds containing lists of MODNet models of length num_inner_folds.
+            - A list of validation losses achieved by the best model for each fold during validation (excluding refit).
+            - The learning curve of the final (refitted) model (or `None` if `refit` is `False`)
+            - A nested list of learning curves for each trained model of lengths (num_outer_folds,  num_inner folds).
+            - The settings of the best-performing preset.
+
         """
 
         if callbacks is None:
@@ -389,7 +403,6 @@ class MODNetModel:
         best_learning_curve = None
         models = []
         learning_curves = []
-        best_presets = []
         best_scaler = None
 
         for i, params in enumerate(presets):
@@ -401,6 +414,8 @@ class MODNetModel:
                 splits = [next(splits)]
 
             nested_val_losses = []
+            nested_models = []
+            nested_learning_curves = []
             for ind, (train, val) in enumerate(splits):
                 LOG.info("Initialising split #{} preset #{}/{}: {}".format(ind + 1, i + 1, len(presets), params))
 
@@ -443,6 +458,8 @@ class MODNetModel:
                     LOG.info(f"Loss from curve {val_loss:3.3f}")
 
                 nested_val_losses.append(val_loss)
+                nested_learning_curves.append(learning_curve)
+                nested_models.append(self.model)
 
             val_loss = np.mean(nested_val_losses)
 
@@ -453,8 +470,8 @@ class MODNetModel:
 
             val_losses[i] = val_loss
 
-            models.append(self.model)
-            learning_curves.append(learning_curve)
+            models.append(nested_models)
+            learning_curves.append(nested_learning_curves)
             LOG.info("Validation loss for preset #{}, {}: {:.3f}".format(i+1, params["loss"], val_loss))
 
         best_preset_idx = val_losses.argmin()
@@ -464,8 +481,6 @@ class MODNetModel:
                 best_preset_idx + 1, params
             )
         )
-
-        best_presets.append(best_preset)
 
         if refit:
             LOG.info("Refitting with all data and parameters: {}".format(best_preset))
@@ -493,7 +508,7 @@ class MODNetModel:
             self.model = best_model
             self._scaler = best_scaler
 
-        return models, val_losses, best_learning_curve, learning_curves, best_presets
+        return models, val_losses, best_learning_curve, learning_curves, best_preset
 
     def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
