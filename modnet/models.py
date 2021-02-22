@@ -349,10 +349,9 @@ class MODNetModel:
                 the best-performing settings.
             fast: Used for debugging. If `True`, only fit the first 2 presets and
                 reduce the number of epochs.
-            nested: Whether or not to perform full nested CV. If `True`, set validation
-                data based on the chosen folds, ignoring the `val_fraction` argument. If
-                an integer, use this number of inner CV folds.
-
+            nested: Whether or not to perform full nested CV. If `False` or 0,
+                a simple validation split is performed based on val_fraction argument.
+                If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
         """
 
         if callbacks is None:
@@ -379,7 +378,7 @@ class MODNetModel:
         val_losses = 1e20 * np.ones((len(presets),))
 
         num_nested_folds = 5
-        if isinstance(nested, int) and nested != True:
+        if nested:
             num_nested_folds = nested
 
         best_model = None
@@ -399,13 +398,13 @@ class MODNetModel:
                 splits = [next(splits)]
 
             nested_val_losses = []
-            for ind, (train, test) in enumerate(splits):
+            for ind, (train, val) in enumerate(splits):
                 LOG.info("Initialising split #{} preset #{}/{}: {}".format(ind + 1, i + 1, len(presets), params))
 
                 val_params = {}
                 if nested:
-                    train_data, test_data = data.split((train, test))
-                    val_params["val_data"] = test_data
+                    train_data, val_data = data.split((train, val))
+                    val_params["val_data"] = val_data
                 else:
                     val_params["val_fraction"] = val_fraction
                     train_data = data
