@@ -7,7 +7,7 @@ import modnet.featurizers
 
 
 class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
-    """ Featurizer presets used for the paper 'Machine learning
+    """Featurizer presets used for the paper 'Machine learning
     materials properties for small datasets' by Pierre-Paul De Breuck,
     Geoffroy Hautier & Gian-Marco Rignanese, arXiv:2004.14766 (2020).
 
@@ -15,6 +15,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
     writing with their default hyperparameters and presets.
 
     """
+
     from matminer.featurizers.composition import (
         AtomicOrbitals,
         AtomicPackingEfficiency,
@@ -77,26 +78,26 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         YangSolidSolution(),
     )
 
-    oxide_composition_featurizers = (
+    oxid_composition_featurizers = (
         ElectronegativityDiff(),
         OxidationStates(),
     )
 
     structure_featurizers = (
-         DensityFeatures(),
-         GlobalSymmetryFeatures(),
-         RadialDistributionFunction(),
-         CoulombMatrix(),
-         # PartialRadialDistributionFunction(),
-         SineCoulombMatrix(),
-         EwaldEnergy(),
-         BondFractions(),
-         StructuralHeterogeneity(),
-         MaximumPackingEfficiency(),
-         ChemicalOrdering(),
-         XRDPowderPattern(),
-         # BagofBonds(),
-     )
+        DensityFeatures(),
+        GlobalSymmetryFeatures(),
+        RadialDistributionFunction(),
+        CoulombMatrix(),
+        # PartialRadialDistributionFunction(),
+        SineCoulombMatrix(),
+        EwaldEnergy(),
+        BondFractions(),
+        StructuralHeterogeneity(),
+        MaximumPackingEfficiency(),
+        ChemicalOrdering(),
+        XRDPowderPattern(),
+        # BagofBonds(),
+    )
     site_featurizers = (
         AGNIFingerprints(),
         AverageBondAngle(VoronoiNN()),
@@ -113,44 +114,57 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
     )
 
     def featurize_composition(self, df):
-        """ Applies the preset composition featurizers to the input dataframe,
+        """Applies the preset composition featurizers to the input dataframe,
         renames some fields and cleans the output dataframe.
 
         """
         df = super().featurize_composition(df)
 
         _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
-        df['AtomicOrbitals|HOMO_character'] = df['AtomicOrbitals|HOMO_character'].map(_orbitals)
-        df['AtomicOrbitals|LUMO_character'] = df['AtomicOrbitals|LUMO_character'].map(_orbitals)
-
-        df['AtomicOrbitals|HOMO_element'] = df['AtomicOrbitals|HOMO_element'].apply(
-            lambda x: -1 if not isinstance(x, str) else Element(x).Z
+        df["AtomicOrbitals|HOMO_character"] = df["AtomicOrbitals|HOMO_character"].map(
+            _orbitals
         )
-        df['AtomicOrbitals|LUMO_element'] = df['AtomicOrbitals|LUMO_element'].apply(
-            lambda x: -1 if not isinstance(x, str) else Element(x).Z
+        df["AtomicOrbitals|LUMO_character"] = df["AtomicOrbitals|LUMO_character"].map(
+            _orbitals
         )
 
-        df = df.replace([np.inf, -np.inf, np.nan], 0)
+        df["AtomicOrbitals|HOMO_element"] = df["AtomicOrbitals|HOMO_element"].apply(
+            lambda x: -1 if not isinstance(x, str) else Element(x).Z
+        )
+        df["AtomicOrbitals|LUMO_element"] = df["AtomicOrbitals|LUMO_element"].apply(
+            lambda x: -1 if not isinstance(x, str) else Element(x).Z
+        )
 
         return modnet.featurizers.clean_df(df)
 
     def featurize_structure(self, df):
-        """ Applies the preset structural featurizers to the input dataframe,
+        """Applies the preset structural featurizers to the input dataframe,
         renames some fields and cleans the output dataframe.
 
         """
         df = super().featurize_structure(df)
 
-        dist = df["RadialDistributionFunction|radial distribution function"].iloc[0]['distances'][:50]
+        dist = df["RadialDistributionFunction|radial distribution function"].iloc[0][
+            "distances"
+        ][:50]
         for i, d in enumerate(dist):
-            _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(d)
-            df[_rdf_key] = df["RadialDistributionFunction|radial distribution function"].apply(lambda x: x['distribution'][i])
+            _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(
+                d
+            )
+            df[_rdf_key] = df[
+                "RadialDistributionFunction|radial distribution function"
+            ].apply(lambda x: x["distribution"][i])
 
         df = df.drop("RadialDistributionFunction|radial distribution function", axis=1)
 
         _crystal_system = {
-            "cubic": 1, "tetragonal": 2, "orthorombic": 3,
-            "hexagonal": 4, "trigonal": 5, "monoclinic": 6, "triclinic": 7
+            "cubic": 1,
+            "tetragonal": 2,
+            "orthorombic": 3,
+            "hexagonal": 4,
+            "trigonal": 5,
+            "monoclinic": 6,
+            "triclinic": 7,
         }
 
         def _int_map(x):
@@ -161,13 +175,17 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
             else:
                 return 0
 
-        df["GlobalSymmetryFeatures|crystal_system"] = df["GlobalSymmetryFeatures|crystal_system"].map(_crystal_system)
-        df["GlobalSymmetryFeatures|is_centrosymmetric"] = df["GlobalSymmetryFeatures|is_centrosymmetric"].map(_int_map)
+        df["GlobalSymmetryFeatures|crystal_system"] = df[
+            "GlobalSymmetryFeatures|crystal_system"
+        ].map(_crystal_system)
+        df["GlobalSymmetryFeatures|is_centrosymmetric"] = df[
+            "GlobalSymmetryFeatures|is_centrosymmetric"
+        ].map(_int_map)
 
         return modnet.featurizers.clean_df(df)
 
     def featurize_site(self, df):
-        """ Applies the preset site featurizers to the input dataframe,
+        """Applies the preset site featurizers to the input dataframe,
         renames some fields and cleans the output dataframe.
 
         """
@@ -183,3 +201,9 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         df = df.loc[:, (df != 0).any(axis=0)]
 
         return modnet.featurizers.clean_df(df)
+
+
+class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
+    oxid_composition_featurizers = ()
+    structure_featurizes = ()
+    site_featurizers = ()
