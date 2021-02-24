@@ -195,7 +195,6 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
             "GeneralizedRadialDistributionFunction": "GeneralizedRDF",
             "AGNIFingerprints": "AGNIFingerPrint",
             "BondOrientationalParameter": "BondOrientationParameter",
-            "GaussianSymmFunc": "ChemEnvSiteFingerprint|GaussianSymmFunc",
         }
         df = super().featurize_site(df, aliases=aliases)
         df = df.loc[:, (df != 0).any(axis=0)]
