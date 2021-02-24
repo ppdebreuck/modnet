@@ -421,13 +421,14 @@ class MODData:
 
     def __init__(
         self,
-        structures: Optional[List[Union[Structure, Composition]]] = None,
+        materials: Optional[List[Union[Structure, Composition]]] = None,
         targets: Optional[Union[List[float], np.ndarray]] = None,
         target_names: Optional[Iterable] = None,
         structure_ids: Optional[Iterable] = None,
         num_classes: Optional[Dict[str, int]] = None,
         df_featurized: Optional[pd.DataFrame] = None,
         featurizer: Optional[Union[MODFeaturizer, str]] = None,
+        structures: Optional[List[Union[Structure, Composition]]] = None,
     ):
         """ Initialise the MODData object either from a list of structures
         or from an already featurized dataframe. Prediction targets per
@@ -436,7 +437,7 @@ class MODData:
         structures.
 
         Args:
-            structures: list of structures to featurize and predict.
+            materials: list of structures or compositions to featurize and predict.
             targets: optional List of targets corresponding to each structure. When learning on multiple targets this
              is a ndarray where each column corresponds to a target, i.e. of shape (n_materials,n_targets).
             target_names: optional Iterable (e.g. list) of names of target properties to use in the dataframe.
@@ -448,6 +449,7 @@ class MODData:
                 featurizing a new one. Should be passed without structures.
             featurizer: optional MODFeaturizer object to use for featurization, or string
                 preset to look up in presets dictionary.
+            structures: deprecated (alias to materials for backward compatibility) do not use this.
 
         """
 
@@ -457,11 +459,14 @@ class MODData:
         self.featurizer = featurizer
         self.cross_nmi = None
 
-        if structures is not None and self.df_featurized is not None:
-            if len(structures) != len(self.df_featurized):
+        if structures is not None: # overwrite materials for backward compatibility
+            materials = structures
+
+        if materials is not None and self.df_featurized is not None:
+            if len(materials) != len(self.df_featurized):
                 raise RuntimeError("Mismatched shape of structures and passed df_featurized")
 
-        if structures is None and self.df_featurized is None:
+        if materials is None and self.df_featurized is None:
             raise RuntimeError(
                 "At least one of `structures` or `df_featurized` should be passed to `MODData`."
             )
@@ -469,12 +474,12 @@ class MODData:
         if targets is not None:
             targets = np.array(targets).reshape((len(targets), -1))
 
-        if structures is not None and targets is not None:
-            if np.shape(targets)[0] != len(structures):
-                raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(structures)}")
+        if materials is not None and targets is not None:
+            if np.shape(targets)[0] != len(materials):
+                raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(materials)}")
 
-        if structures is not None and isinstance(structures[0], Composition):
-            structures = [CompositionContainer(s) for s in structures]
+        if materials is not None and isinstance(materials[0], Composition):
+            materials = [CompositionContainer(s) for s in materials]
             self._composition_only = True
 
         if isinstance(featurizer, str):
@@ -505,11 +510,11 @@ class MODData:
             if len(set(structure_ids)) != len(structure_ids):
                 raise ValueError("List of IDs (`structure_ids`) provided must be unique.")
 
-            if len(structure_ids) != len(structures):
+            if len(structure_ids) != len(materials):
                 raise ValueError("List of IDs (`structure_ids`) must have same length as list of structure.")
 
         else:
-            num_entries = len(structures) if structures is not None else len(df_featurized)
+            num_entries = len(materials) if materials is not None else len(df_featurized)
             structure_ids = [f"id{i}" for i in range(num_entries)]
 
         if targets is not None:
@@ -521,7 +526,7 @@ class MODData:
                 self.num_classes.update(num_classes)
 
         # set up dataframe for structures with columns (id, structure)
-        self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
+        self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': materials})
         self.df_structure.set_index('id', inplace=True)
 
     def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):

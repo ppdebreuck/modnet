@@ -399,7 +399,7 @@ def test_moddata_splits(subset_moddata):
 def test_precomputed_cross_nmi(small_moddata):
 
     new = MODData(
-        structures=small_moddata.structures,
+        materials=small_moddata.structures,
         targets=small_moddata.targets,
         target_names=small_moddata.names,
         df_featurized=small_moddata.df_featurized,
