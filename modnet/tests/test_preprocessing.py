@@ -215,8 +215,8 @@ def test_get_cross_nmi():
     df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
     assert df_cross_nmi.shape == (4, 4)
     expected = np.ones((4, 4))
-    expected[3, :] = expected[:, 3] = np.nan
-    expected[3, 3] = np.nan
+    expected[3, :] = expected[:, 3] = 0
+    expected[3, 3] = 0
     np.testing.assert_allclose(
         np.array(df_cross_nmi, dtype=np.float64),
         expected,
