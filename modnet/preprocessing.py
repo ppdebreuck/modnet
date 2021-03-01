@@ -101,6 +101,7 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     for x in mutual_info.index:
         mutual_info.loc[x, target_name] = mutual_info.loc[x, target_name] / ((target_mi + diag[x])/2)
 
+    mutual_info.fillna(0, inplace=True) # if na => no relation => set to zero
     return mutual_info
 
 
@@ -155,6 +156,7 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
             )[0] / (0.5 * (diag[x_feat] + diag[y_feat]))
             mutual_info.loc[y_feat, x_feat] = mutual_info.loc[x_feat, y_feat] = I_xy
 
+    mutual_info.fillna(0, inplace=True) # if na => no relation => set to zero
     return mutual_info
 
 
@@ -641,6 +643,9 @@ class MODData:
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
             self.cross_nmi = get_cross_nmi(df)
+
+        if self.cross_nmi.isna().sum().sum() > 0:
+            raise RuntimeError("Cross_nmi contains nan values. Consider setting them to zero.")
 
         for i, name in enumerate(self.names):
             LOG.info(f"Starting target {i+1}/{len(self.names)}: {self.names[i]} ...")
