@@ -13,6 +13,10 @@ _TEST_DATA_HASHES = {
         "b7f31d066113d1ad1f4f3990250019835bad96c18eddefd4a0b3866fd23a6037"
         "d1ad90b1f4a1e08d12d7f0a7ce2ebcf4a1a4b673500e1118543b687dbd1749e6"
     ),
+    "MP_2018.6_small_composition.zip": (
+        "59f8c4e546df005799e3fb7a1e64daa0edfece48fa346ab0d2efe92aa107d0d1"
+        "b14bb16f56bfe3f54e5a9020d088a268536f6ad86134e264ed7547b4fd583c79"
+    ),
 }
 
 
@@ -48,6 +52,14 @@ def small_moddata():
 
     """
     return _load_moddata("MP_2018.6_small.zip")
+
+@pytest.fixture(scope="function")
+def small_moddata_composition():
+    """Loads the small 5-structure featurized subset of MP.2018.6 composition only for use
+    in other tests, checking only the hash.
+
+    """
+    return _load_moddata("MP_2018.6_small_composition.zip")
 
 
 @pytest.fixture(scope="module")

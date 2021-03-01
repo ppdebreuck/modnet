@@ -142,6 +142,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         renames some fields and cleans the output dataframe.
 
         """
+
         df = super().featurize_structure(df)
 
         dist = df["RadialDistributionFunction|radial distribution function"].iloc[0][
@@ -204,5 +205,6 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
 class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
     oxid_composition_featurizers = ()
-    structure_featurizes = ()
+    structure_featurizers = ()
     site_featurizers = ()
+

@@ -295,6 +295,28 @@ def test_small_moddata_featurization(small_moddata):
             old.df_featurized[col].to_numpy(),
         )
 
+def test_small_moddata_composition_featurization(small_moddata_composition):
+    """ This test creates a new MODData from the MP 2018.6 structures. """
+
+    reference = small_moddata_composition
+    compositions = reference.compositions
+
+    new = MODData(materials=compositions)
+    new.featurize(fast=False, n_jobs=1)
+
+    new_cols = sorted(new.df_featurized.columns.tolist())
+    ref_cols = sorted(reference.df_featurized.columns.tolist())
+
+    for i in range(len(ref_cols)):
+        # print(new_cols[i], ref_cols[i])
+        assert new_cols[i] == ref_cols[i]
+
+    for col in new.df_featurized.columns:
+        np.testing.assert_almost_equal(
+            new.df_featurized[col].to_numpy(),
+            reference.df_featurized[col].to_numpy(),
+        )
+
 def test_small_moddata_feature_selection_classif(small_moddata):
     """ This test creates classifier MODData and test the feature selection method """
 

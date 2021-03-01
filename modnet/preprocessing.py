@@ -676,6 +676,12 @@ class MODData:
         return list(self.df_structure["structure"])
 
     @property
+    def compositions(self) -> List[Union[Structure, CompositionContainer]]:
+        """Returns the list of materials as`pymatgen.Composition` objects. """
+        struct_containers = list(self.df_structure["structure"])
+        return [s.composition for s in struct_containers]
+
+    @property
     def targets(self) -> np.ndarray:
         """ Returns a ndarray of prediction targets. """
         return self.df_targets.values
