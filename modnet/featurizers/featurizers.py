@@ -77,18 +77,17 @@ class MODFeaturizer(abc.ABC):
             The featurized DataFrame.
 
         """
+        df_composition = pd.DataFrame([])
         if self.composition_featurizers or self.oxid_composition_featurizers:
             df_composition = self.featurize_composition(df)
-        else:
-            df_composition = pd.DataFrame([])
+            
+        df_structure = pd.DataFrame([])            
         if self.structure_featurizers:
             df_structure = self.featurize_structure(df)
-        else:
-            df_structure = pd.DataFrame([])
+            
+        df_site = pd.DataFrame([])
         if self.site_featurizers:
-            df_site = self.featurize_site(df)
-        else:
-            df_site = pd.DataFrame([])
+            df_site = self.featurize_site(df)           
 
         return df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
 
