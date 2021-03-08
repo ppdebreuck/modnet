@@ -24,8 +24,6 @@ setuptools.setup(
     include_package_data=True,
     packages=setuptools.find_packages(),
     install_requires=[],
-    tests_require=tests_require,
-    test_suite="modnet.tests",
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Intended Audience :: Science/Research",
