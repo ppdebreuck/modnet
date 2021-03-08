@@ -183,7 +183,7 @@ def test_get_cross_nmi():
 
     # Here we fix the number of neighbors for the call to sklearn.feature_selection's mutual_info_regression to 2 so
     # that we get exactly 1 for the mutual information.
-    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+    df_cross_nmi,_ = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
 
     assert df_cross_nmi.shape == (3, 3)
     for idx in df_cross_nmi.index:
@@ -201,7 +201,7 @@ def test_get_cross_nmi():
 
     df_feat = pd.DataFrame({'x': xs, 'y': ys, 'z': zs})
 
-    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+    df_cross_nmi,_ = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
 
     assert df_cross_nmi.shape == (3, 3)
     for idx in df_cross_nmi.index:
@@ -212,11 +212,11 @@ def test_get_cross_nmi():
     c = np.ones(npoints) * 1.4
     df_feat = pd.DataFrame({'x': x, 'y': y, 'z': z, 'c': c})
 
-    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
-    assert df_cross_nmi.shape == (4, 4)
-    expected = np.ones((4, 4))
-    expected[3, :] = expected[:, 3] = 0
-    expected[3, 3] = 0
+    df_cross_nmi,_ = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+    assert df_cross_nmi.shape == (3, 3)
+    expected = np.ones((3, 3))
+    #expected[3, :] = expected[:, 3] = 0
+    #expected[3, 3] = 0
     np.testing.assert_allclose(
         np.array(df_cross_nmi, dtype=np.float64),
         expected,
@@ -230,7 +230,7 @@ def test_get_cross_nmi():
     y = y.flatten()
     df_feat = pd.DataFrame({'x': x, 'y': y})
 
-    df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
+    df_cross_nmi,_ = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
     assert df_cross_nmi.shape == (2, 2)
     assert df_cross_nmi.loc['x']['y'] == pytest.approx(0.0)
     assert df_cross_nmi.loc['y']['x'] == pytest.approx(0.0)
@@ -245,7 +245,7 @@ def test_get_cross_nmi():
 
     # Here we fix the random_state for the call to sklearn.feature_selection's mutual_info_regression so
     # that we always get the same value.
-    df_cross_nmi = get_cross_nmi(df_feat=df_feat, random_state=42)
+    df_cross_nmi,_ = get_cross_nmi(df_feat=df_feat, random_state=42)
     assert df_cross_nmi.shape == (2, 2)
     assert df_cross_nmi.loc['x']['x'] == pytest.approx(1.0)
     assert df_cross_nmi.loc['y']['y'] == pytest.approx(1.0)
@@ -281,7 +281,6 @@ def test_small_moddata_featurization(small_moddata):
     old_cols = sorted(old.df_featurized.columns.tolist())
 
     for i in range(len(old_cols)):
-        print(new_cols[i], old_cols[i])
         assert new_cols[i] == old_cols[i]
 
     np.testing.assert_array_equal(

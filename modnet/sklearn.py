@@ -106,7 +106,7 @@ class RR(TransformerMixin, BaseEstimator):
         """
 
         if cross_nmi_feats is None:
-            cross_nmi_feats = get_cross_nmi(X)
+            cross_nmi_feats,_ = get_cross_nmi(X)
         if nmi_feats_target is None:
             nmi_feats_target = nmi_target(X,y)
 
