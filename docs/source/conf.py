@@ -24,7 +24,6 @@ autodoc_mock_imports = ['numpy',
                         'tqdm',
                         'pytest',
                         'joblib',
-
                         ]
 
 # -- Project information -----------------------------------------------------

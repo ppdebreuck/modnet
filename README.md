@@ -39,7 +39,7 @@ See the MODNet papers and repositories below for more details:
 
 
 <p align='center'>
-<img src="img/MODNet_schematic.png" alt="MODNet schematic" />
+<img src="img/MODNet_schematic.PNG" alt="MODNet schematic" />
 </p>
 <div align='center'>
 <strong>Figure 1. Schematic representation of the MODNet.</strong>
