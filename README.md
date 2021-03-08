@@ -20,10 +20,10 @@
 
 <a name="introduction"></a>
 ## Introduction
-This repository contains the python package implementing the Material Optimal Descriptor Network (MODNet).
+This repository contains the Python (3.8) package implementing the Material Optimal Descriptor Network (MODNet).
 It is a supervised machine learning framework for **learning material properties** from
 either the **composition** or  **crystal structure**. The framework is well suited for **limited datasets**
-and can be used for learning *multiple* properties together by using **joint transfer learning**.
+and can be used for learning *multiple* properties together by using **joint learning**.
 
 This repository also contains two pretrained models that can be used for predicting
 the refractive index and vibrational thermodynamics from any crystal structure.
@@ -135,7 +135,7 @@ predictions_on_MP = model.predict(data_MP)
 Please read to docstrings for all methods and classes (docs coming soon).
 
 Especially, carefully read the two main classes, `MODData` and `MODNetModel` found in preprocessing and models modules.
-A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties:
+A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties.
 A `MODNetModel`instance is used for training and predicting of one or more properties or classes.
 
 <a name="getting-started"></a>
@@ -148,10 +148,12 @@ A `MODData` instance is used for representing a particular dataset. It contains 
 ```python
 from modnet.preprocessing import MODData
 
-data = MODData(materials,
-               targets = None,
-               target_names = None,
-               mpids = None)
+data = MODData(
+    materials,
+    targets = None,
+    target_names = None,
+    mpids = None,
+)
 ```
 
 **main arguments:**
@@ -197,7 +199,8 @@ from modnet.preprocessing import MODData
 data = MODData.load('path/dataname')
 ```
 
-Both the save and load methods use pandas `.read_pickle(...)` and `.load_pickle(...)` which will try to compress/decompress files according to their file extensions (e.g. `".zip"`, `".tgz"` and `".bz2").
+Both the save and load methods use pandas `.read_pickle(...)` and `.load_pickle(...)` which will try to compress/decompress files according to their file extensions (e.g. `".zip"`, `".tgz"` and `".bz2"`).
+Please note that this method is **unsafe** as it can load arbitrary Python objects. Care has been taken to check the hashes of data that is automatically loaded from Figshare; if you rely on this feature for your own data then we recommend you do the same.
 
 Dataframes for features, targets and other data can be accessed trough the following methods:
 
@@ -229,13 +232,14 @@ The model is created by a MODNetModel instance:
 ```python
 from modnet.models import MODNetModel
 
-model = MODNetModel(targets,
-                    weights,
-                    num_classes = None  # only needed for classification, e.g. num_classes = {'is_metal':2}
-                    num_neurons=[[64],[32],[16],[16]],
-                    n_feat=300,
-                    act='relu',
-                    )
+model = MODNetModel(
+    targets,
+    weights,
+    num_classes = None  # only needed for classification, e.g. num_classes = {'is_metal':2}
+    num_neurons=[[64],[32],[16],[16]],
+    n_feat=300,
+    act='relu',
+)
 ```
 
 **main arguments:**
@@ -256,16 +260,17 @@ The model is then fitted on the data:
 
 
 ```python
-model.fit(data,
-          val_fraction = 0.0,
-          val_data = None,
-          val_key = None,
-          lr=0.001,
-          epochs = 200,
-          batch_size = 128,
-          xscale='minmax',
-          loss='mse',
-          )
+model.fit(
+    data,
+    val_fraction = 0.0,
+    val_data = None,
+    val_key = None,
+    lr=0.001,
+    epochs = 200,
+    batch_size = 128,
+    xscale='minmax',
+    loss='mse',
+)
 ```
 
 **main arguments:**
