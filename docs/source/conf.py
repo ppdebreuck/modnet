@@ -21,6 +21,10 @@ autodoc_mock_imports = ['numpy',
                         'tensorflow',
                         'pymatgen',
                         'matminer',
+                        'tqdm',
+                        'pytest',
+                        'joblib',
+
                         ]
 
 # -- Project information -----------------------------------------------------
