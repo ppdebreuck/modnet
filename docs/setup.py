@@ -1,10 +1,10 @@
 import setuptools
 import re
 
-with open("../README.md", "r") as f:
+with open("README.md", "r") as f:
     long_description = f.read()
 
-with open("../modnet/__init__.py", "r") as f:
+with open("modnet/__init__.py", "r") as f:
     lines = ""
     for item in f.readlines():
         lines += item + '\n'
