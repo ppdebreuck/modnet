@@ -1,22 +1,16 @@
 import setuptools
 import re
 
-with open("README.md", "r") as f:
+with open("../README.md", "r") as f:
     long_description = f.read()
 
-with open("modnet/__init__.py", "r") as f:
+with open("../modnet/__init__.py", "r") as f:
     lines = ""
     for item in f.readlines():
         lines += item + '\n'
 
 
 version = re.search('__version__ = "(.*)"', lines).group(1)
-
-tests_require = [
-    "pytest>=6.0",
-    "pytest-cov>=2.10",
-    "flake8>=3.8"
-]
 
 setuptools.setup(
     name="modnet",
@@ -29,14 +23,7 @@ setuptools.setup(
     url="https://github.com/ppdebreuck/modnet",
     include_package_data=True,
     packages=setuptools.find_packages(),
-    install_requires=[
-          'pandas>=0.25.3,<1.2',
-          'tensorflow>=2.2',
-          'pymatgen>=2020,<2020.9',
-          'matminer>=0.6.2',
-          'numpy>=1.18.3',
-          'scikit-learn>=0.23,<0.24',
-        ],
+    install_requires=[],
     tests_require=tests_require,
     test_suite="modnet.tests",
     extras_require={"test": tests_require},
