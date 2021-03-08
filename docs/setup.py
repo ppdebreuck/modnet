@@ -26,7 +26,6 @@ setuptools.setup(
     install_requires=[],
     tests_require=tests_require,
     test_suite="modnet.tests",
-    extras_require={"test": tests_require},
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Intended Audience :: Science/Research",
