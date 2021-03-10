@@ -52,8 +52,10 @@ venv.bak/
 # VSCode project settings
 .vscode
 
-# mkdocs documentation
-/site
+# sphinx docs
+docs/_build
+docs/_static
+docs/_templates
 
 # pytest
 .pytest_cache/
