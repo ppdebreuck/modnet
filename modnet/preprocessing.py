@@ -105,7 +105,7 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     return mutual_info
 
 
-def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, **kwargs) -> pd.DataFrame:
+def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy = False, **kwargs) -> pd.DataFrame:
     """
     Computes the Normalized Mutual Information (NMI) between input features.
 
@@ -113,13 +113,14 @@ def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, **kwargs) -> pd.
         df_feat (pandas.DataFrame): Dataframe containing the input features for
             which the NMI with the target variable is to be computed.
         drop_thr: Features having an information entropy (or self mutual information) threshold below this value will be dropped.
+        return_entropy: If set to True, the information entropy of each feature is also returned
         **kwargs: Keyword arguments to be passed down to the
             :py:func:`mutual_info_regression` function from scikit-learn. This
             can be useful e.g. for testing purposes.
 
     Returns:
         mutual_info: pandas.DataFrame containing the Normalized Mutual Information between features.
-        diag: Dictionary with all features as keys and information entropy as values.
+        if return_entropy=True : (mutual_info, diag): With diag a dictionary with all features as keys and information entropy as values.
     """
 
     if kwargs.get("random_state"):
@@ -158,8 +159,11 @@ def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, **kwargs) -> pd.
             mutual_info.loc[y_feat, x_feat] = mutual_info.loc[x_feat, y_feat] = I_xy
 
     mutual_info.fillna(0, inplace=True) # if na => no relation => set to zero
-    return mutual_info, diag # diag can be useful for future elimination based on entropy without the need of recomputing the cross NMI
 
+    if return_entropy:
+        return mutual_info, diag # diag can be useful for future elimination based on entropy without the need of recomputing the cross NMI
+    else:
+        return mutual_info
 
 def get_rr_p_parameter_default(nn: int) -> float:
     """
@@ -644,7 +648,7 @@ class MODData:
 
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
-            self.cross_nmi, self.feature_entropy = get_cross_nmi(df)
+            self.cross_nmi, self.feature_entropy = get_cross_nmi(df, return_entropy = True)
 
         if self.cross_nmi.isna().sum().sum() > 0:
             raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero.")
