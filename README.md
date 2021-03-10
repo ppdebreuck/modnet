@@ -132,7 +132,7 @@ predictions_on_MP = model.predict(data_MP)
 
 <a name="documentation"></a>
 ## Documentation
-Please read to docstrings for all methods and classes (docs coming soon).
+The documentation is available at https://modnet.readthedocs.io.
 
 Especially, carefully read the two main classes, `MODData` and `MODNetModel` found in preprocessing and models modules.
 A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties.

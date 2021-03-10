@@ -27,6 +27,10 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ppdebreuck/modnet",
+    project_urls = {
+        'GitHub': 'https://github.com/ppdebreuck/modnet',
+        'Documentation': 'https://modnet.readthedocs.io'
+        },
     include_package_data=True,
     packages=setuptools.find_packages(),
     install_requires=[
