@@ -77,9 +77,18 @@ class MODFeaturizer(abc.ABC):
             The featurized DataFrame.
 
         """
-        df_composition = self.featurize_composition(df)
-        df_structure = self.featurize_structure(df)
-        df_site = self.featurize_site(df)
+        df_composition = pd.DataFrame([])
+        if self.composition_featurizers or self.oxid_composition_featurizers:
+            df_composition = self.featurize_composition(df)
+            
+        df_structure = pd.DataFrame([])            
+        if self.structure_featurizers:
+            df_structure = self.featurize_structure(df)
+            
+        df_site = pd.DataFrame([])
+        if self.site_featurizers:
+            df_site = self.featurize_site(df)           
+
         return df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
 
     def _fit_apply_featurizers(
@@ -136,9 +145,6 @@ class MODFeaturizer(abc.ABC):
 
         """
 
-        if not (self.composition_featurizers or self.oxid_composition_featurizers):
-            return pd.DataFrame([])
-
         df = df.copy()
 
         if self.composition_featurizers:
@@ -175,9 +181,6 @@ class MODFeaturizer(abc.ABC):
 
         """
 
-        if not self.structure_featurizers:
-            return pd.DataFrame([])
-
         LOG.info("Applying structure featurizers...")
         df = df.copy()
         df = self._fit_apply_featurizers(df, self.structure_featurizers, "structure")
@@ -200,9 +203,6 @@ class MODFeaturizer(abc.ABC):
             pandas.DataFrame: the decorated DataFrame.
 
         """
-
-        if not self.site_featurizers:
-            return pd.DataFrame([])
 
         LOG.info("Applying site featurizers...")
 

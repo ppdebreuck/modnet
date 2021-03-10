@@ -101,23 +101,26 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     for x in mutual_info.index:
         mutual_info.loc[x, target_name] = mutual_info.loc[x, target_name] / ((target_mi + diag[x])/2)
 
+    mutual_info.fillna(0, inplace=True) # if na => no relation => set to zero
     return mutual_info
 
 
-def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
+def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy = False, **kwargs) -> pd.DataFrame:
     """
     Computes the Normalized Mutual Information (NMI) between input features.
 
     Args:
         df_feat (pandas.DataFrame): Dataframe containing the input features for
             which the NMI with the target variable is to be computed.
+        drop_thr: Features having an information entropy (or self mutual information) threshold below this value will be dropped.
+        return_entropy: If set to True, the information entropy of each feature is also returned
         **kwargs: Keyword arguments to be passed down to the
             :py:func:`mutual_info_regression` function from scikit-learn. This
             can be useful e.g. for testing purposes.
 
     Returns:
-        pd.DataFrame: pandas.DataFrame containing the Normalized Mutual Information between features.
-
+        mutual_info: pandas.DataFrame containing the Normalized Mutual Information between features.
+        if return_entropy=True : (mutual_info, diag): With diag a dictionary with all features as keys and information entropy as values.
     """
 
     if kwargs.get("random_state"):
@@ -138,9 +141,9 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
             random_state=seed,
             **kwargs
         )[0]
-        if diag[x_feat] < 0.2 or abs(df_feat[x_feat].max() - df_feat[x_feat].min()) < EPS:
-            mutual_info.loc[x_feat, x_feat] = np.nan
-            diag[x_feat] = np.nan
+        if diag[x_feat] < drop_thr or abs(df_feat[x_feat].max() - df_feat[x_feat].min()) < EPS:
+            mutual_info.drop(x_feat, axis=0, inplace=True)
+            mutual_info.drop(x_feat, axis=1, inplace=True)
         else:
             mutual_info.loc[x_feat, x_feat] = 1.0
 
@@ -155,8 +158,12 @@ def get_cross_nmi(df_feat: pd.DataFrame, **kwargs) -> pd.DataFrame:
             )[0] / (0.5 * (diag[x_feat] + diag[y_feat]))
             mutual_info.loc[y_feat, x_feat] = mutual_info.loc[x_feat, y_feat] = I_xy
 
-    return mutual_info
+    mutual_info.fillna(0, inplace=True) # if na => no relation => set to zero
 
+    if return_entropy:
+        return mutual_info, diag # diag can be useful for future elimination based on entropy without the need of recomputing the cross NMI
+    else:
+        return mutual_info
 
 def get_rr_p_parameter_default(nn: int) -> float:
     """
@@ -414,20 +421,22 @@ class MODData:
         __modnet_version__ (str): The MODNet version number used to create the object
         cross_nmi (pd.DataFrame): If feature selection has been performed, this attribute
             stores the normalized mutual information between all features.
-        num_classes: Dictionary defining the target types (classification or regression).
+        feature_entropy (Dictionary): Information entropy of all features. Only computed after a call to compute cross_nmi.
+        num_classes (Dictionary): Defining the target types (classification or regression).
             Should be constructed as follows: key: string giving the target name; value: integer n,
             with n=0 for regression and n>=2 for classification with n the number of classes.
     """
 
     def __init__(
         self,
-        structures: Optional[List[Union[Structure, Composition]]] = None,
+        materials: Optional[List[Union[Structure, Composition]]] = None,
         targets: Optional[Union[List[float], np.ndarray]] = None,
         target_names: Optional[Iterable] = None,
         structure_ids: Optional[Iterable] = None,
         num_classes: Optional[Dict[str, int]] = None,
         df_featurized: Optional[pd.DataFrame] = None,
         featurizer: Optional[Union[MODFeaturizer, str]] = None,
+        structures: Optional[List[Union[Structure, Composition]]] = None,
     ):
         """ Initialise the MODData object either from a list of structures
         or from an already featurized dataframe. Prediction targets per
@@ -436,7 +445,7 @@ class MODData:
         structures.
 
         Args:
-            structures: list of structures to featurize and predict.
+            materials: list of structures or compositions to featurize and predict.
             targets: optional List of targets corresponding to each structure. When learning on multiple targets this
              is a ndarray where each column corresponds to a target, i.e. of shape (n_materials,n_targets).
             target_names: optional Iterable (e.g. list) of names of target properties to use in the dataframe.
@@ -448,6 +457,7 @@ class MODData:
                 featurizing a new one. Should be passed without structures.
             featurizer: optional MODFeaturizer object to use for featurization, or string
                 preset to look up in presets dictionary.
+            structures: deprecated (alias to materials for backward compatibility) do not use this.
 
         """
 
@@ -457,11 +467,14 @@ class MODData:
         self.featurizer = featurizer
         self.cross_nmi = None
 
-        if structures is not None and self.df_featurized is not None:
-            if len(structures) != len(self.df_featurized):
+        if structures is not None: # overwrite materials for backward compatibility
+            materials = structures
+
+        if materials is not None and self.df_featurized is not None:
+            if len(materials) != len(self.df_featurized):
                 raise RuntimeError("Mismatched shape of structures and passed df_featurized")
 
-        if structures is None and self.df_featurized is None:
+        if materials is None and self.df_featurized is None:
             raise RuntimeError(
                 "At least one of `structures` or `df_featurized` should be passed to `MODData`."
             )
@@ -469,12 +482,12 @@ class MODData:
         if targets is not None:
             targets = np.array(targets).reshape((len(targets), -1))
 
-        if structures is not None and targets is not None:
-            if np.shape(targets)[0] != len(structures):
-                raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(structures)}")
+        if materials is not None and targets is not None:
+            if np.shape(targets)[0] != len(materials):
+                raise ValueError(f"Targets must have same length as structures: {np.shape(targets)} vs {len(materials)}")
 
-        if structures is not None and isinstance(structures[0], Composition):
-            structures = [CompositionContainer(s) for s in structures]
+        if materials is not None and isinstance(materials[0], Composition):
+            materials = [CompositionContainer(s) for s in materials]
             self._composition_only = True
 
         if isinstance(featurizer, str):
@@ -505,11 +518,11 @@ class MODData:
             if len(set(structure_ids)) != len(structure_ids):
                 raise ValueError("List of IDs (`structure_ids`) provided must be unique.")
 
-            if len(structure_ids) != len(structures):
+            if len(structure_ids) != len(materials):
                 raise ValueError("List of IDs (`structure_ids`) must have same length as list of structure.")
 
         else:
-            num_entries = len(structures) if structures is not None else len(df_featurized)
+            num_entries = len(materials) if materials is not None else len(df_featurized)
             structure_ids = [f"id{i}" for i in range(num_entries)]
 
         if targets is not None:
@@ -521,7 +534,7 @@ class MODData:
                 self.num_classes.update(num_classes)
 
         # set up dataframe for structures with columns (id, structure)
-        self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': structures})
+        self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': materials})
         self.df_structure.set_index('id', inplace=True)
 
     def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
@@ -635,7 +648,10 @@ class MODData:
 
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
-            self.cross_nmi = get_cross_nmi(df)
+            self.cross_nmi, self.feature_entropy = get_cross_nmi(df, return_entropy = True)
+
+        if self.cross_nmi.isna().sum().sum() > 0:
+            raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero.")
 
         for i, name in enumerate(self.names):
             LOG.info(f"Starting target {i+1}/{len(self.names)}: {self.names[i]} ...")
@@ -669,6 +685,11 @@ class MODData:
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
         """Returns the list of `pymatgen.Structure` objects. """
         return list(self.df_structure["structure"])
+
+    @property
+    def compositions(self) -> List[Union[Structure, CompositionContainer]]:
+        """Returns the list of materials as`pymatgen.Composition` objects. """
+        return [s.composition for s in self.df_structure["structure"]]
 
     @property
     def targets(self) -> np.ndarray:

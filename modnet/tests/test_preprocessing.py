@@ -213,10 +213,10 @@ def test_get_cross_nmi():
     df_feat = pd.DataFrame({'x': x, 'y': y, 'z': z, 'c': c})
 
     df_cross_nmi = get_cross_nmi(df_feat=df_feat, n_neighbors=2)
-    assert df_cross_nmi.shape == (4, 4)
-    expected = np.ones((4, 4))
-    expected[3, :] = expected[:, 3] = np.nan
-    expected[3, 3] = np.nan
+    assert df_cross_nmi.shape == (3, 3)
+    expected = np.ones((3, 3))
+    #expected[3, :] = expected[:, 3] = 0
+    #expected[3, 3] = 0
     np.testing.assert_allclose(
         np.array(df_cross_nmi, dtype=np.float64),
         expected,
@@ -281,7 +281,6 @@ def test_small_moddata_featurization(small_moddata):
     old_cols = sorted(old.df_featurized.columns.tolist())
 
     for i in range(len(old_cols)):
-        print(new_cols[i], old_cols[i])
         assert new_cols[i] == old_cols[i]
 
     np.testing.assert_array_equal(
@@ -293,6 +292,28 @@ def test_small_moddata_featurization(small_moddata):
         np.testing.assert_almost_equal(
             new.df_featurized[col].to_numpy(),
             old.df_featurized[col].to_numpy(),
+        )
+
+def test_small_moddata_composition_featurization(small_moddata_composition):
+    """ This test creates a new MODData from the MP 2018.6 structures. """
+
+    reference = small_moddata_composition
+    compositions = reference.compositions
+
+    new = MODData(materials=compositions)
+    new.featurize(fast=False, n_jobs=1)
+
+    new_cols = sorted(new.df_featurized.columns.tolist())
+    ref_cols = sorted(reference.df_featurized.columns.tolist())
+
+    for i in range(len(ref_cols)):
+        # print(new_cols[i], ref_cols[i])
+        assert new_cols[i] == ref_cols[i]
+
+    for col in new.df_featurized.columns:
+        np.testing.assert_almost_equal(
+            new.df_featurized[col].to_numpy(),
+            reference.df_featurized[col].to_numpy(),
         )
 
 def test_small_moddata_feature_selection_classif(small_moddata):
@@ -399,7 +420,7 @@ def test_moddata_splits(subset_moddata):
 def test_precomputed_cross_nmi(small_moddata):
 
     new = MODData(
-        structures=small_moddata.structures,
+        materials=small_moddata.structures,
         targets=small_moddata.targets,
         target_names=small_moddata.names,
         df_featurized=small_moddata.df_featurized,
