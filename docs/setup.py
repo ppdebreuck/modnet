@@ -12,12 +12,6 @@ with open("modnet/__init__.py", "r") as f:
 
 version = re.search('__version__ = "(.*)"', lines).group(1)
 
-tests_require = [
-    "pytest>=6.0",
-    "pytest-cov>=2.10",
-    "flake8>=3.8"
-]
-
 setuptools.setup(
     name="modnet",
     version=version,
@@ -27,23 +21,9 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ppdebreuck/modnet",
-    project_urls = {
-        'GitHub': 'https://github.com/ppdebreuck/modnet',
-        'Documentation': 'https://modnet.readthedocs.io'
-        },
     include_package_data=True,
     packages=setuptools.find_packages(),
-    install_requires=[
-          'pandas>=0.25.3,<1.2',
-          'tensorflow>=2.2',
-          'pymatgen>=2020,<2020.9',
-          'matminer>=0.6.2',
-          'numpy>=1.18.3',
-          'scikit-learn>=0.23,<0.24',
-        ],
-    tests_require=tests_require,
-    test_suite="modnet.tests",
-    extras_require={"test": tests_require},
+    install_requires=[],
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Intended Audience :: Science/Research",
