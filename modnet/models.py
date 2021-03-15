@@ -11,6 +11,8 @@ from modnet.matbench.benchmark import matbench_kfold_splits
 from modnet.utils import LOG
 from modnet import __version__
 
+from multiprocessing import Pool, cpu_count
+import tqdm
 
 __all__ = ("MODNetModel",)
 
@@ -313,7 +315,6 @@ class MODNetModel:
             metrics=metrics,
             loss_weights=self.weights,
         )
-
         self.history = self.model.fit(**fit_params)
 
     def fit_preset(
@@ -327,8 +328,9 @@ class MODNetModel:
         fast: bool = False,
         nested: int = 5,
         callbacks: List[Any] = None,
+        n_jobs=4,
         ) -> Tuple[List[List[Any]],
-                   List[float],
+                   np.ndarray,
                    Optional[List[float]],
                    List[List[float]],
                    Dict[str, Any]
@@ -359,6 +361,7 @@ class MODNetModel:
                 a simple validation split is performed based on val_fraction argument.
                 If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
                 Note: If set to 1, the value will be overwritten to a default of 5 folds.
+            n_jobs: number of jobs for multiprocessing
 
         Returns:
             - A list of length num_outer_folds containing lists of MODNet models of length num_inner_folds.
@@ -405,20 +408,20 @@ class MODNetModel:
         learning_curves = []
         best_scaler = None
 
+
+        # create tasks
+        tasks = []
         for i, params in enumerate(presets):
-            LOG.info("Initialising preset #{}/{}: {}".format(i + 1, len(presets), params))
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
 
             splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
             if not nested:
                 splits = [next(splits)]
+                n_splits = 1
+            else:
+                n_splits = num_nested_folds
 
-            nested_val_losses = []
-            nested_models = []
-            nested_learning_curves = []
             for ind, (train, val) in enumerate(splits):
-                LOG.info("Initialising split #{} preset #{}/{}: {}".format(ind + 1, i + 1, len(presets), params))
-
                 val_params = {}
                 if nested:
                     train_data, val_data = data.split((train, val))
@@ -427,63 +430,63 @@ class MODNetModel:
                     val_params["val_fraction"] = val_fraction
                     train_data = data
 
-                self.model = MODNetModel(
-                    self.targets,
-                    self.weights,
-                    num_neurons=params["num_neurons"],
-                    n_feat=n_feat,
-                    act=params["act"],
-                    num_classes=self.num_classes
-                ).model
-                self.n_feat = n_feat
-                self.fit(
-                    train_data,
-                    lr=params["lr"],
-                    epochs=params["epochs"],
-                    batch_size=params["batch_size"],
-                    loss=params["loss"],
-                    callbacks=callbacks,
-                    verbose=verbose,
-                    **val_params
-                )
+                tasks += [{'train_data' : train_data,
+                   'targets' : self.targets,
+                   'weights' : self.weights,
+                   'num_classes' : self.num_classes,
+                   'n_feat' : n_feat,
+                   'num_neurons' : params["num_neurons"],
+                   'lr' : params["lr"],
+                   'batch_size' : params["batch_size"],
+                   'epochs' : params["epochs"],
+                   'loss' : params["loss"],
+                   'act' : params["act"],
+                   'callbacks' : callbacks,
+                   'preset_id' : i,
+                   'fold_id' : ind,
+                   'verbose' : verbose,
+                   **val_params,
+                }]
 
-                learning_curve = self.model.history.history["val_loss"]
+        val_losses = np.zeros((len(presets),n_splits))
+        learning_curves = [[None]*n_splits]*len(presets)
+        models = [[None]*n_splits]*len(presets)
 
-                if any(isinstance(cb, keras.callbacks.EarlyStopping) for cb in callbacks):
-                    val_loss = np.min(learning_curve)
-                    mean_val_loss = np.mean(learning_curve[-20:])
-                    LOG.info(f"Taking loss {val_loss:3.3f} from EarlyStopping vs mean {mean_val_loss:3.3f}")
-                else:
-                    val_loss = np.mean(learning_curve[-20:])
-                    LOG.info(f"Loss from curve {val_loss:3.3f}")
+        # create pool of workers
+        pool = Pool(processes=n_jobs)
+        LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {cpu_count()} cores available.')
 
-                nested_val_losses.append(val_loss)
-                nested_learning_curves.append(learning_curve)
-                nested_models.append(self.model)
+        for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):
+            val_loss, learning_curve, model, preset_id, fold_id = res
 
-            val_loss = np.mean(nested_val_losses)
+            # reload model
+            model, model_json, weights = model
+            model.model = keras.models.model_from_json(model_json)
+            model.model.set_weights(weights)
 
-            if val_loss < min(val_losses):
-                best_model = self.model
-                best_n_feat = n_feat
-                best_scaler = self._scaler
+            val_losses[preset_id,fold_id] = val_loss
+            learning_curves[preset_id][fold_id] = learning_curve
+            models[preset_id][fold_id] = model
+        pool.close()
+        pool.join()
 
-            val_losses[i] = val_loss
-
-            models.append(nested_models)
-            learning_curves.append(nested_learning_curves)
-            LOG.info("Validation loss for preset #{}, {}: {:.3f}".format(i+1, params["loss"], val_loss))
-
-        best_preset_idx = val_losses.argmin()
+        val_loss_per_preset = np.mean(val_losses,axis=1)
+        best_preset_idx = int(np.argmin(val_loss_per_preset))
+        best_model_idx =int(np.argmin(val_losses[best_preset_idx,:]))
         best_preset = presets[best_preset_idx]
+        best_learning_curve = learning_curves[best_preset_idx][best_model_idx]
+        best_model = models[best_preset_idx][best_model_idx]
+
         LOG.info(
             "Preset #{} resulted in lowest validation loss with params {}".format(
-                best_preset_idx + 1, params
+                best_preset_idx + 1, tasks[n_splits*best_preset_idx+best_model_idx]
             )
         )
 
         if refit:
             LOG.info("Refitting with all data and parameters: {}".format(best_preset))
+            # Building final model
+
             n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
             self.model = MODNetModel(
                 self.targets,
@@ -502,11 +505,11 @@ class MODNetModel:
                 loss=best_preset['loss'],
                 callbacks=callbacks,
                 verbose=verbose)
-            best_learning_curve = self.model.history.history["loss"]
+            best_learning_curve = best_learning_curve
         else:
-            self.n_feat = best_n_feat
-            self.model = best_model
-            self._scaler = best_scaler
+            self.n_feat = best_model.n_feat
+            self.model = best_model.model
+            self._scaler = best_model._scaler
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
@@ -630,3 +633,78 @@ class MODNetModel:
         )
 
         return mod
+
+
+def validate_model(train_data = None,
+                   val_data = None,
+                   val_fraction = 0.0,
+                   targets = None,
+                   weights = None,
+                   num_classes=None,
+                   n_feat = 100,
+                   num_neurons = [[8],[8],[8],[8]],
+                   lr=0.1,
+                   batch_size = 64,
+                   epochs = 100,
+                   loss='mse',
+                   act = 'relu',
+                   xscale='minmax',
+                   callbacks = [],
+                   preset_id = None,
+                   fold_id = None,
+                   verbose = 0,
+            ):
+
+    # data type can get messed up when passed to new process
+    train_data.df_featurized = train_data.df_featurized.apply(pd.to_numeric)
+    train_data.df_targets = train_data.df_targets.apply(pd.to_numeric)
+    if val_data is not None:
+        val_data.df_featurized = val_data.df_featurized.apply(pd.to_numeric)
+        val_data.df_targets = val_data.df_targets.apply(pd.to_numeric)
+
+    model = MODNetModel(
+        targets,
+        weights,
+        num_neurons=num_neurons,
+        n_feat=n_feat,
+        act=act,
+        num_classes=num_classes
+    )
+
+    model.fit(
+        train_data,
+        lr = lr,
+        epochs = epochs,
+        batch_size = batch_size,
+        loss = loss,
+        xscale=xscale,
+        callbacks = callbacks,
+        verbose = verbose,
+        val_fraction = val_fraction,
+        val_data = val_data,
+    )
+
+
+    learning_curve = model.model.history.history["val_loss"]
+
+    if any(isinstance(cb, keras.callbacks.EarlyStopping) for cb in callbacks):
+        val_loss = np.min(learning_curve)
+        mean_val_loss = np.mean(learning_curve[-20:])
+        LOG.info(f"Preset #{preset_id}-f{fold_id}: Taking loss {val_loss:3.3f} from EarlyStopping vs mean {mean_val_loss:3.3f}")
+    else:
+        val_loss = np.mean(learning_curve[-20:])
+        LOG.info(f"Preset #{preset_id}-f{fold_id}: Loss from curve {val_loss:3.3f}")
+
+    #save model
+    model_json = model.model.to_json()
+    model_weights = model.model.get_weights()
+    model.model = None
+    model.history = None
+    model = (model, model_json, model_weights)
+
+
+    return val_loss, learning_curve, model, preset_id, fold_id
+
+
+def map_validate_model(kwargs):
+    return validate_model(**kwargs)
