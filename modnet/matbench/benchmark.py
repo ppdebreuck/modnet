@@ -167,10 +167,20 @@ def train_fold(
 
     multi_target = bool(len(target) - 1)
 
+    # If not performing hp_optimization, load model init settings from fit_settings
+    model_settings = {}
+    if not hp_optimization:
+        model_settings = {
+            "num_neurons": fit_settings["num_neurons"],
+            "num_classes": fit_settings.get("num_classes"),
+            "act": fit_settings.get("act"),
+            "n_feat": fit_settings["n_feat"]
+        }
+
     model = MODNetModel(
         target,
         target_weights,
-        **fit_settings
+        **model_settings
     )
 
     if hp_optimization:
