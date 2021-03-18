@@ -100,7 +100,7 @@ Example notebooks and short tutorials can be found in the *example_notebooks* di
 
 <a name="pretrained"></a>
 ## Pretrained models
-Two pretrained models are provided in pretrained/*:
+Two pretrained models are provided in *pretrained/*:
  - Refractive index
  - Vibrational thermodynamics
 
