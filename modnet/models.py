@@ -260,11 +260,11 @@ class MODNetModel:
             val_x = self._scaler.transform(val_x)
             try:
                 val_y = list(
-                    val_data.get_target_df()[self.targets_flatten].values.transpose()
+                    val_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False).transpose()
                 )
             except Exception:
                 val_y = list(
-                    val_data.get_target_df().values.transpose()
+                    val_data.get_target_df().values.astype(np.float, copy=False).transpose()
                 )
             validation_data = (val_x, val_y)
         else:
