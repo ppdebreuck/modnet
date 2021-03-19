@@ -38,7 +38,7 @@ class CompositionContainer:
 EPS = 1e-16
 
 
-def compute_mi(x:np.ndarray=None, y:np.ndarray=None, x_name: string=None, y_name: string=None, random_state= None, n_neighbors= 3):
+def compute_mi(x:np.ndarray=None, y:np.ndarray=None, x_name: str=None, y_name: str=None, random_state= None, n_neighbors= 3):
 
     mi = mutual_info_regression(x.reshape(-1, 1),
                             y,

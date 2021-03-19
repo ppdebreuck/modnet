@@ -4,6 +4,7 @@ from typing import List, Tuple, Dict, Optional, Callable, Any
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.model_selection import train_test_split
 import tensorflow.keras as keras
 
 from modnet.preprocessing import MODData
@@ -11,8 +12,9 @@ from modnet.matbench.benchmark import matbench_kfold_splits
 from modnet.utils import LOG
 from modnet import __version__
 
-from multiprocessing import Pool, cpu_count
+import multiprocessing
 import tqdm
+import copy
 
 __all__ = ("MODNetModel",)
 
@@ -328,7 +330,7 @@ class MODNetModel:
         fast: bool = False,
         nested: int = 5,
         callbacks: List[Any] = None,
-        n_jobs=4,
+        n_jobs=None,
         ) -> Tuple[List[List[Any]],
                    np.ndarray,
                    Optional[List[float]],
@@ -380,7 +382,7 @@ class MODNetModel:
                 verbose=verbose,
                 mode="auto",
                 baseline=None,
-                restore_best_weights=True,
+                restore_best_weights=False,
             )
             callbacks = [es]
 
@@ -401,14 +403,6 @@ class MODNetModel:
         if num_nested_folds <= 1:
             num_nested_folds = 5
 
-        best_model = None
-        best_n_feat = None
-        best_learning_curve = None
-        models = []
-        learning_curves = []
-        best_scaler = None
-
-
         # create tasks
         tasks = []
         for i, params in enumerate(presets):
@@ -416,19 +410,15 @@ class MODNetModel:
 
             splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
             if not nested:
-                splits = [next(splits)]
+                splits = [train_test_split(range(len(data.df_featurized)),test_size=val_fraction)]
                 n_splits = 1
             else:
                 n_splits = num_nested_folds
 
             for ind, (train, val) in enumerate(splits):
                 val_params = {}
-                if nested:
-                    train_data, val_data = data.split((train, val))
-                    val_params["val_data"] = val_data
-                else:
-                    val_params["val_fraction"] = val_fraction
-                    train_data = data
+                train_data, val_data = data.split((train, val))
+                val_params["val_data"] = val_data
 
                 tasks += [{'train_data' : train_data,
                    'targets' : self.targets,
@@ -453,8 +443,12 @@ class MODNetModel:
         models = [[None]*n_splits]*len(presets)
 
         # create pool of workers
-        pool = Pool(processes=n_jobs)
-        LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {cpu_count()} cores available.')
+        if 'set_spawn' not in globals():
+            multiprocessing.set_start_method('spawn')
+            global set_spawn
+            set_spawn = True
+        pool = multiprocessing.Pool(processes=n_jobs, initializer=init_worker)
+        LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
 
         for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):
             val_loss, learning_curve, model, preset_id, fold_id = res
@@ -505,7 +499,6 @@ class MODNetModel:
                 loss=best_preset['loss'],
                 callbacks=callbacks,
                 verbose=verbose)
-            best_learning_curve = best_learning_curve
         else:
             self.n_feat = best_model.n_feat
             self.model = best_model.model
@@ -556,6 +549,50 @@ class MODNetModel:
         predictions.index = test_data.structure_ids
 
         return predictions
+
+    def evaluate(self, test_data: MODData) -> pd.DataFrame:
+        """Evaluates the target values for the passed MODData by returning the corresponding loss.
+
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+
+
+        Returns:
+            Loss score
+        """
+        # prevents Nan predictions if some features are inf
+        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
+            self.optimal_descriptors[:self.n_feat]
+        ].values
+
+        # Scale the input features:
+        x = np.nan_to_num(x)
+        if self._scaler is not None:
+            x = self._scaler.transform(x)
+            x = np.nan_to_num(x)
+
+        y = []
+        for targ in self.targets_flatten:
+            if self.num_classes[targ] >= 2:  # Classification
+                y_inner = keras.utils.to_categorical(
+                    test_data.df_targets[targ].values,
+                    num_classes=self.num_classes[targ],
+                )
+                loss = "categorical_crossentropy"
+            else:
+                y_inner = test_data.df_targets[targ].values.astype(
+                    np.float, copy=False
+                )
+            y.append(y_inner)
+
+        return self.model.evaluate(x,y)[0]
+
+
+
+
+
+    #############
 
     def save(self, filename: str):
         """Save the `MODNetModel` across 3 files with the same base
@@ -635,9 +672,15 @@ class MODNetModel:
         return mod
 
 
+def init_worker():
+    '''
+    Add KeyboardInterrupt exception to mutliprocessing workers "
+    '''
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 def validate_model(train_data = None,
                    val_data = None,
-                   val_fraction = 0.0,
                    targets = None,
                    weights = None,
                    num_classes=None,
@@ -655,12 +698,13 @@ def validate_model(train_data = None,
                    verbose = 0,
             ):
 
+    #deprecated
     # data type can get messed up when passed to new process
-    train_data.df_featurized = train_data.df_featurized.apply(pd.to_numeric)
-    train_data.df_targets = train_data.df_targets.apply(pd.to_numeric)
-    if val_data is not None:
-        val_data.df_featurized = val_data.df_featurized.apply(pd.to_numeric)
-        val_data.df_targets = val_data.df_targets.apply(pd.to_numeric)
+    #train_data.df_featurized = train_data.df_featurized.apply(pd.to_numeric)
+    #train_data.df_targets = train_data.df_targets.apply(pd.to_numeric)
+    #if val_data is not None:
+    #    val_data.df_featurized = val_data.df_featurized.apply(pd.to_numeric)
+    #    val_data.df_targets = val_data.df_targets.apply(pd.to_numeric)
 
     model = MODNetModel(
         targets,
@@ -680,20 +724,14 @@ def validate_model(train_data = None,
         xscale=xscale,
         callbacks = callbacks,
         verbose = verbose,
-        val_fraction = val_fraction,
+        val_fraction = 0,
         val_data = val_data,
     )
 
 
     learning_curve = model.model.history.history["val_loss"]
 
-    if any(isinstance(cb, keras.callbacks.EarlyStopping) for cb in callbacks):
-        val_loss = np.min(learning_curve)
-        mean_val_loss = np.mean(learning_curve[-20:])
-        LOG.info(f"Preset #{preset_id}-f{fold_id}: Taking loss {val_loss:3.3f} from EarlyStopping vs mean {mean_val_loss:3.3f}")
-    else:
-        val_loss = np.mean(learning_curve[-20:])
-        LOG.info(f"Preset #{preset_id}-f{fold_id}: Loss from curve {val_loss:3.3f}")
+    val_loss = model.evaluate(val_data)
 
     #save model
     model_json = model.model.to_json()

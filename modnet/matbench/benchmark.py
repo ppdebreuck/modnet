@@ -66,8 +66,8 @@ def matbench_benchmark(
             from the Materials Project dataset, or recompute per fold.
         presets: Override the built-in hyperparameter grid with these presets.
         fast: Whether to perform debug training, i.e. reduced presets and epochs.
-        n_jobs: Try to parallelize the 5-fold CV over this number of
-            processes. Maxes out at number of CV folds.
+        n_jobs: Try to parallelize the inner fit_preset over this number of
+            processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
 
     Returns:
@@ -114,16 +114,12 @@ def matbench_benchmark(
         "presets": presets,
         "save_models": save_models,
         "nested": nested,
+        "n_jobs": n_jobs,
     }
 
-    if n_jobs is None:
-        n_jobs = 1
-    n_jobs = min(n_jobs, len(fold_data))
-
-    fold_results = Parallel(n_jobs=n_jobs)(
-        delayed(train_fold)(fold, *args, **kwargs)
-        for fold in enumerate(fold_data)
-    )
+    fold_results = []
+    for fold in enumerate(fold_data):
+        fold_results.append(train_fold(fold, *args, ** kwargs))
 
     for fold in fold_results:
         for key in fold:
@@ -144,6 +140,7 @@ def train_fold(
     fast=False,
     save_models=False,
     nested=False,
+    n_jobs=None,
 ) -> dict:
     """Train one fold of a CV.
 
@@ -185,7 +182,7 @@ def train_fold(
 
     if hp_optimization:
         models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
-            train_data, presets=presets, fast=fast, classification=classification, nested=nested
+            train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
         )
         if save_models:
             for ind, nested_model in enumerate(models):
