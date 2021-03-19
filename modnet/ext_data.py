@@ -97,7 +97,7 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
         file_md5 = get_hash_of_file(model_path, algo="md5")
         if file_md5 != dataset.md5:
             raise RuntimeError(
-                "Precomputed {dataset.usage} did not match expected MD5 from {dataset.url}, will not unpickled."
+                f"Precomputed {str(dataset.usage.name)} did not match expected MD5 from {dataset.url}, will not depickle."
             )
 
     return model_path
