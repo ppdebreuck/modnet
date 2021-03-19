@@ -1,6 +1,6 @@
 # MODNet: Material Optimal Descriptor Network
 
-[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/workflow/status/ppdebreuck/modnet/Run%20tests?logo=github)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+)
+[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/workflow/status/ppdebreuck/modnet/Run%20tests?logo=github)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+) ![Read the Docs](https://img.shields.io/readthedocs/modnet)
 
 ## Table of contents
 - [Introduction](#introduction)
@@ -54,6 +54,14 @@ MODNet can be installed via pip:
 ```bash
 pip install modnet
 ```
+
+<a name="documentation"></a>
+## Documentation
+The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
+
+Especially, carefully read the two main classes, `MODData` and `MODNetModel` found in preprocessing and models modules.
+- A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties.  
+- A `MODNetModel` instance is used for training and predicting of one or more properties or classes.  
 
 
 <a name="usage"></a>
@@ -129,14 +137,6 @@ The MP MODData on [figshare](https://figshare.com/articles/dataset/Materials_Pro
 ```python
 predictions_on_MP = model.predict(data_MP)
 ```
-
-<a name="documentation"></a>
-## Documentation
-The documentation is available at https://modnet.readthedocs.io.
-
-Especially, carefully read the two main classes, `MODData` and `MODNetModel` found in preprocessing and models modules.
-A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties.
-A `MODNetModel`instance is used for training and predicting of one or more properties or classes.
 
 <a name="getting-started"></a>
 ## Getting started
