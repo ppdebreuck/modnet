@@ -378,14 +378,32 @@ def test_merge_ranked():
 
 
 @pytest.mark.slow
-def test_load_precomputed():
+def test_load_precomputed_dataset():
     """Tries to load and unpack the dataset on figshare.
 
-    Requies ~10 GB of memory.
+    Warning: Requires ~10 GB of memory.
+
+    NB: This test will not redownload the dataset if it is already present.
 
     """
 
-    MODData.load_precomputed("MP_2018.6")
+    from modnet.ext_data import load_ext_dataset
+    from pathlib import Path
+
+    path = load_ext_dataset("MP_2018.6", "MODData")
+    assert path == Path(__file__).parent.parent.joinpath("data") / "MP_2018.6.zip"
+    assert path.is_file()
+
+    # Replace the path with some garbage file and make sure a RuntimeError is raised
+    # when the dataset is loaded, as the hash will no longer match
+    path.unlink()
+    path.touch()
+
+    try:
+        with pytest.raises(RuntimeError, match="Precomputed MODData did not match expected MD5 from"):
+            path = load_ext_dataset("MP_2018.6", "MODData")
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def test_moddata_splits(subset_moddata):
