@@ -8,6 +8,7 @@ from matminer.featurizers.base import MultipleFeaturizer, BaseFeaturizer
 from matminer.featurizers.structure import SiteStatsFingerprint
 from matminer.featurizers.conversions import CompositionToOxidComposition
 
+import modnet.featurizers
 from modnet.utils import LOG
 
 
@@ -151,9 +152,7 @@ class MODFeaturizer(abc.ABC):
 
             LOG.info("Applying composition featurizers...")
             df['composition'] = df['structure'].apply(lambda s: s.composition)
-
             df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
-            df = df.replace([np.inf, -np.inf, np.nan], 0)
             df = df.rename(columns={'Input Data': ''})
             df.columns = df.columns.map('|'.join).str.strip('|')
 
