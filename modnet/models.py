@@ -452,12 +452,8 @@ class MODNetModel:
         learning_curves = [[None]*n_splits]*len(presets)
         models = [[None]*n_splits]*len(presets)
 
-        # create pool of workers
-        if 'set_spawn' not in globals():
-            multiprocessing.set_start_method('spawn')
-            global set_spawn
-            set_spawn = True
-        pool = multiprocessing.Pool(processes=n_jobs, initializer=init_worker)
+        ctx = multiprocessing.get_context('spawn')
+        pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
         LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
 
         for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):

@@ -692,7 +692,7 @@ class MODData:
 
         if self.cross_nmi.isna().sum().sum() > 0:
             raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero.")
-
+            
         for i, name in enumerate(self.names):
             LOG.info(f"Starting target {i + 1}/{len(self.names)}: {self.names[i]} ...")
 
