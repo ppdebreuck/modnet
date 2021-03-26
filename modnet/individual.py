@@ -43,4 +43,4 @@ class Individual:
             max = np.sqrt(len(data.get_optimal_descriptors()))
             n_features = randint(1,max)**2
     
-        return self.n_features
+        return n_features
