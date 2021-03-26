@@ -1,4 +1,3 @@
-from random import randint
 import os
 import copy
 import random
@@ -13,6 +12,7 @@ from sklearn.model_selection import train_test_split
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
 from modnet.utils import LOG
+from modnet.individual import Individual
 
 
 class FitGenetic:
@@ -105,11 +105,11 @@ class FitGenetic:
             data: 'MODData' data which need to be splitted.
         """
         i = randint(0,9)
-        self.X_train, self.X_val = self.MDKsplit(data, n_splits=10, random_state=i)[i]
-        self.y_train = self.X_train.df_targets
-        self.y_val = self.X_val.df_targets
+        self.md_train, self.md_val = self.MDKsplit(data, n_splits=10, random_state=i)[i]
+        self.y_train = self.md_train.df_targets
+        self.y_val = self.md_val.df_targets
 
-        return self.X_train, self.X_val, self.y_train, self.y_val
+        return self.md_train, self.md_val, self.y_train, self.y_val
 
 
     def initialization_population(
@@ -124,25 +124,9 @@ class FitGenetic:
         """
 
         self.pop =  [[]]*size_pop
-        activation = ['elu']
-        loss = ['mae']
-        xscale = ['minmax', 'standard']
-        self.lr = [0.01, 0.005, 0.001]
-        self.initial_batch_size = [8, 16, 32, 64, 128]
-        self.fraction = [1, 0.75, 0.5, 0.25]
+        self.individual = Individual()
 
-        n_features = 0 #initialization
-        if len(self.data.get_optimal_descriptors()) <= 100:
-            b = int(len(self.data.get_optimal_descriptors())/2)
-            n_features = randint(1, b) + b
-        elif len(self.data.get_optimal_descriptors()) > 100 and len(self.data.get_optimal_descriptors()) < 2000:
-            max = len(self.data.get_optimal_descriptors())
-            n_features = 10*randint(1,int(max/10))
-        else:
-            max = np.sqrt(len(self.data.get_optimal_descriptors()))
-            n_features = randint(1,max)**2
-        
-        self.pop = [[n_features , 32*randint(1,10), random.choice(self.fraction), random.choice(self.fraction), random.choice(self.fraction), random.choice(activation), random.choice(loss), random.choice(xscale), random.choice(self.lr), random.choice(self.initial_batch_size)] for i in range(0, size_pop)]
+        self.pop = [[self.individual.n_feat(self.data) , self.individual.n_neurons_first_layer, self.individual.fraction1, self.individual.fraction2, self.individual.fraction3, self.individual.activation, self.individual.loss, self.individual.xscale, self.individual.lr, self.individual.initial_batch_size] for i in range(0, size_pop)]
         return self.pop
 
 
@@ -176,29 +160,21 @@ class FitGenetic:
         """
 
         for c in range(0, len(child)):
-            if child[c][0] < int(0.5*len(self.data.get_optimal_descriptors())):
-                child[c][0] = int(child[c][0] + randint(1, int(0.1*len(self.data.get_optimal_descriptors()))))
-                child[c][1] = child[c][1] + 32*randint(-2,2)
-                child[c][2] = random.choice(self.fraction)
-                child[c][3] = random.choice(self.fraction)
-                child[c][4] = random.choice(self.fraction)
-                child[c][8] = random.choice(self.lr)
-            else:
-                child[c][0] = int(child[c][0] - randint(1, int(0.1*len(self.data.get_optimal_descriptors()))))
-                child[c][1] = child[c][1] + 32*randint(-2,2)
-                child[c][2] = random.choice(self.fraction)
-                child[c][3] = random.choice(self.fraction)
-                child[c][4] = random.choice(self.fraction)
-                child[c][8] = random.choice(self.lr)
+            child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
+            child[c][1] = child[c][1] + 32*randint(-2,2)
+            child[c][2] = self.individual.fraction1
+            child[c][3] = self.individual.fraction2
+            child[c][4] = self.individual.fraction3
+            child[c][8] = self.individual.lr
         return child
 
 
     def function_fitness(
         self,
         pop: List,
-        X_train: MODData,
+        md_train: MODData,
         y_train: pd.DataFrame,
-        X_val: MODData,
+        md_val: MODData,
         y_val: pd.DataFrame
         )->None:
 
@@ -206,9 +182,9 @@ class FitGenetic:
         
         Parameters:
             pop: List containing the genetic information (i.e., the parameters) of the model.
-            X_train: Input data of the training set.
+            md_train: Input data of the training set.
             y_train: Target values of the training set.
-            X_val: Input data of the validation set.
+            md_val: Input data of the validation set.
             y_val: Target values of the validation set.
         """
 
@@ -225,11 +201,11 @@ class FitGenetic:
         )
         callbacks = [es]
         for w in self.pop:
-            modnet_model = MODNetModel([[[X_train.df_targets.columns[0]]]], {X_train.df_targets.columns[0]:1}, n_feat=w[0], num_neurons=[[int(w[1])],[int(w[1]*w[2])],[int(w[1]*w[2]*w[3])],[int(w[1]*w[2]*w[3]*w[4])]], act=w[5])
+            modnet_model = MODNetModel([[[md_train.df_targets.columns[0]]]], {md_train.df_targets.columns[0]:1}, n_feat=w[0], num_neurons=[[int(w[1])],[int(w[1]*w[2])],[int(w[1]*w[2]*w[3])],[int(w[1]*w[2]*w[3]*w[4])]], act=w[5])
             try:
                 for i in range(4):
-                    modnet_model.fit(X_train,val_fraction=0, val_key=X_train.df_targets.columns[0], loss=w[6], lr=w[8], epochs = 250, batch_size = (2**i)*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
-                f = mse(modnet_model.predict(X_val),y_val)
+                    modnet_model.fit(md_train,val_fraction=0, val_key=md_train.df_targets.columns[0], loss=w[6], lr=w[8], epochs = 250, batch_size = (2**i)*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
+                f = mse(modnet_model.predict(md_val),y_val)
                 print('MSE = ', f)
                 self.fitness.append([f, modnet_model, w])
             except:
@@ -239,9 +215,9 @@ class FitGenetic:
 
     def gen_alg(
         self,
-        X_train: MODData,
+        md_train: MODData,
         y_train: pd.DataFrame,
-        X_val: MODData,
+        md_val: MODData,
         y_val: pd.DataFrame,
         size_pop: int,
         num_epochs: int
@@ -250,9 +226,9 @@ class FitGenetic:
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MSE on the validation set.
 
         Parameters:
-            X_train: Input data of the training set.
+            md_train: Input data of the training set.
             y_train: Target values of the training set.
-            X_val: Input data of the validation set.
+            md_val: Input data of the validation set.
             y_val: Target values of the validation set.
             size_pop: Size of the population per generation.
             num_epochs: Number of generations.
@@ -260,7 +236,7 @@ class FitGenetic:
 
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
-        fitness = self.function_fitness(pop,  X_train, y_train, X_val, y_val)
+        fitness = self.function_fitness(pop,  md_train, y_train, md_val, y_val)
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
         scaled_pop_fitness = pop_fitness_sort[:,0]/sum(pop_fitness_sort[:,0])
         for j in range(0, num_epochs):
@@ -274,8 +250,8 @@ class FitGenetic:
             child_2 = self.mutation(child_1)
 
             #calculates children's fitness to choose who will pass to the next generation
-            fitness_child_1 = self.function_fitness(child_1,X_train, y_train, X_val, y_val)
-            fitness_child_2 = self.function_fitness(child_2, X_train, y_train, X_val, y_val)
+            fitness_child_1 = self.function_fitness(child_1,md_train, y_train, md_val, y_val)
+            fitness_child_2 = self.function_fitness(child_2, md_train, y_train, md_val, y_val)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child_1, fitness_child_2))
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))
 
@@ -301,8 +277,8 @@ class FitGenetic:
             num_epochs: Number of generations. Default = 5.
         """
 
-        X_train, X_val, y_train, y_val = self.train_val_split(data)
-        self.best_individual = self.gen_alg(X_train, y_train, X_val, y_val, size_pop, num_epochs)
+        md_train, md_val, y_train, y_val = self.train_val_split(data)
+        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_epochs)
 
         return self.best_individual
 
