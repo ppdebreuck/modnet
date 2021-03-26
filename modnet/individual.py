@@ -1,5 +1,8 @@
 import random
 from random import randint
+from modnet.preprocessing import MODData
+import numpy as np
+
 
 class Individual:
     """Class containing each of the tuned hyperparameters for the genetic algorithm.
