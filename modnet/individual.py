@@ -1,5 +1,5 @@
 import random
-
+from random import randint
 
 class Individual:
     """Class containing each of the tuned hyperparameters for the genetic algorithm.
