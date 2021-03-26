@@ -15,6 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["OMP_NUM_THREADS"] = "1"
 #import tensorflow.tf.keras as tf.keras
 
+import tensorflow_probability as tfp
 from modnet.preprocessing import MODData
 from modnet.matbench.benchmark import matbench_kfold_splits
 from modnet.utils import LOG
@@ -78,6 +79,8 @@ class MODNetModel:
         self.n_feat = n_feat
         self.weights = weights
         self.num_classes = num_classes
+        self.num_neurons = num_neurons
+        self.act = act
 
         self._scaler = None
         self.optimal_descriptors = None
@@ -752,3 +755,466 @@ def validate_model(train_data = None,
 
 def map_validate_model(kwargs):
     return validate_model(**kwargs)
+#### Bayesian NN####
+
+class Bayesian_MODNetModel(MODNetModel):
+    """Container class for the underlying Probabilistic Keras `Model`, that handles
+    setting up the architecture, activations, training and learning curve.
+
+    Attributes:
+        n_feat: The number of features used in the model.
+        weights: The relative loss weights for each target.
+        optimal_descriptors: The list of column names used
+            in training the model.
+        model: The `keras.model.Model` of the network itself.
+        target_names: The list of targets names that the model
+            was trained for.
+
+    """
+
+    def build_model(
+        self,
+        targets: List,
+        n_feat: int,
+        num_neurons: Tuple[List[int], List[int], List[int], List[int]],
+        num_classes: Optional[Dict[str, int]] = None,
+        act: str = "relu",
+    ):
+        """Builds the Bayesian Neural Network and sets the `self.model` attribute.
+
+        Parameters:
+            targets: A nested list of targets names that defines the hierarchy
+                of the output layers.
+            n_feat: The number of features to use as model inputs.
+            num_neurons: A specification of the model layers, as a 4-tuple
+                of lists of integers. Hidden layers are split into four
+                blocks of `keras.layers.Dense`, with neuron count specified
+                by the elements of the `num_neurons` argument.
+            num_classes: Dictionary defining the target types (classification or regression).
+                Should be constructed as follows: key: string giving the target name; value: integer n,
+                with n=0 for regression and n>=2 for classification with n the number of classes.
+            act: A string defining a Keras activation function to pass to use
+                in the `keras.layers.Dense` layers.
+
+        """
+
+        num_layers = [len(x) for x in num_neurons]
+
+        # define probabilistic layers
+        tfd = tfp.distributions
+
+        def posterior_mean_field(kernel_size, bias_size=0, dtype=None):
+            n = kernel_size + bias_size
+            c = np.log(np.expm1(1.))
+            return tf.keras.Sequential([
+                tfp.layers.VariableLayer(2 * n, dtype=dtype),
+                tfp.layers.DistributionLambda(lambda t: tfd.Independent(
+                    tfd.Normal(loc=t[..., :n],
+                                scale=1e-5 + tf.nn.softplus(c + t[..., n:])),
+                    reinterpreted_batch_ndims=1)),
+            ])
+
+        def prior_trainable(kernel_size, bias_size=0, dtype=None):
+            n = kernel_size + bias_size
+            return tf.keras.Sequential([
+                tfp.layers.VariableLayer(n, dtype=dtype),
+                tfp.layers.DistributionLambda(lambda t: tfd.Independent(
+                    tfd.Normal(loc=t, scale=1),
+                    reinterpreted_batch_ndims=1)),
+            ])
+
+
+
+
+        # Build first common block
+        f_input = keras.layers.Input(shape=(n_feat,))
+        previous_layer = f_input
+        for i in range(num_layers[0]):
+            #previous_layer = tfp.layers.DenseVariational(
+            previous_layer = keras.layers.Dense(
+                num_neurons[0][i],
+                #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
+                activation=act
+                )(previous_layer)
+            if self._multi_target:
+                previous_layer = keras.layers.BatchNormalization()(previous_layer)
+        common_out = previous_layer
+
+        # Build intermediate representations
+        intermediate_models_out = []
+        for _ in range(len(targets)):
+            previous_layer = common_out
+            for j in range(num_layers[1]):
+                #previous_layer = tfp.layers.DenseVariational(
+                previous_layer = keras.layers.Dense(
+                    num_neurons[1][j],
+                    #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
+                    activation=act,
+                    )(previous_layer)
+                if self._multi_target:
+                    previous_layer = keras.layers.BatchNormalization()(previous_layer)
+            intermediate_models_out.append(previous_layer)
+
+        # Build outputs
+        final_out = []
+        for group_idx, group in enumerate(targets):
+            for prop_idx in range(len(group)):
+                previous_layer = intermediate_models_out[group_idx]
+                for k in range(num_layers[2]):
+                    #previous_layer = tfp.layers.DenseVariational(
+                    previous_layer = keras.layers.Dense(
+                        num_neurons[2][k],
+                        #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
+                        activation=act,
+                    )(previous_layer)
+                    if self._multi_target:
+                        previous_layer = keras.layers.BatchNormalization()(
+                            previous_layer
+                        )
+                clayer = previous_layer
+                for pi in range(len(group[prop_idx])):
+                    previous_layer = clayer
+                    for li in range(num_layers[3]):
+                        #previous_layer = tfp.layers.DenseVariational(
+                        previous_layer = keras.layers.Dense(
+                            num_neurons[3][li],
+                            #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
+                            activation=act,
+                            )(previous_layer)
+                    n = num_classes[group[prop_idx][pi]]
+                    if n >= 2:
+                        out = keras.layers.Dense(
+                            n, activation="softmax", name=group[prop_idx][pi]
+                        )(previous_layer)
+                    else:
+                        out = tfp.layers.DenseVariational(
+                            1,
+                            make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
+                            activation="linear", name=group[prop_idx][pi]
+                        )(previous_layer)
+                        #out = keras.layers.Dense(1,activation="linear")(previous_layer)
+                        #out = tfp.layers.DenseFlipout(1,activation="linear",name=group[prop_idx][pi])(previous_layer)
+
+                        #out = tfp.layers.DistributionLambda(lambda t: tfd.Normal(loc=t[..., :1],scale=1e-3 + tf.math.softplus(0.05 * t[...,1:])), name=group[prop_idx][pi])(out)
+                        #out = tfp.layers.DistributionLambda(lambda t: tfd.Normal(loc=t[..., :1],scale=0.001), name=group[prop_idx][pi])(out)
+
+                    final_out.append(out)
+
+        return keras.models.Model(inputs=f_input, outputs=final_out)
+
+    def predict(self, test_data: MODData, return_prob=False, return_unc=False) -> pd.DataFrame:
+        """Predict the target values for the passed MODData.
+
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+            return_prob: For a classification tasks only: whether to return the probability of each
+                class OR only return the most probable class.
+            return_unc: whether to return the standard deviation as a second dataframe
+
+        Returns:
+            A `pandas.DataFrame` containing the predicted values of the targets.
+            If return_unc=True, two `pandas.DataFrame` : (predictions,std) containing the predicted values of the targets and
+             the standard deviations of the epistemic uncertainty.
+
+
+        """
+        # prevents Nan predictions if some features are inf
+        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
+            self.optimal_descriptors[:self.n_feat]
+        ].values
+
+        # Scale the input features:
+        x = np.nan_to_num(x)
+        if self._scaler is not None:
+            x = self._scaler.transform(x)
+            x = np.nan_to_num(x)
+
+        p_mc = np.zeros((1000,len(self.targets_flatten),len(test_data.df_featurized),1))
+        #stddev_mc = np.zeros((100,len(self.targets_flatten),len(test_data.df_featurized),1))
+
+        for i in range(1000):
+            prob = self.model(x)
+            #p = np.array(prob.mean())
+            #stddev = np.array(prob.stddev())
+            p = np.array(prob)
+            #p = p.reshape((len(self.targets_flatten),len(test_data.df_featurized),1))
+            #stddev = stddev.reshape((len(self.targets_flatten),len(test_data.df_featurized),1))
+            p_mc[i,...] = p
+            #stddev_mc[i,...] = stddev
+
+        p = p_mc.mean(axis=0)
+        epistemic_unc = p_mc.std(axis=0)
+        #aleatoric_unc = stddev_mc.mean(axis=0)
+
+
+        if len(p.shape) == 2:
+            p = np.array([p])
+        p_dic = {}
+        #aleatoric_unc_dic = {}
+        epistemic_unc_dic = {}
+        for i, name in enumerate(self.targets_flatten):
+            if self.num_classes[name] >= 2:
+                if return_prob:
+                    temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
+                    for j in range(temp.shape[-1]):
+                        p_dic['{}_prob_{}'.format(name, j)] = temp[:, j]
+                else:
+                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+            else:
+                p_dic[name] = p[i,:,0]
+                #aleatoric_unc_dic[name] = aleatoric_unc[i,:,0]
+                epistemic_unc_dic[name] = epistemic_unc[i,:,0]
+
+        predictions = pd.DataFrame(p_dic)
+        #aleatoric_unc = pd.DataFrame(aleatoric_unc_dic)
+        epistemic_unc = pd.DataFrame(epistemic_unc_dic)
+
+        predictions.index = test_data.structure_ids
+        #aleatoric_unc.index = test_data.structure_ids
+        epistemic_unc.index = test_data.structure_ids
+
+        if return_unc:
+            return predictions, epistemic_unc
+        else:
+            return predictions
+
+
+class Bootstrap_MODNetModel(MODNetModel):
+    """Container class for 100 Bootstrap Keras `Model`, that handles
+    setting up the architecture, activations, training and learning curve.
+
+    Attributes:
+        n_feat: The number of features used in the model.
+        weights: The relative loss weights for each target.
+        optimal_descriptors: The list of column names used
+            in training the model.
+        model: The `keras.model.Model` of the network itself.
+        target_names: The list of targets names that the model
+            was trained for.
+
+    """
+
+    def __init__(self,*args,n_models=100,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.n_models = n_models
+        self.model = []
+        for i in range(self.n_models):
+            self.model.append(
+                self.build_model(
+                        self.targets, self.n_feat, self.num_neurons, act=self.act, num_classes=self.num_classes
+            ))
+
+    def fit(
+        self,
+        training_data: MODData,
+        val_fraction: float = 0.0,
+        val_key: Optional[str] = None,
+        val_data: Optional[MODData] = None,
+        lr: float = 0.001,
+        epochs: int = 200,
+        batch_size: int = 128,
+        xscale: Optional[str] = "minmax",
+        metrics: List[str] = ["mae"],
+        callbacks: List[Callable] = None,
+        verbose: int = 0,
+        loss: str = "mse",
+        **fit_params,
+    ) -> None:
+        """Train the model on the passed training `MODData` object.
+
+        Paramters:
+            training_data: A `MODData` that has been featurized and
+                feature selected. The first `self.n_feat` entries in
+                `training_data.get_optimal_descriptors()` will be used
+                for training.
+            val_fraction: The fraction of the training data to use as a
+                validation set for tracking model performance during
+                training.
+            val_key: The target name to track on the validation set
+                during training, if performing multi-target learning.
+            lr: The learning rate.
+            epochs: The maximum number of epochs to train for.
+            batch_size: The batch size to use for training.
+            xscale: The feature scaler to use, either `None`,
+                `'minmax'` or `'standard'`.
+            metrics: A list of Keras metrics to pass to `compile(...)`.
+            loss: The built-in Keras loss to pass to `compile(...)`.
+            fit_params: Any additional parameters to pass to `fit(...)`,
+                these will be overwritten by the explicit keyword
+                arguments above.
+
+        """
+
+        if self.n_feat > len(training_data.get_optimal_descriptors()):
+            raise RuntimeError(
+                "The model requires more features than computed in data. "
+                f"Please reduce n_feat below or equal to {len(training_data.get_optimal_descriptors())}"
+            )
+
+        self.xscale = xscale
+        self.target_names = list(self.weights.keys())
+        self.optimal_descriptors = training_data.get_optimal_descriptors()
+
+        x = training_data.get_featurized_df()[
+            self.optimal_descriptors[: self.n_feat]
+        ].values
+
+        # For compatibility with MODNet 0.1.7; if there is only one target in the training data,
+        # use that for the name of the target too.
+        if len(self.targets_flatten) == 1 and len(training_data.df_targets.columns) == 1:
+            self.targets_flatten = list(training_data.df_targets.columns)
+
+        y = []
+        for targ in self.targets_flatten:
+            if self.num_classes[targ] >= 2:  # Classification
+                y_inner = keras.utils.to_categorical(
+                    training_data.df_targets[targ].values,
+                    num_classes=self.num_classes[targ],
+                )
+                loss = "categorical_crossentropy"
+            else:
+                y_inner = training_data.df_targets[targ].values.astype(
+                    np.float, copy=False
+                )
+            y.append(y_inner)
+
+        # Scale the input features:
+        x = np.nan_to_num(x)
+        if self.xscale == "minmax":
+            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+
+        elif self.xscale == "standard":
+            self._scaler = StandardScaler()
+
+        x = self._scaler.fit_transform(x)
+
+        if val_data is not None:
+            val_x = val_data.get_featurized_df()[
+                self.optimal_descriptors[: self.n_feat]
+            ].values
+            val_x = np.nan_to_num(val_x)
+            val_x = self._scaler.transform(val_x)
+            try:
+                val_y = list(
+                    val_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False).transpose()
+                )
+            except Exception:
+                val_y = list(
+                    val_data.get_target_df().values.astype(np.float, copy=False).transpose()
+                )
+            validation_data = (val_x, val_y)
+        else:
+            validation_data = None
+
+        # Optionally set up print callback
+        if verbose:
+            if val_fraction > 0 or validation_data:
+                if self._multi_target and val_key is not None:
+                    val_metric_key = f"val_{val_key}_mae"
+                else:
+                    val_metric_key = "val_mae"
+                print_callback = keras.callbacks.LambdaCallback(
+                    on_epoch_end=lambda epoch, logs: print(
+                        f"epoch {epoch}: loss: {logs['loss']:.3f}, "
+                        f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
+                    )
+                )
+
+            else:
+                print_callback = keras.callbacks.LambdaCallback(
+                    on_epoch_end=lambda epoch, logs: print(
+                        f"epoch {epoch}: loss: {logs['loss']:.3f}"
+                    )
+                )
+
+                if callbacks is None:
+                    callbacks = [print_callback]
+                else:
+                    callbacks.append(print_callback)
+        self.history =[]
+        ### Resampling self.n_models times and fitting####
+        for i in range(self.n_models):
+            LOG.info(f"Fitting model #{i+1}/{self.n_models}")
+            idxs = resample(np.arange(len(x)), replace=True, random_state=2943)
+            x_bootstrap = x[idxs,...]
+            y_bootstrap = [y_inner[idxs,...] for y_inner in y]
+
+            fit_params = {
+                "x": x_bootstrap,
+                "y": y_bootstrap,
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "verbose": verbose,
+                "validation_split": val_fraction,
+                "validation_data": validation_data,
+                "callbacks": callbacks,
+            }
+
+            self.model[i].compile(
+                loss=loss,
+                optimizer=keras.optimizers.Adam(lr=lr),
+                metrics=metrics,
+                loss_weights=self.weights,
+            )
+
+            history = self.model[i].fit(**fit_params)
+            self.history.append(history)
+            model_summary=""
+            for k in history.history.keys():
+                model_summary+="{}: {:.4f}\t".format(k,history.history[k][-1])
+            LOG.info(model_summary)
+
+    def predict(self, test_data: MODData, return_unc=False, return_prob=False) -> pd.DataFrame:
+        """Predict the target values for the passed MODData.
+
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+            return_prob: For a classification tasks only: whether to return the probability of each
+                class OR only return the most probable class.
+
+        Returns:
+            A `pandas.DataFrame` containing the predicted values of the targets.
+
+
+        """
+        # prevents Nan predictions if some features are inf
+        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
+            self.optimal_descriptors[:self.n_feat]
+        ].values
+
+        # Scale the input features:
+        x = np.nan_to_num(x)
+        if self._scaler is not None:
+            x = self._scaler.transform(x)
+            x = np.nan_to_num(x)
+
+        bootstrap_predictions = np.zeros((self.n_models,len(self.targets_flatten),len(test_data.df_featurized),1))
+        for i in range(self.n_models):
+            bootstrap_predictions[i,...] = self.model[i].predict(x)
+        p_mean = bootstrap_predictions.mean(axis=0)
+        p_std = bootstrap_predictions.std(axis=0)
+
+        mean_dic = {}
+        std_dic = {}
+        for i, name in enumerate(self.targets_flatten):
+            if self.num_classes[name] >= 2:
+                if return_prob:
+                    temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
+                    for j in range(temp.shape[-1]):
+                        p_dic['{}_prob_{}'.format(name, j)] = temp[:, j]
+                else:
+                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+            else:
+                mean_dic[name] = p_mean[i, :, 0]
+                std_dic[name] = p_std[i, :, 0]
+        predictions = pd.DataFrame(mean_dic)
+        uncertainty = pd.DataFrame(std_dic)
+        predictions.index = test_data.structure_ids
+        uncertainty.index = test_data.structure_ids
+
+        if return_unc:
+            return predictions, uncertainty
+        else:
+            return predictions
