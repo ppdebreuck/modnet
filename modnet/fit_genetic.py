@@ -215,7 +215,7 @@ class FitGenetic:
 
         self.fitness = []
         j = 0
-        @tf.function(experimental_relax_shapes=True)
+        
         es = keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
