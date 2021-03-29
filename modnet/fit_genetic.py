@@ -296,7 +296,7 @@ class FitGenetic:
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
             print('parents_1=',parents_1)
             #crossover
-            child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
+            child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             print('child_1=',child_1)
             child_2 = self.mutation(child_1)
             print('child_2=',child_2)
