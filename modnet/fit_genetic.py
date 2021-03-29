@@ -186,7 +186,7 @@ class FitGenetic:
 
         for c in range(0, len(child)):
             child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
-            child[c][1] = child[c][1] + 32*randint(-2,2)
+            child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
             child[c][2] = self.individual.fraction1
             child[c][3] = self.individual.fraction2
             child[c][4] = self.individual.fraction3
@@ -287,16 +287,19 @@ class FitGenetic:
         print('fitness=',fitness)
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
         print('pop_fitness_sort=',pop_fitness_sort)
-        scaled_pop_fitness = pop_fitness_sort[:,0]/sum(pop_fitness_sort[:,0])
+        liste = np.zeros(len(pop_fitness_sort[:,0]))
+        for i in range(len(pop_fitness_sort[:,0])):
+            liste[i] = i+2
+        weights = [l/sum(liste) for l in liste[::-1]]
         print('scaled_pop_fitness=',scaled_pop_fitness)
         for j in range(0, num_epochs):
-            LOG.info('Generation number ', j+1)
+            print('Generation number ', j+1)
             length = len(pop_fitness_sort)
             #select parents
-            parents_1 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
+            parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             print('parents_1=',parents_1)
-            parents_2 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
-            print('parents_1=',parents_1)
+            parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
+            print('parents_2=',parents_2)
             #crossover
             child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             print('child_1=',child_1)
