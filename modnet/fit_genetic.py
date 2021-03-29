@@ -4,7 +4,6 @@ import random
 from typing import List, Optional
 from random import randint
 import tensorflow.keras as keras
-import tensorflow as tf
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
@@ -215,7 +214,6 @@ class FitGenetic:
 
         self.fitness = []
         j = 0
-        @tf.function(experimental_relax_shapes=True)
         es = keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
