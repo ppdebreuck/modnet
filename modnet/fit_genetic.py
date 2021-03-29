@@ -215,7 +215,7 @@ class FitGenetic:
 
         self.fitness = []
         j = 0
-        
+        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         es = keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
