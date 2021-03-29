@@ -280,28 +280,42 @@ class FitGenetic:
 
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
+        print('pop=',pop)
         fitness = self.function_fitness(pop,  md_train, y_train, md_val, y_val)
+        print('fitness=',fitness)
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
+        print('pop_fitness_sort=',pop_fitness_sort)
         scaled_pop_fitness = pop_fitness_sort[:,0]/sum(pop_fitness_sort[:,0])
+        print('scaled_pop_fitness=',scaled_pop_fitness)
         for j in range(0, num_epochs):
             LOG.info('Generation number ', j+1)
             length = len(pop_fitness_sort)
             #select parents
-            parent_1 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
-            parent_2 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
+            parents_1 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
+            print('parents_1=',parents_1)
+            parents_2 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
+            print('parents_1=',parents_1)
             #crossover
-            child_1 = [self.crossover(parent_1[i], parent_2[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
+            child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
+            print('child_1=',child_1)
             child_2 = self.mutation(child_1)
-
+            print('child_2=',child_2)
+            
             #calculates children's fitness to choose who will pass to the next generation
             fitness_child_1 = self.function_fitness(child_1, md_train, y_train, md_val, y_val)
+            print('fitness_child_1=',fitness_child_1)
             fitness_child_2 = self.function_fitness(child_2, md_train, y_train, md_val, y_val)
+            print('fitness_child_2=',fitness_child_2)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child_1, fitness_child_2))
+            print('pop_fitness_sort=,pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))
+            print('sort=',sort)        
 
             #selects individuals of the next generation
             pop_fitness_sort = sort[0:size_pop, :]
+            print('pop_fitness_sort=',pop_fitness_sort)
             self.best_individual = sort[0][1]
+            print('best_individual=',self.best_individual)
 
         return self.best_individual
 
