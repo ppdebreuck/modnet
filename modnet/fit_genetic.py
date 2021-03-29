@@ -4,6 +4,7 @@ import random
 from typing import List, Optional
 from random import randint
 import tensorflow.keras as keras
+import tensorflow as tf
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
@@ -82,11 +83,21 @@ class FitGenetic:
         kf = KFold(n_splits=n_splits,shuffle=True,random_state=random_state)
         folds = []
         for train_idx, val_idx in kf.split(ids):
-            data_train = MODData(data.df_structure.iloc[train_idx]['structure'].values,data.df_targets.iloc[train_idx].values,target_names=data.df_targets.columns,structure_ids=ids[train_idx])
+            data_train = MODData(
+                                data.df_structure.iloc[train_idx]['structure'].values,
+                                data.df_targets.iloc[train_idx].values,
+                                target_names=data.df_targets.columns,
+                                structure_ids=ids[train_idx]
+                                )
             data_train.df_featurized = data.df_featurized.iloc[train_idx]
             data_train.optimal_features = data.optimal_features
         
-            data_val = MODData(data.df_structure.iloc[val_idx]['structure'].values,data.df_targets.iloc[val_idx].values,target_names=data.df_targets.columns,structure_ids=ids[val_idx])
+            data_val = MODData(
+                              data.df_structure.iloc[val_idx]['structure'].values,
+                              data.df_targets.iloc[val_idx].values,
+                              target_names=data.df_targets.columns,
+                              structure_ids=ids[val_idx]
+                              )
             data_val.df_featurized = data.df_featurized.iloc[val_idx]
             data_val.optimal_features = data.optimal_features
 
@@ -127,7 +138,20 @@ class FitGenetic:
         self.pop =  [[]]*size_pop
         self.individual = Individual()
 
-        self.pop = [[self.individual.n_feat(self.data) , self.individual.n_neurons_first_layer, self.individual.fraction1, self.individual.fraction2, self.individual.fraction3, self.individual.activation, self.individual.loss, self.individual.xscale, self.individual.lr, self.individual.initial_batch_size] for i in range(0, size_pop)]
+        self.pop = [
+                   [
+                   self.individual.n_feat(self.data),
+                   self.individual.n_neurons_first_layer,
+                   self.individual.fraction1,
+                   self.individual.fraction2,
+                   self.individual.fraction3,
+                   self.individual.activation,
+                   self.individual.loss,
+                   self.individual.xscale,
+                   self.individual.lr,
+                   self.individual.initial_batch_size
+                   ]
+                   for i in range(0, size_pop)]
         return self.pop
 
 
@@ -191,6 +215,7 @@ class FitGenetic:
 
         self.fitness = []
         j = 0
+        @tf.function(experimental_relax_shapes=True)
         es = keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
@@ -202,10 +227,30 @@ class FitGenetic:
         )
         callbacks = [es]
         for w in self.pop:
-            modnet_model = MODNetModel([[[md_train.df_targets.columns[0]]]], {md_train.df_targets.columns[0]:1}, n_feat=w[0], num_neurons=[[int(w[1])],[int(w[1]*w[2])],[int(w[1]*w[2]*w[3])],[int(w[1]*w[2]*w[3]*w[4])]], act=w[5])
+            modnet_model = MODNetModel(
+                                      [[[md_train.df_targets.columns[0]]]],
+                                      {md_train.df_targets.columns[0]:1},
+                                      n_feat=w[0],
+                                      num_neurons=[[int(w[1])],
+                                      [int(w[1]*w[2])],
+                                      [int(w[1]*w[2]*w[3])],
+                                      [int(w[1]*w[2]*w[3]*w[4])]],
+                                      act=w[5]
+                                      )
             try:
                 for i in range(4):
-                    modnet_model.fit(md_train,val_fraction=0, val_key=md_train.df_targets.columns[0], loss=w[6], lr=w[8], epochs = 250, batch_size = (2**i)*w[9], xscale=w[7], callbacks=callbacks, verbose=0)
+                    modnet_model.fit(
+                                    md_train,
+                                    val_fraction=0,
+                                    val_key=md_train.df_targets.columns[0],
+                                    loss=w[6],
+                                    lr=w[8],
+                                    epochs = 250,
+                                    batch_size = (2**i)*w[9],
+                                    xscale=w[7],
+                                    callbacks=callbacks,
+                                    verbose=0
+                                    )
                 f = mse(modnet_model.predict(md_val),y_val)
                 print('MSE = ', f)
                 self.fitness.append([f, modnet_model, w])
@@ -241,7 +286,7 @@ class FitGenetic:
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
         scaled_pop_fitness = pop_fitness_sort[:,0]/sum(pop_fitness_sort[:,0])
         for j in range(0, num_epochs):
-            print('Generation number ', j+1)
+            LOG.info('Generation number ', j+1)
             length = len(pop_fitness_sort)
             #select parents
             parent_1 = random.choices(pop_fitness_sort[:,2], weights=scaled_pop_fitness, k=length//2)
@@ -251,7 +296,7 @@ class FitGenetic:
             child_2 = self.mutation(child_1)
 
             #calculates children's fitness to choose who will pass to the next generation
-            fitness_child_1 = self.function_fitness(child_1,md_train, y_train, md_val, y_val)
+            fitness_child_1 = self.function_fitness(child_1, md_train, y_train, md_val, y_val)
             fitness_child_2 = self.function_fitness(child_2, md_train, y_train, md_val, y_val)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child_1, fitness_child_2))
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))
