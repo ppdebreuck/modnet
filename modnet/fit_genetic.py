@@ -291,7 +291,7 @@ class FitGenetic:
         for i in range(len(pop_fitness_sort[:,0])):
             liste[i] = i+2
         weights = [l/sum(liste) for l in liste[::-1]]
-        print('scaled_pop_fitness=',scaled_pop_fitness)
+        print('weights=',weights)
         for j in range(0, num_epochs):
             print('Generation number ', j+1)
             length = len(pop_fitness_sort)
