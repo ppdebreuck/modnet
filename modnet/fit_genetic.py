@@ -307,7 +307,7 @@ class FitGenetic:
             fitness_child_2 = self.function_fitness(child_2, md_train, y_train, md_val, y_val)
             print('fitness_child_2=',fitness_child_2)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child_1, fitness_child_2))
-            print('pop_fitness_sort=,pop_fitness_sort)
+            print('pop_fitness_sort=',pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))
             print('sort=',sort)        
 
