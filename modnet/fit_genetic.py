@@ -138,7 +138,7 @@ class FitGenetic:
         self.pop =  [[]]*size_pop
 
         for i in range(0, 10):
-            individual = Individual(data)
+            individual = Individual(self.data)
             self.pop[i] = [individual.n_features, individual.n_neurons_first_layer, individual.fraction1, individual.fraction2, individual.fraction3, individual.activation, individual.loss, individual.xscale, individual.lr, individual.initial_batch_size]
         return self.pop
 
