@@ -271,7 +271,7 @@ class FitGenetic:
         md_val: MODData,
         y_val: pd.DataFrame,
         size_pop: int,
-        num_epochs: int
+        num_epochs: int,
         prob_mut: int = 0.5
         )->None:
 
