@@ -136,20 +136,20 @@ class FitGenetic:
         """
 
         self.pop =  [[]]*size_pop
-        self.individual = Individual()
+        individual = Individual()
 
         self.pop = [
                    [
-                   self.individual.n_feat(self.data),
-                   self.individual.n_neurons_first_layer,
-                   self.individual.fraction1,
-                   self.individual.fraction2,
-                   self.individual.fraction3,
-                   self.individual.activation,
-                   self.individual.loss,
-                   self.individual.xscale,
-                   self.individual.lr,
-                   self.individual.initial_batch_size
+                   individual.n_feat(self.data),
+                   individual.n_neurons_first_layer,
+                   individual.fraction1,
+                   individual.fraction2,
+                   individual.fraction3,
+                   individual.activation,
+                   individual.loss,
+                   individual.xscale,
+                   individual.lr,
+                   individual.initial_batch_size
                    ]
                    for i in range(0, size_pop)]
         return self.pop
@@ -184,13 +184,15 @@ class FitGenetic:
             child: List containing the genetic information of the 'child'.
         """
 
+        individual = Individual()
         for c in range(0, len(child)):
             child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
             child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
-            child[c][2] = self.individual.fraction1
-            child[c][3] = self.individual.fraction2
-            child[c][4] = self.individual.fraction3
-            child[c][8] = self.individual.lr
+            child[c][2] = individual.fraction1
+            child[c][3] = individual.fraction2
+            child[c][4] = individual.fraction3
+            child[c][8] = individual.lr
+            child[c][9] = int(child[c][9]*2**randint(-1,1))
         return child
 
 
