@@ -175,6 +175,7 @@ class FitGenetic:
     def mutation(
         self,
         child: List,
+        prob_mut: int = 0.5
         )->None:
 
         """Performs mutation in the genetic information in order to maintain diversity in the population. 
@@ -184,14 +185,17 @@ class FitGenetic:
         """
 
         for c in range(0, len(child)):
-            individual = Individual(self.data)
-            child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
-            child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
-            child[c][2] = individual.fraction1
-            child[c][3] = individual.fraction2
-            child[c][4] = individual.fraction3
-            child[c][8] = individual.lr
-            child[c][9] = int(child[c][9]*2**randint(-1,1))
+            if np.random.rand() > prob_mut:
+                individual = Individual(self.data)
+                child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
+                child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
+                child[c][2] = individual.fraction1
+                child[c][3] = individual.fraction2
+                child[c][4] = individual.fraction3
+                child[c][8] = individual.lr
+                child[c][9] = int(child[c][9]*2**randint(-1,1))
+            else:
+                pass
         return child
 
 
@@ -268,6 +272,7 @@ class FitGenetic:
         y_val: pd.DataFrame,
         size_pop: int,
         num_epochs: int
+        prob_mut: int = 0.5
         )->None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MSE on the validation set.
@@ -304,7 +309,7 @@ class FitGenetic:
             #crossover
             child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             print('child_1=',child_1)
-            child_2 = self.mutation(child_1)
+            child_2 = self.mutation(child_1, prob_mut)
             print('child_2=',child_2)
             
             #calculates children's fitness to choose who will pass to the next generation
@@ -342,7 +347,7 @@ class FitGenetic:
         """
 
         md_train, md_val, y_train, y_val = self.train_val_split(data)
-        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_epochs)
+        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_epochs, prob_mut)
 
         return self.best_individual
 
