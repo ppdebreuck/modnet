@@ -347,7 +347,7 @@ class FitGenetic:
         """
 
         md_train, md_val, y_train, y_val = self.train_val_split(data)
-        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_epochs, prob_mut)
+        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_epochs, prob_mut=0.5)
 
         return self.best_individual
 
