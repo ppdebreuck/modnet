@@ -172,8 +172,8 @@ class FitGenetic:
             child: List containing the genetic information of the 'child'.
         """
 
-        individual = Individual()
         for c in range(0, len(child)):
+            individual = Individual(self.data)
             child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
             child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
             child[c][2] = individual.fraction1
