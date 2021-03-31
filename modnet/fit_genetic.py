@@ -309,7 +309,8 @@ class FitGenetic:
             #crossover
             child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             print('child_1=',child_1)
-            child_2 = self.mutation(child_1, prob_mut)
+            child_2 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
+            child_2 = self.mutation(child_2, prob_mut)
             print('child_2=',child_2)
             
             #calculates children's fitness to choose who will pass to the next generation
