@@ -90,7 +90,7 @@ class FitGenetic:
                                 structure_ids=ids[train_idx]
                                 )
             data_train.df_featurized = data.df_featurized.iloc[train_idx]
-            #data_train.optimal_features = data.optimal_features
+            data_train.optimal_features = data.optimal_features
         
             data_val = MODData(
                               data.df_structure.iloc[val_idx]['structure'].values,
@@ -99,7 +99,7 @@ class FitGenetic:
                               structure_ids=ids[val_idx]
                               )
             data_val.df_featurized = data.df_featurized.iloc[val_idx]
-            #data_val.optimal_features = data.optimal_features
+            data_val.optimal_features = data.optimal_features
 
             folds.append((data_train,data_val))
         
