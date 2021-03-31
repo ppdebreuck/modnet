@@ -298,7 +298,7 @@ class FitGenetic:
             liste[i] = i+2
         weights = [l/sum(liste) for l in liste[::-1]]
         for j in range(0, num_epochs):
-            LOG.info("Generation number #{}".format(j+1))
+            LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
             #select parents
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
