@@ -959,7 +959,9 @@ class Bayesian_MODNetModel(MODNetModel):
                     n = num_classes[group[prop_idx][pi]]
                     if n >= 2:
                         out = tfp.layers.DenseVariational(
-                            n, activation="softmax", name=group[prop_idx][pi]
+                            n,
+                            make_posterior_fn=posterior, make_prior_fn=prior, kl_weight=kl_weight,
+                            activation="softmax", name=group[prop_idx][pi]
                         )(previous_layer)
                     else:
                         out = tfp.layers.DenseVariational(
@@ -1002,8 +1004,8 @@ class Bayesian_MODNetModel(MODNetModel):
         all_predictions = []
 
         for i in range(1000):
-            p = self.model(x)
-            if len(p.shape) == 2:
+            p = self.model.predict(x)
+            if len(self.targets_flatten) == 1:
                 p = np.array([p])
             all_predictions.append(p)
 
@@ -1252,7 +1254,10 @@ class Bootstrap_MODNetModel(MODNetModel):
 
         all_predictions = []
         for i in range(self.n_models):
-            all_predictions.append(self.model[i](x))
+            p = self.model[i].predict(x)
+            if len(self.targets_flatten) ==1:
+                p = np.array([p])
+            all_predictions.append(p)
 
         p_dic = {}
         unc_dic = {}

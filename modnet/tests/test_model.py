@@ -15,7 +15,7 @@ def test_train_small_model_single_target(subset_moddata, tf_session):
     model = MODNetModel(
         [[["eform"]]],
         weights={"eform": 1},
-        num_neurons=([16], [8], [8], [4]),
+        num_neurons=[[16], [8], [8], [4]],
         n_feat=10,
     )
 
@@ -43,7 +43,7 @@ def test_train_small_model_single_target_classif(subset_moddata, tf_session):
     model = MODNetModel(
         [[["is_metal"]]],
         weights={"is_metal": 1},
-        num_neurons=([16], [8], [8], [4]),
+        num_neurons=[[16], [8], [8], [4]],
         num_classes={"is_metal": 2},
         n_feat=10,
     )
@@ -64,7 +64,7 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
     model = MODNetModel(
         [[["eform", "egap"]]],
         weights={"eform": 1, "egap": 1},
-        num_neurons=([16], [8], [8], [4]),
+        num_neurons=[[16], [8], [8], [4]],
         n_feat=10,
     )
 
@@ -91,7 +91,7 @@ def test_train_small_model_presets(subset_moddata, tf_session):
     model = MODNetModel(
         [[["eform", "egap"]]],
         weights={"eform": 1, "egap": 1},
-        num_neurons=([16], [8], [8], [4]),
+        num_neurons=[[16], [8], [8], [4]],
         n_feat=10,
     )
 
@@ -118,7 +118,7 @@ def test_model_integration(subset_moddata, tf_session):
     model = MODNetModel(
         [[["eform", "egap"]]],
         weights={"eform": 1, "egap": 1},
-        num_neurons=([16], [8], [8], [4]),
+        num_neurons=[[16], [8], [8], [4]],
         n_feat=10,
     )
 
@@ -128,3 +128,155 @@ def test_model_integration(subset_moddata, tf_session):
     loaded_model = MODNetModel.load("test")
 
     assert model.predict(data) == loaded_model.predict(data)
+
+
+###### Bayesian_MODNet Tests ######
+def test_train_small_bayesian_single_target(subset_moddata, tf_session):
+    """Tests the single target training."""
+    from modnet.models import Bayesian_MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    model = Bayesian_MODNetModel(
+        [[["eform"]]],
+        weights={"eform": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        n_feat=10,
+    )
+
+    model.fit(data, epochs=5)
+    model.predict(data)
+    model.predict(data, return_unc=True)
+
+
+def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
+    """Tests the single target training."""
+    from modnet.models import Bayesian_MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    def is_metal(egap):
+        if egap == 0:
+            return 1
+        else:
+            return 0
+
+    data.df_targets["is_metal"] = data.df_targets["egap"].apply(is_metal)
+    model = Bayesian_MODNetModel(
+        [[["is_metal"]]],
+        weights={"is_metal": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        num_classes={"is_metal": 2},
+        n_feat=10,
+    )
+
+    model.fit(data, epochs=5)
+    model.predict(data)
+    model.predict(data, return_unc=True)
+
+def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
+    """Tests the multi-target training."""
+    from modnet.models import Bayesian_MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    model = Bayesian_MODNetModel(
+        [[["eform", "egap"]]],
+        weights={"eform": 1, "egap": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        n_feat=10,
+    )
+
+    model.fit(data, epochs=5)
+    model.predict(data)
+    model.predict(data, return_unc=True)
+
+
+###### Bootstrap_MODNet Tests ######
+
+def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
+    """Tests the single target training."""
+    from modnet.models import Bootstrap_MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    model = Bootstrap_MODNetModel(
+        [[["eform"]]],
+        weights={"eform": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        n_feat=10,
+        n_models=3,
+    )
+
+    model.fit(data, epochs=5)
+    model.predict(data)
+    model.predict(data, return_unc=True)
+
+
+def test_train_small_bootstrap_single_target_classif(subset_moddata, tf_session):
+    """Tests the single target training."""
+    from modnet.models import Bootstrap_MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    def is_metal(egap):
+        if egap == 0:
+            return 1
+        else:
+            return 0
+
+    data.df_targets["is_metal"] = data.df_targets["egap"].apply(is_metal)
+    model = Bootstrap_MODNetModel(
+        [[["is_metal"]]],
+        weights={"is_metal": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        num_classes={"is_metal": 2},
+        n_feat=10,
+        n_models=3,
+    )
+
+    model.fit(data, epochs=5)
+    model.predict(data, return_unc=True)
+    model.predict(data, return_unc=True)
+
+def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
+    """Tests the multi-target training."""
+    from modnet.models import Bootstrap_MODNetModel
+
+    data = subset_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    model = Bootstrap_MODNetModel(
+        [[["eform", "egap"]]],
+        weights={"eform": 1, "egap": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        n_feat=10,
+        n_models=3,
+    )
+
+    model.fit(data, epochs=5)
+    model.predict(data)
+    model.predict(data, return_unc=True)
