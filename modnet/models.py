@@ -1041,6 +1041,14 @@ class Bayesian_MODNetModel(MODNetModel):
         else:
             return predictions
 
+    def fit_preset(*args,**kwargs):
+        '''Deprecated, use the autofit_preset class instead'''
+
+        raise RuntimeError(
+            "Deprecated, use the autofit_preset class instead"
+        )
+
+
 
 class Bootstrap_MODNetModel(MODNetModel):
     """Container class for 100 Bootstrap Keras `Model`, that handles
@@ -1290,3 +1298,10 @@ class Bootstrap_MODNetModel(MODNetModel):
             return predictions, unc
         else:
             return predictions
+
+    def fit_preset(*args,**kwargs):
+        '''Deprecated, use the autofit_preset class instead'''
+
+        raise RuntimeError(
+            "Deprecated, use the autofit_preset class instead"
+        )
