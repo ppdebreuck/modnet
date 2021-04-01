@@ -4,16 +4,15 @@ from typing import List, Tuple, Dict, Optional, Callable, Any
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 
 import tensorflow as tf
 tf.config.threading.set_intra_op_parallelism_threads(1)
 tf.config.threading.set_inter_op_parallelism_threads(1)
-
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["OMP_NUM_THREADS"] = "1"
-#import tensorflow.tf.keras as tf.keras
 
 import tensorflow_probability as tfp
 from modnet.preprocessing import MODData
@@ -21,9 +20,9 @@ from modnet.matbench.benchmark import matbench_kfold_splits
 from modnet.utils import LOG
 from modnet import __version__
 
+from functools import partial
 import multiprocessing
 import tqdm
-import copy
 
 __all__ = ("MODNetModel",)
 
@@ -755,11 +754,13 @@ def validate_model(train_data = None,
 
 def map_validate_model(kwargs):
     return validate_model(**kwargs)
-#### Bayesian NN####
+
+
+#### Probabilistoc models####
 
 class Bayesian_MODNetModel(MODNetModel):
-    """Container class for the underlying Probabilistic Keras `Model`, that handles
-    setting up the architecture, activations, training and learning curve.
+    """Container class for the underlying Probabilistic Bayesian Neural Network, that handles
+    setting up the architecture, activations, training and learning curve. Only epistemic uncertainty is taken into account.
 
     Attributes:
         n_feat: The number of features used in the model.
@@ -772,11 +773,83 @@ class Bayesian_MODNetModel(MODNetModel):
 
     """
 
+
+    def __init__(
+        self,
+        targets: List,
+        weights: Dict[str, float],
+        num_neurons=([64], [32], [16], [16]),
+        bayesian_layers=None,
+        prior=None,
+        posterior=None,
+        kl_weight=None,
+        num_classes: Optional[Dict[str, int]] = None,
+        n_feat: Optional[int] = 64,
+        act="relu",
+    ):
+        """Initialise the model on the passed targets with the desired
+        architecture, feature count and loss functions and activation functions.
+
+        Parameters:
+            targets: A nested list of targets names that defines the hierarchy
+                of the output layers.
+            weights: The relative loss weights to apply for each target.
+            num_neurons: A specification of the model layers, as a 4-tuple
+                of lists of integers. Hidden layers are split into four
+                blocks of `tf.keras.layers.Dense`, with neuron count specified
+                by the elements of the `num_neurons` argument.
+            bayesian_layers: Same shape as num_neurons, with True for a Bayesian DenseVariational layer,
+                False for a normal Dense layer. Default is None and will only set last layer as Bayesian.
+            prior: Prior to use for the DenseVariational layers, default is independent normal with learnable mean.
+            posterior: Posterior to use for the DenseVariational layers, default is indepent normal with learnable mean and variance.
+            kl_weight: Amount by which to scale the KL divergence loss between prior and posterior.
+            num_classes: Dictionary defining the target types (classification or regression).
+                Should be constructed as follows: key: string giving the target name; value: integer n,
+                 with n=0 for regression and n>=2 for classification with n the number of classes.
+            n_feat: The number of features to use as model inputs.
+            act: A string defining a tf.keras activation function to pass to use
+                in the `tf.keras.layers.Dense` layers.
+
+        """
+
+        self.__modnet_version__ = __version__
+
+        if n_feat is None:
+            n_feat = 64
+        self.n_feat = n_feat
+        self.weights = weights
+        self.num_classes = num_classes
+        self.num_neurons = num_neurons
+        self.act = act
+
+        self._scaler = None
+        self.optimal_descriptors = None
+        self.target_names = None
+        self.targets = targets
+        self.model = None
+
+        f_temp = [x for subl in targets for x in subl]
+        self.targets_flatten = [x for subl in f_temp for x in subl]
+        self.num_classes = {name: 0 for name in self.targets_flatten}
+        if num_classes is not None:
+            self.num_classes.update(num_classes)
+        self._multi_target = len(self.targets_flatten) > 1
+
+        self.model = self.build_model(
+            targets, n_feat, num_neurons,
+            bayesian_layers=bayesian_layers, prior=prior, posterior=posterior, kl_weight=kl_weight,
+            act=act, num_classes=self.num_classes
+        )
+
     def build_model(
         self,
         targets: List,
         n_feat: int,
         num_neurons: Tuple[List[int], List[int], List[int], List[int]],
+        bayesian_layers=None,
+        prior=None,
+        posterior=None,
+        kl_weight=None,
         num_classes: Optional[Dict[str, int]] = None,
         act: str = "relu",
     ):
@@ -803,41 +876,49 @@ class Bayesian_MODNetModel(MODNetModel):
         # define probabilistic layers
         tfd = tfp.distributions
 
-        def posterior_mean_field(kernel_size, bias_size=0, dtype=None):
-            n = kernel_size + bias_size
-            c = np.log(np.expm1(1.))
-            return tf.keras.Sequential([
-                tfp.layers.VariableLayer(2 * n, dtype=dtype),
-                tfp.layers.DistributionLambda(lambda t: tfd.Independent(
-                    tfd.Normal(loc=t[..., :n],
-                                scale=1e-5 + tf.nn.softplus(c + t[..., n:])),
-                    reinterpreted_batch_ndims=1)),
-            ])
+        if bayesian_layers is None:
+            bayesian_layers = [[False]*nl for nl in num_layers]
 
-        def prior_trainable(kernel_size, bias_size=0, dtype=None):
-            n = kernel_size + bias_size
-            return tf.keras.Sequential([
-                tfp.layers.VariableLayer(n, dtype=dtype),
-                tfp.layers.DistributionLambda(lambda t: tfd.Independent(
-                    tfd.Normal(loc=t, scale=1),
-                    reinterpreted_batch_ndims=1)),
-            ])
+        if posterior is None:
+            def posterior(kernel_size, bias_size=0, dtype=None):
+                n = kernel_size + bias_size
+                c = np.log(np.expm1(1.))
+                return tf.keras.Sequential([
+                    tfp.layers.VariableLayer(2 * n, dtype=dtype),
+                    tfp.layers.DistributionLambda(lambda t: tfd.Independent(
+                        tfd.Normal(loc=t[..., :n],
+                                    scale=1e-5 + tf.nn.softplus(c + t[..., n:])),
+                        reinterpreted_batch_ndims=1)),
+                ])
+
+        if prior is None:
+            def prior(kernel_size, bias_size=0, dtype=None):
+                n = kernel_size + bias_size
+                return tf.keras.Sequential([
+                    tfp.layers.VariableLayer(n, dtype=dtype),
+                    tfp.layers.DistributionLambda(lambda t: tfd.Independent(
+                        tfd.Normal(loc=t, scale=1),
+                        reinterpreted_batch_ndims=1)),
+                ])
 
 
-
+        bayesian_layer = partial(tfp.layers.DenseVariational,
+                                 make_posterior_fn=posterior,
+                                 make_prior_fn=prior,
+                                 kl_weight=1/3619,
+                                 activation=act)
+        dense_layer = partial(tf.keras.layers.Dense, activation=act)
 
         # Build first common block
-        f_input = keras.layers.Input(shape=(n_feat,))
+        f_input = tf.keras.layers.Input(shape=(n_feat,))
         previous_layer = f_input
         for i in range(num_layers[0]):
-            #previous_layer = tfp.layers.DenseVariational(
-            previous_layer = keras.layers.Dense(
-                num_neurons[0][i],
-                #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
-                activation=act
-                )(previous_layer)
+            if bayesian_layers[0][i]:
+                previous_layer = bayesian_layer(num_neurons[0][i])(previous_layer)
+            else:
+                previous_layer = dense_layer(num_neurons[0][i])(previous_layer)
             if self._multi_target:
-                previous_layer = keras.layers.BatchNormalization()(previous_layer)
+                previous_layer = tf.keras.layers.BatchNormalization()(previous_layer)
         common_out = previous_layer
 
         # Build intermediate representations
@@ -845,14 +926,12 @@ class Bayesian_MODNetModel(MODNetModel):
         for _ in range(len(targets)):
             previous_layer = common_out
             for j in range(num_layers[1]):
-                #previous_layer = tfp.layers.DenseVariational(
-                previous_layer = keras.layers.Dense(
-                    num_neurons[1][j],
-                    #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
-                    activation=act,
-                    )(previous_layer)
+                if bayesian_layers[1][j]:
+                    previous_layer = bayesian_layer(num_neurons[1][j])(previous_layer)
+                else:
+                    previous_layer = dense_layer(num_neurons[1][j])(previous_layer)
                 if self._multi_target:
-                    previous_layer = keras.layers.BatchNormalization()(previous_layer)
+                    previous_layer = tf.keras.layers.BatchNormalization()(previous_layer)
             intermediate_models_out.append(previous_layer)
 
         # Build outputs
@@ -861,46 +940,36 @@ class Bayesian_MODNetModel(MODNetModel):
             for prop_idx in range(len(group)):
                 previous_layer = intermediate_models_out[group_idx]
                 for k in range(num_layers[2]):
-                    #previous_layer = tfp.layers.DenseVariational(
-                    previous_layer = keras.layers.Dense(
-                        num_neurons[2][k],
-                        #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
-                        activation=act,
-                    )(previous_layer)
+                    if bayesian_layers[2][k]:
+                        previous_layer = bayesian_layer(num_neurons[2][k])(previous_layer)
+                    else:
+                        previous_layer = dense_layer(num_neurons[2][k])(previous_layer)
                     if self._multi_target:
-                        previous_layer = keras.layers.BatchNormalization()(
+                        previous_layer = tf.keras.layers.BatchNormalization()(
                             previous_layer
                         )
                 clayer = previous_layer
                 for pi in range(len(group[prop_idx])):
                     previous_layer = clayer
                     for li in range(num_layers[3]):
-                        #previous_layer = tfp.layers.DenseVariational(
-                        previous_layer = keras.layers.Dense(
-                            num_neurons[3][li],
-                            #make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
-                            activation=act,
-                            )(previous_layer)
+                        if bayesian_layers[3][li]:
+                            previous_layer = bayesian_layer(num_neurons[3][li])(previous_layer)
+                        else:
+                            previous_layer = dense_layer(num_neurons[3][li])(previous_layer)
                     n = num_classes[group[prop_idx][pi]]
                     if n >= 2:
-                        out = keras.layers.Dense(
+                        out = tfp.layers.DenseVariational(
                             n, activation="softmax", name=group[prop_idx][pi]
                         )(previous_layer)
                     else:
                         out = tfp.layers.DenseVariational(
                             1,
-                            make_posterior_fn=posterior_mean_field, make_prior_fn=prior_trainable, kl_weight=1/3619,
+                            make_posterior_fn=posterior, make_prior_fn=prior, kl_weight=kl_weight,
                             activation="linear", name=group[prop_idx][pi]
                         )(previous_layer)
-                        #out = keras.layers.Dense(1,activation="linear")(previous_layer)
-                        #out = tfp.layers.DenseFlipout(1,activation="linear",name=group[prop_idx][pi])(previous_layer)
-
-                        #out = tfp.layers.DistributionLambda(lambda t: tfd.Normal(loc=t[..., :1],scale=1e-3 + tf.math.softplus(0.05 * t[...,1:])), name=group[prop_idx][pi])(out)
-                        #out = tfp.layers.DistributionLambda(lambda t: tfd.Normal(loc=t[..., :1],scale=0.001), name=group[prop_idx][pi])(out)
-
                     final_out.append(out)
 
-        return keras.models.Model(inputs=f_input, outputs=final_out)
+        return tf.keras.models.Model(inputs=f_input, outputs=final_out)
 
     def predict(self, test_data: MODData, return_prob=False, return_unc=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
@@ -930,52 +999,43 @@ class Bayesian_MODNetModel(MODNetModel):
             x = self._scaler.transform(x)
             x = np.nan_to_num(x)
 
-        p_mc = np.zeros((1000,len(self.targets_flatten),len(test_data.df_featurized),1))
-        #stddev_mc = np.zeros((100,len(self.targets_flatten),len(test_data.df_featurized),1))
+        all_predictions = []
 
         for i in range(1000):
-            prob = self.model(x)
-            #p = np.array(prob.mean())
-            #stddev = np.array(prob.stddev())
-            p = np.array(prob)
-            #p = p.reshape((len(self.targets_flatten),len(test_data.df_featurized),1))
-            #stddev = stddev.reshape((len(self.targets_flatten),len(test_data.df_featurized),1))
-            p_mc[i,...] = p
-            #stddev_mc[i,...] = stddev
+            p = self.model(x)
+            if len(p.shape) == 2:
+                p = np.array([p])
+            all_predictions.append(p)
 
-        p = p_mc.mean(axis=0)
-        epistemic_unc = p_mc.std(axis=0)
-        #aleatoric_unc = stddev_mc.mean(axis=0)
-
-
-        if len(p.shape) == 2:
-            p = np.array([p])
         p_dic = {}
-        #aleatoric_unc_dic = {}
-        epistemic_unc_dic = {}
+        unc_dic = {}
         for i, name in enumerate(self.targets_flatten):
             if self.num_classes[name] >= 2:
                 if return_prob:
-                    temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
-                    for j in range(temp.shape[-1]):
-                        p_dic['{}_prob_{}'.format(name, j)] = temp[:, j]
+                    preds = np.array([pred[i] for pred in all_predictions])
+                    probs = preds/(preds.sum(axis=-1)).reshape((-1, 1))
+                    mean_prob = probs.mean()
+                    std_prob = probs.std()
+                    for j in range(mean_prob.shape[-1]):
+                        p_dic['{}_prob_{}'.format(name, j)] = mean_prob[:,j]
+                        unc_dic['{}_prob_{}'.format(name, j)] = std_prob[:,j]
                 else:
-                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+                    p_dic[name] = np.argmax(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
+                    unc_dic[name] = np.max(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
             else:
-                p_dic[name] = p[i,:,0]
-                #aleatoric_unc_dic[name] = aleatoric_unc[i,:,0]
-                epistemic_unc_dic[name] = epistemic_unc[i,:,0]
+                mean_p = np.array([pred[i] for pred in all_predictions]).mean(axis=0)
+                std_p = np.array([pred[i] for pred in all_predictions]).std(axis=0)
+                p_dic[name] = mean_p[:,0]
+                unc_dic[name] = std_p[:,0]
 
         predictions = pd.DataFrame(p_dic)
-        #aleatoric_unc = pd.DataFrame(aleatoric_unc_dic)
-        epistemic_unc = pd.DataFrame(epistemic_unc_dic)
+        unc = pd.DataFrame(unc_dic)
 
         predictions.index = test_data.structure_ids
-        #aleatoric_unc.index = test_data.structure_ids
-        epistemic_unc.index = test_data.structure_ids
+        unc.index = test_data.structure_ids
 
         if return_unc:
-            return predictions, epistemic_unc
+            return predictions, unc
         else:
             return predictions
 
@@ -1068,7 +1128,7 @@ class Bootstrap_MODNetModel(MODNetModel):
         y = []
         for targ in self.targets_flatten:
             if self.num_classes[targ] >= 2:  # Classification
-                y_inner = keras.utils.to_categorical(
+                y_inner = tf.keras.utils.to_categorical(
                     training_data.df_targets[targ].values,
                     num_classes=self.num_classes[targ],
                 )
@@ -1114,7 +1174,7 @@ class Bootstrap_MODNetModel(MODNetModel):
                     val_metric_key = f"val_{val_key}_mae"
                 else:
                     val_metric_key = "val_mae"
-                print_callback = keras.callbacks.LambdaCallback(
+                print_callback = tf.keras.callbacks.LambdaCallback(
                     on_epoch_end=lambda epoch, logs: print(
                         f"epoch {epoch}: loss: {logs['loss']:.3f}, "
                         f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
@@ -1122,7 +1182,7 @@ class Bootstrap_MODNetModel(MODNetModel):
                 )
 
             else:
-                print_callback = keras.callbacks.LambdaCallback(
+                print_callback = tf.keras.callbacks.LambdaCallback(
                     on_epoch_end=lambda epoch, logs: print(
                         f"epoch {epoch}: loss: {logs['loss']:.3f}"
                     )
@@ -1153,7 +1213,7 @@ class Bootstrap_MODNetModel(MODNetModel):
 
             self.model[i].compile(
                 loss=loss,
-                optimizer=keras.optimizers.Adam(lr=lr),
+                optimizer=tf.keras.optimizers.Adam(lr=lr),
                 metrics=metrics,
                 loss_weights=self.weights,
             )
@@ -1190,31 +1250,38 @@ class Bootstrap_MODNetModel(MODNetModel):
             x = self._scaler.transform(x)
             x = np.nan_to_num(x)
 
-        bootstrap_predictions = np.zeros((self.n_models,len(self.targets_flatten),len(test_data.df_featurized),1))
+        all_predictions = []
         for i in range(self.n_models):
-            bootstrap_predictions[i,...] = self.model[i].predict(x)
-        p_mean = bootstrap_predictions.mean(axis=0)
-        p_std = bootstrap_predictions.std(axis=0)
+            all_predictions.append(self.model[i](x))
 
-        mean_dic = {}
-        std_dic = {}
+        p_dic = {}
+        unc_dic = {}
         for i, name in enumerate(self.targets_flatten):
             if self.num_classes[name] >= 2:
                 if return_prob:
-                    temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
-                    for j in range(temp.shape[-1]):
-                        p_dic['{}_prob_{}'.format(name, j)] = temp[:, j]
+                    preds = np.array([pred[i] for pred in all_predictions])
+                    probs = preds/(preds.sum(axis=-1)).reshape((-1, 1))
+                    mean_prob = probs.mean()
+                    std_prob = probs.std()
+                    for j in range(mean_prob.shape[-1]):
+                        p_dic['{}_prob_{}'.format(name, j)] = mean_prob[:,j]
+                        unc_dic['{}_prob_{}'.format(name, j)] = std_prob[:,j]
                 else:
-                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+                    p_dic[name] = np.argmax(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
+                    unc_dic[name] = np.max(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
             else:
-                mean_dic[name] = p_mean[i, :, 0]
-                std_dic[name] = p_std[i, :, 0]
-        predictions = pd.DataFrame(mean_dic)
-        uncertainty = pd.DataFrame(std_dic)
+                mean_p = np.array([pred[i] for pred in all_predictions]).mean(axis=0)
+                std_p = np.array([pred[i] for pred in all_predictions]).std(axis=0)
+                p_dic[name] = mean_p[:,0]
+                unc_dic[name] = std_p[:,0]
+
+        predictions = pd.DataFrame(p_dic)
+        unc = pd.DataFrame(unc_dic)
+
         predictions.index = test_data.structure_ids
-        uncertainty.index = test_data.structure_ids
+        unc.index = test_data.structure_ids
 
         if return_unc:
-            return predictions, uncertainty
+            return predictions, unc
         else:
             return predictions
