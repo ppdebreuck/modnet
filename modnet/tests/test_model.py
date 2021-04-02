@@ -72,6 +72,7 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
     model.predict(data)
 
 
+@pytest.mark.skip(msg="Slow test")
 def test_train_small_model_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets
@@ -283,6 +284,7 @@ def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
     model.fit(data, epochs=5)
     model.predict(data, return_unc=True)
 
+@pytest.mark.skip(msg="Slow test")
 def test_train_small_bootstrap_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets
