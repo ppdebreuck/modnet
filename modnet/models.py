@@ -596,10 +596,6 @@ class MODNetModel:
 
         return self.model.evaluate(x,y)[0]
 
-
-
-
-
     #############
 
     def save(self, filename: str):
@@ -1050,6 +1046,7 @@ class Bayesian_MODNetModel(MODNetModel):
 
 
 
+#### could be replaced by ensemble method in fine ####
 class Bootstrap_MODNetModel(MODNetModel):
     """Container class for 100 Bootstrap Keras `Model`, that handles
     setting up the architecture, activations, training and learning curve.
@@ -1299,9 +1296,295 @@ class Bootstrap_MODNetModel(MODNetModel):
         else:
             return predictions
 
-    def fit_preset(*args,**kwargs):
-        '''Deprecated, use the autofit_preset class instead'''
+    def evaluate(self, test_data: MODData) -> pd.DataFrame:
+        """Evaluates the target values for the passed MODData by returning the corresponding loss.
 
-        raise RuntimeError(
-            "Deprecated, use the autofit_preset class instead"
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+
+
+        Returns:
+            Loss score
+        """
+        # prevents Nan predictions if some features are inf
+        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
+            self.optimal_descriptors[:self.n_feat]
+        ].values
+
+        # Scale the input features:
+        x = np.nan_to_num(x)
+        if self._scaler is not None:
+            x = self._scaler.transform(x)
+            x = np.nan_to_num(x,nan=-1)
+
+        y = []
+        for targ in self.targets_flatten:
+            if self.num_classes[targ] >= 2:  # Classification
+                y_inner = tf.keras.utils.to_categorical(
+                    test_data.df_targets[targ].values,
+                    num_classes=self.num_classes[targ],
+                )
+                loss = "categorical_crossentropy"
+            else:
+                y_inner = test_data.df_targets[targ].values.astype(
+                    np.float, copy=False
+                )
+            y.append(y_inner)
+
+        losses = []
+        for m in self.model
+            losses.append(m.evaluate(x,y)[0])
+
+        return np.array(losses).mean()
+
+
+    def fit_preset(
+        self,
+        data: MODData,
+        presets: List[Dict[str, Any]] = None,
+        val_fraction: float = 0.15,
+        verbose: int = 0,
+        classification: bool = False,
+        refit: bool = True,
+        fast: bool = False,
+        nested: int = 5,
+        callbacks: List[Any] = None,
+        n_jobs=None,
+        ) -> Tuple[List[List[Any]],
+                   np.ndarray,
+                   Optional[List[float]],
+                   List[List[float]],
+                   Dict[str, Any]
+        ]:
+        """Chooses an optimal hyper-parametered MODNet model from different presets.
+
+        This function implements the "inner loop" of a cross-validation workflow. By
+        modifying the `nested` argument, it can be run in full nested mode (i.e.
+        train n_fold * n_preset models) or just with a simple random hold-out set.
+
+        The data is first fitted on several well working MODNet presets
+        with a validation set (10% of the furnished data by default).
+
+        Sets the `self.model` attribute to the model with the lowest mean validation loss across
+        all folds.
+
+        Note: Inner models (presets) are 5-model bootstraps. The final (refit) model will be a self.n_model bootstrap.
+
+        Args:
+            data: MODData object contain training and validation samples.
+            presets: A list of dictionaries containing custom presets.
+            verbose: The verbosity level to pass to tf.keras
+            val_fraction: The fraction of the data to use for validation.
+            classification: Whether or not we are performing classification.
+            refit: Whether or not to refit the final model for each fold with
+                the best-performing settings.
+            fast: Used for debugging. If `True`, only fit the first 2 presets and
+                reduce the number of epochs.
+            nested: integer specifying whether or not to perform a full nested CV. If 0,
+                a simple validation split is performed based on val_fraction argument.
+                If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
+                Note: If set to 1, the value will be overwritten to a default of 5 folds.
+            n_jobs: number of jobs for multiprocessing
+
+        Returns:
+            - A list of length num_outer_folds containing lists of MODNet models of length num_inner_folds.
+            - A list of validation losses achieved by the best model for each fold during validation (excluding refit).
+            - The learning curve of the final (refitted) model (or `None` if `refit` is `False`)
+            - A nested list of learning curves for each trained model of lengths (num_outer_folds,  num_inner folds).
+            - The settings of the best-performing preset.
+
+        """
+
+        if callbacks is None:
+            es = tf.keras.callbacks.EarlyStopping(
+                monitor="loss",
+                min_delta=0.001,
+                patience=100,
+                verbose=verbose,
+                mode="auto",
+                baseline=None,
+                restore_best_weights=False,
+            )
+            callbacks = [es]
+
+        if presets is None:
+            from modnet.model_presets import gen_presets
+            presets = gen_presets(self.n_feat, len(data.df_targets), classification=classification)
+
+        if fast and len(presets) >= 2:
+            presets = presets[:2]
+            for k, _ in enumerate(presets):
+                presets[k]["epochs"] = 100
+
+        val_losses = 1e20 * np.ones((len(presets),))
+
+        num_nested_folds = 5
+        if nested:
+            num_nested_folds = nested
+        if num_nested_folds <= 1:
+            num_nested_folds = 5
+
+        # create tasks
+        tasks = []
+        for i, params in enumerate(presets):
+            n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
+
+            splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
+            if not nested:
+                splits = [train_test_split(range(len(data.df_featurized)),test_size=val_fraction)]
+                n_splits = 1
+            else:
+                n_splits = num_nested_folds
+
+            for ind, (train, val) in enumerate(splits):
+                val_params = {}
+                train_data, val_data = data.split((train, val))
+                val_params["val_data"] = val_data
+
+                tasks += [{'train_data' : train_data,
+                   'targets' : self.targets,
+                   'weights' : self.weights,
+                   'n_models': 5
+                   'num_classes' : self.num_classes,
+                   'n_feat' : n_feat,
+                   'num_neurons' : params["num_neurons"],
+                   'lr' : params["lr"],
+                   'batch_size' : params["batch_size"],
+                   'epochs' : params["epochs"],
+                   'loss' : params["loss"],
+                   'act' : params["act"],
+                   'callbacks' : callbacks,
+                   'preset_id' : i,
+                   'fold_id' : ind,
+                   'verbose' : verbose,
+                   **val_params,
+                }]
+
+        val_losses = np.zeros((len(presets),n_splits))
+        learning_curves = [[None]*n_splits]*len(presets)
+        models = [[None]*n_splits]*len(presets)
+
+        ctx = multiprocessing.get_context('spawn')
+        pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
+        LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
+
+        for res in tqdm.tqdm(pool.imap_unordered(map_validate_bootstrap_model, tasks, chunksize=1), total=len(tasks)):
+            val_loss, learning_curve, model, preset_id, fold_id = res
+
+            # reload model
+            model, model_json, weights = model
+            model.model = [tf.keras.models.model_from_json(m_json) for m_json in model_json]
+            for m,w in zip(model.model, weights):
+                m.set_weights(weights)
+
+            val_losses[preset_id,fold_id] = val_loss
+            learning_curves[preset_id][fold_id] = learning_curve
+            models[preset_id][fold_id] = model
+        pool.close()
+        pool.join()
+
+        val_loss_per_preset = np.mean(val_losses,axis=1)
+        best_preset_idx = int(np.argmin(val_loss_per_preset))
+        best_model_idx =int(np.argmin(val_losses[best_preset_idx,:]))
+        best_preset = presets[best_preset_idx]
+        best_learning_curve = learning_curves[best_preset_idx][best_model_idx]
+        best_model = models[best_preset_idx][best_model_idx]
+
+        LOG.info(
+            "Preset #{} resulted in lowest validation loss with params {}".format(
+                best_preset_idx + 1, tasks[n_splits*best_preset_idx+best_model_idx]
+            )
         )
+
+        if refit:
+            LOG.info("Refitting with all data and parameters: {}".format(best_preset))
+            # Building final model
+
+            n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
+            self.model = Bootstrap_MODNetModel(
+                self.targets,
+                self.weights,
+                n_models=self.n_models,
+                num_neurons=best_preset['num_neurons'],
+                n_feat=n_feat,
+                act=best_preset['act'],
+                num_classes=self.num_classes).model
+            self.n_feat = n_feat
+            self.fit(
+                data,
+                val_fraction=0,
+                lr=best_preset['lr'],
+                epochs=best_preset['epochs'],
+                batch_size=best_preset['batch_size'],
+                loss=best_preset['loss'],
+                callbacks=callbacks,
+                verbose=verbose)
+        else:
+            self.n_feat = best_model.n_feat
+            self.model = best_model.model
+            self._scaler = best_model._scaler
+
+        return models, val_losses, best_learning_curve, learning_curves, best_preset
+
+def validate_bootstrap_model(train_data = None,
+                   val_data = None,
+                   targets = None,
+                   weights = None,
+                   n_models=5,
+                   num_classes=None,
+                   n_feat = 100,
+                   num_neurons = [[8],[8],[8],[8]],
+                   lr=0.1,
+                   batch_size = 64,
+                   epochs = 100,
+                   loss='mse',
+                   act = 'relu',
+                   xscale='minmax',
+                   callbacks = [],
+                   preset_id = None,
+                   fold_id = None,
+                   verbose = 0,
+            ):
+
+    model = Bootstrap_MODNetModel(
+        targets,
+        weights,
+        n_models=n_models,
+        num_neurons=num_neurons,
+        n_feat=n_feat,
+        act=act,
+        num_classes=num_classes
+    )
+
+    model.fit(
+        train_data,
+        lr = lr,
+        epochs = epochs,
+        batch_size = batch_size,
+        loss = loss,
+        xscale=xscale,
+        callbacks = callbacks,
+        verbose = verbose,
+        val_fraction = 0,
+        val_data = val_data,
+    )
+
+    learning_curves = [m.history.history["val_loss"] for m in model.model]
+
+    val_loss = model.evaluate(val_data)
+
+    #save model
+    model_json = [m.to_json() for m in model.model]
+    model_weights = [m.get_weights() for m in model.model]
+    model.model = None
+    model.history = None
+    model = (model, model_json, model_weights)
+
+    return val_loss, learning_curves, model, preset_id, fold_id
+
+
+def map_validate_bootstrap_model(kwargs):
+    return validate_bootstrap_model(**kwargs)
+
+
