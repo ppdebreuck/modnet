@@ -409,8 +409,6 @@ class MODNetModel:
             for k, _ in enumerate(presets):
                 presets[k]["epochs"] = 100
 
-        val_losses = 1e20 * np.ones((len(presets),))
-
         num_nested_folds = 5
         if nested:
             num_nested_folds = nested
@@ -464,9 +462,7 @@ class MODNetModel:
             val_loss, learning_curve, model, preset_id, fold_id = res
 
             # reload model
-            model, model_json, weights = model
-            model.model = tf.keras.models.model_from_json(model_json)
-            model.model.set_weights(weights)
+            model._restore_model()
 
             val_losses[preset_id,fold_id] = val_loss
             learning_curves[preset_id][fold_id] = learning_curve
@@ -602,11 +598,13 @@ class MODNetModel:
 
     def _make_picklable(self):
         """
-        transforms inner keras model to jsons so that th MODNet object becomes picklable
+        transforms inner keras model to jsons so that th MODNet object becomes picklable.
+        Note: model.history will be erased.
         """
 
         model_json = self.model.to_json()
         model_weights = self.model.get_weights()
+        self.history=None
 
         self.model = (model_json, model_weights)
 
@@ -740,11 +738,7 @@ def validate_model(train_data = None,
     val_loss = model.evaluate(val_data)
 
     #save model
-    model_json = model.model.to_json()
-    model_weights = model.model.get_weights()
-    model.model = None
-    model.history = None
-    model = (model, model_json, model_weights)
+    model._make_picklable()
 
     return val_loss, learning_curve, model, preset_id, fold_id
 
@@ -1039,10 +1033,10 @@ class Bayesian_MODNetModel(MODNetModel):
             return predictions
 
     def fit_preset(*args,**kwargs):
-        '''Deprecated, use the autofit_preset class instead'''
+        '''Not implemented'''
 
         raise RuntimeError(
-            "Deprecated, use the autofit_preset class instead"
+            "Not implemented."
         )
 
 ###### Ensemble method ######
@@ -1062,28 +1056,43 @@ class Ensemble_MODNetModel(MODNetModel):
 
     """
 
-    def __init__(self,*args,n_models=100,**kwargs):
-        self.n_models = n_models
-        self.model = []
-        for i in range(self.n_models):
-            self.model.append(
-                MODNetModel(*args,**kwargs)
-            )
+    def __init__(self,*args,n_models=100, bootstrap=True, modnet_models=None, **kwargs):
+        """
+        Args:
+            *args: See MODNetModel
+            n_models: number of inner MODNetModels, each model has the same architecture defined by the args nd kwargs.
+            bootstrap: whether to bootstrap the samples for each inner MODNet fit.
+            modnet_models: List of user provided MODNetModels. Enables to have different architectures. n_models is discarded in this case.
+            **kwargs: See MODNetModel
+        """
+        self.bootstrap = bootstrap
+        if modnet_models is None:
+            self.model = []
+            self.n_models = n_models
+            for i in range(self.n_models):
+                self.model.append(
+                    MODNetModel(*args, **kwargs)
+                )
+        else:
+            self.model = modnet_models
+            self.n_models = len(modnet_models)
+
+        self.targets = self.model[0].targets
+        self.weights = self.model[0].weights
+        self.num_classes = self.model[0].num_classes
 
     def fit(
         self,
         training_data: MODData,
-        bootstrap=True,
         **kwargs,
     ) -> None:
         """Train the model on the passed training `MODData` object.
 
         Parameters:
             same as MODNetModel fit.
-            bootstrap: whether to bootstrap the samples for each inner MODNet fit.
         """
 
-        if bootstrap:
+        if self.bootstrap:
             for i in range(self.n_models):
                 LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
                 idxs = resample(np.arange(len(training_data.df_targets)), replace=True, random_state=2943)
@@ -1120,7 +1129,7 @@ class Ensemble_MODNetModel(MODNetModel):
             all_predictions.append(p.values)
 
         p_mean = np.array(all_predictions).mean(axis=0)
-        p_std = np.array(all_predictions).std(axis=1)
+        p_std = np.array(all_predictions).std(axis=0)
 
         df_mean = pd.DataFrame(p_mean, index=p.index, columns=p.columns)
         df_std = pd.DataFrame(p_std, index=p.index, columns=p.columns)
@@ -1155,7 +1164,7 @@ class Ensemble_MODNetModel(MODNetModel):
         val_fraction: float = 0.15,
         verbose: int = 0,
         classification: bool = False,
-        refit: bool = True,
+        refit: bool = False,
         fast: bool = False,
         nested: int = 5,
         callbacks: List[Any] = None,
@@ -1282,10 +1291,8 @@ class Ensemble_MODNetModel(MODNetModel):
             val_loss, learning_curve, model, preset_id, fold_id = res
 
             # reload model
-            model, model_json, weights = model
-            model.model = [tf.keras.models.model_from_json(m_json) for m_json in model_json]
-            for m,w in zip(model.model, weights):
-                m.set_weights(weights)
+            for m in model.model:
+                m._restore_model()
 
             val_losses[preset_id,fold_id] = val_loss
             learning_curves[preset_id][fold_id] = learning_curve
@@ -1311,7 +1318,7 @@ class Ensemble_MODNetModel(MODNetModel):
             # Building final model
 
             n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
-            self.model = Bootstrap_MODNetModel(
+            self.model = Ensemble_MODNetModel(
                 self.targets,
                 self.weights,
                 n_models=self.n_models,
@@ -1330,9 +1337,16 @@ class Ensemble_MODNetModel(MODNetModel):
                 callbacks=callbacks,
                 verbose=verbose)
         else:
-            self.n_feat = best_model.n_feat
-            self.model = best_model.model
-            self._scaler = best_model._scaler
+            ### take 5 best 5-models on all inner folds = 125-bootstrap model for a 5  nested CV fold
+
+            final_models=[]
+            for i in range(n_splits):
+                best_5_idx = np.argsort(val_losses[:,i])
+                for idx in best_5_idx:
+                    final_models.append(models[idx][i])
+
+
+            self.__init__(modnet_models=final_models)
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
@@ -1383,16 +1397,12 @@ def validate_ensemble_model(train_data = None,
 
     val_loss = model.evaluate(val_data)
 
-    #save model
-    model_json = [m.model.to_json() for m in model.model]
-    model_weights = [m.get_weights() for m in model.model]
-    model.model = None
-    model.history = None
-    model = (model, model_json, model_weights)
+    for m in model.model:
+        m._make_picklable()
 
     return val_loss, learning_curves, model, preset_id, fold_id
 
 
 def map_validate_ensemble_model(kwargs):
-    return validate_bootstrap_model(**kwargs)
+    return validate_ensemble_model(**kwargs)
 
