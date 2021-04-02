@@ -1044,11 +1044,10 @@ class Bayesian_MODNetModel(MODNetModel):
             "Deprecated, use the autofit_preset class instead"
         )
 
+###### Ensemble method ######
 
-
-#### could be replaced by ensemble method in fine ####
-class Bootstrap_MODNetModel(MODNetModel):
-    """Container class for 100 Bootstrap Keras `Model`, that handles
+class Ensemble_MODNetModel(MODNetModel):
+    """Container class for n_model (Bootstrap) MODNetModels, that handles
     setting up the architecture, activations, training and learning curve.
 
     Attributes:
@@ -1063,174 +1062,40 @@ class Bootstrap_MODNetModel(MODNetModel):
     """
 
     def __init__(self,*args,n_models=100,**kwargs):
-        super().__init__(*args,**kwargs)
         self.n_models = n_models
         self.model = []
         for i in range(self.n_models):
             self.model.append(
-                self.build_model(
-                        self.targets, self.n_feat, self.num_neurons, act=self.act, num_classes=self.num_classes
-            ))
+                MODNetModel(*args,**kwargs)
+            )
 
     def fit(
         self,
         training_data: MODData,
-        val_fraction: float = 0.0,
-        val_key: Optional[str] = None,
-        val_data: Optional[MODData] = None,
-        lr: float = 0.001,
-        epochs: int = 200,
-        batch_size: int = 128,
-        xscale: Optional[str] = "minmax",
-        metrics: List[str] = ["mae"],
-        callbacks: List[Callable] = None,
-        verbose: int = 0,
-        loss: str = "mse",
-        **fit_params,
+        bootstrap=True,
+        **kwargs,
     ) -> None:
         """Train the model on the passed training `MODData` object.
 
-        Paramters:
-            training_data: A `MODData` that has been featurized and
-                feature selected. The first `self.n_feat` entries in
-                `training_data.get_optimal_descriptors()` will be used
-                for training.
-            val_fraction: The fraction of the training data to use as a
-                validation set for tracking model performance during
-                training.
-            val_key: The target name to track on the validation set
-                during training, if performing multi-target learning.
-            lr: The learning rate.
-            epochs: The maximum number of epochs to train for.
-            batch_size: The batch size to use for training.
-            xscale: The feature scaler to use, either `None`,
-                `'minmax'` or `'standard'`.
-            metrics: A list of Keras metrics to pass to `compile(...)`.
-            loss: The built-in Keras loss to pass to `compile(...)`.
-            fit_params: Any additional parameters to pass to `fit(...)`,
-                these will be overwritten by the explicit keyword
-                arguments above.
-
+        Parameters:
+            same as MODNetModel fit.
+            bootstrap: whether to bootstrap the samples for each inner MODNet fit.
         """
 
-        if self.n_feat > len(training_data.get_optimal_descriptors()):
-            raise RuntimeError(
-                "The model requires more features than computed in data. "
-                f"Please reduce n_feat below or equal to {len(training_data.get_optimal_descriptors())}"
-            )
-
-        self.xscale = xscale
-        self.target_names = list(self.weights.keys())
-        self.optimal_descriptors = training_data.get_optimal_descriptors()
-
-        x = training_data.get_featurized_df()[
-            self.optimal_descriptors[: self.n_feat]
-        ].values
-
-        # For compatibility with MODNet 0.1.7; if there is only one target in the training data,
-        # use that for the name of the target too.
-        if len(self.targets_flatten) == 1 and len(training_data.df_targets.columns) == 1:
-            self.targets_flatten = list(training_data.df_targets.columns)
-
-        y = []
-        for targ in self.targets_flatten:
-            if self.num_classes[targ] >= 2:  # Classification
-                y_inner = tf.keras.utils.to_categorical(
-                    training_data.df_targets[targ].values,
-                    num_classes=self.num_classes[targ],
-                )
-                loss = "categorical_crossentropy"
-            else:
-                y_inner = training_data.df_targets[targ].values.astype(
-                    np.float, copy=False
-                )
-            y.append(y_inner)
-
-        # Scale the input features:
-        x = np.nan_to_num(x)
-        if self.xscale == "minmax":
-            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
-
-        elif self.xscale == "standard":
-            self._scaler = StandardScaler()
-
-        x = self._scaler.fit_transform(x)
-
-        if val_data is not None:
-            val_x = val_data.get_featurized_df()[
-                self.optimal_descriptors[: self.n_feat]
-            ].values
-            val_x = np.nan_to_num(val_x)
-            val_x = self._scaler.transform(val_x)
-            try:
-                val_y = list(
-                    val_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False).transpose()
-                )
-            except Exception:
-                val_y = list(
-                    val_data.get_target_df().values.astype(np.float, copy=False).transpose()
-                )
-            validation_data = (val_x, val_y)
+        if bootstrap:
+            for i in range(self.n_models):
+                LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
+                idxs = resample(np.arange(len(training_data.df_targets)), replace=True, random_state=2943)
+                bootstrap_data,_ = training_data.split((idxs,[]))
+                self.model[i].fit(bootstrap_data,**kwargs)
+                model_summary = ""
+                for k in self.model[i].history.history.keys():
+                    model_summary += "{}: {:.4f}\t".format(k, self.model[i].history.history[k][-1])
+                LOG.info(model_summary)
         else:
-            validation_data = None
-
-        # Optionally set up print callback
-        if verbose:
-            if val_fraction > 0 or validation_data:
-                if self._multi_target and val_key is not None:
-                    val_metric_key = f"val_{val_key}_mae"
-                else:
-                    val_metric_key = "val_mae"
-                print_callback = tf.keras.callbacks.LambdaCallback(
-                    on_epoch_end=lambda epoch, logs: print(
-                        f"epoch {epoch}: loss: {logs['loss']:.3f}, "
-                        f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
-                    )
-                )
-
-            else:
-                print_callback = tf.keras.callbacks.LambdaCallback(
-                    on_epoch_end=lambda epoch, logs: print(
-                        f"epoch {epoch}: loss: {logs['loss']:.3f}"
-                    )
-                )
-
-                if callbacks is None:
-                    callbacks = [print_callback]
-                else:
-                    callbacks.append(print_callback)
-        self.history =[]
-        ### Resampling self.n_models times and fitting####
-        for i in range(self.n_models):
-            LOG.info(f"Fitting model #{i+1}/{self.n_models}")
-            idxs = resample(np.arange(len(x)), replace=True, random_state=2943)
-            x_bootstrap = x[idxs,...]
-            y_bootstrap = [y_inner[idxs,...] for y_inner in y]
-
-            fit_params = {
-                "x": x_bootstrap,
-                "y": y_bootstrap,
-                "epochs": epochs,
-                "batch_size": batch_size,
-                "verbose": verbose,
-                "validation_split": val_fraction,
-                "validation_data": validation_data,
-                "callbacks": callbacks,
-            }
-
-            self.model[i].compile(
-                loss=loss,
-                optimizer=tf.keras.optimizers.Adam(lr=lr),
-                metrics=metrics,
-                loss_weights=self.weights,
-            )
-
-            history = self.model[i].fit(**fit_params)
-            self.history.append(history)
-            model_summary=""
-            for k in history.history.keys():
-                model_summary+="{}: {:.4f}\t".format(k,history.history[k][-1])
-            LOG.info(model_summary)
+            for i in range(self.n_models):
+                LOG.info(f"Fitting model #{i + 1}/{self.n_models}")
+                self.model[i].fit(training_data,**kwargs)
 
     def predict(self, test_data: MODData, return_unc=False, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
@@ -1240,61 +1105,29 @@ class Bootstrap_MODNetModel(MODNetModel):
                 object containing the descriptors used in training.
             return_prob: For a classification tasks only: whether to return the probability of each
                 class OR only return the most probable class.
+            return_unc: wheter to return a second dataframe containing the uncertainties
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
 
 
         """
-        # prevents Nan predictions if some features are inf
-        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
-            self.optimal_descriptors[:self.n_feat]
-        ].values
-
-        # Scale the input features:
-        x = np.nan_to_num(x)
-        if self._scaler is not None:
-            x = self._scaler.transform(x)
-            x = np.nan_to_num(x)
 
         all_predictions = []
         for i in range(self.n_models):
-            p = self.model[i].predict(x)
-            if len(self.targets_flatten) ==1:
-                p = np.array([p])
-            all_predictions.append(p)
+            p = self.model[i].predict(test_data, return_prob=return_prob)
+            all_predictions.append(p.values)
 
-        p_dic = {}
-        unc_dic = {}
-        for i, name in enumerate(self.targets_flatten):
-            if self.num_classes[name] >= 2:
-                if return_prob:
-                    preds = np.array([pred[i] for pred in all_predictions])
-                    probs = preds/(preds.sum(axis=-1)).reshape((-1, 1))
-                    mean_prob = probs.mean()
-                    std_prob = probs.std()
-                    for j in range(mean_prob.shape[-1]):
-                        p_dic['{}_prob_{}'.format(name, j)] = mean_prob[:,j]
-                        unc_dic['{}_prob_{}'.format(name, j)] = std_prob[:,j]
-                else:
-                    p_dic[name] = np.argmax(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
-                    unc_dic[name] = np.max(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
-            else:
-                mean_p = np.array([pred[i] for pred in all_predictions]).mean(axis=0)
-                std_p = np.array([pred[i] for pred in all_predictions]).std(axis=0)
-                p_dic[name] = mean_p[:,0]
-                unc_dic[name] = std_p[:,0]
+        p_mean = np.array(all_predictions).mean(axis=0)
+        p_std = np.array(all_predictions).std(axis=1)
 
-        predictions = pd.DataFrame(p_dic)
-        unc = pd.DataFrame(unc_dic)
-
-        predictions.index = test_data.structure_ids
-        unc.index = test_data.structure_ids
+        df_mean = pd.DataFrame(p_mean, index=p.index, columns=p.columns)
+        df_std = pd.DataFrame(p_std, index=p.index, columns=p.columns)
 
         if return_unc:
-            return predictions, unc
+            return df_mean, df_std
         else:
-            return predictions
+            return df_mean
 
     def evaluate(self, test_data: MODData) -> pd.DataFrame:
         """Evaluates the target values for the passed MODData by returning the corresponding loss.
@@ -1307,36 +1140,11 @@ class Bootstrap_MODNetModel(MODNetModel):
         Returns:
             Loss score
         """
-        # prevents Nan predictions if some features are inf
-        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
-            self.optimal_descriptors[:self.n_feat]
-        ].values
+        all_losses = np.zeros(self.n_models)
+        for i,m in enumerate(self.model):
+            all_losses[i] = m.evaluate(test_data)
 
-        # Scale the input features:
-        x = np.nan_to_num(x)
-        if self._scaler is not None:
-            x = self._scaler.transform(x)
-            x = np.nan_to_num(x,nan=-1)
-
-        y = []
-        for targ in self.targets_flatten:
-            if self.num_classes[targ] >= 2:  # Classification
-                y_inner = tf.keras.utils.to_categorical(
-                    test_data.df_targets[targ].values,
-                    num_classes=self.num_classes[targ],
-                )
-                loss = "categorical_crossentropy"
-            else:
-                y_inner = test_data.df_targets[targ].values.astype(
-                    np.float, copy=False
-                )
-            y.append(y_inner)
-
-        losses = []
-        for m in self.model
-            losses.append(m.evaluate(x,y)[0])
-
-        return np.array(losses).mean()
+        return all_losses.mean()
 
 
     def fit_preset(
@@ -1469,7 +1277,7 @@ class Bootstrap_MODNetModel(MODNetModel):
         pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
         LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
 
-        for res in tqdm.tqdm(pool.imap_unordered(map_validate_bootstrap_model, tasks, chunksize=1), total=len(tasks)):
+        for res in tqdm.tqdm(pool.imap_unordered(map_validate_ensemble_model, tasks, chunksize=1), total=len(tasks)):
             val_loss, learning_curve, model, preset_id, fold_id = res
 
             # reload model
@@ -1527,7 +1335,7 @@ class Bootstrap_MODNetModel(MODNetModel):
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
-def validate_bootstrap_model(train_data = None,
+def validate_ensemble_model(train_data = None,
                    val_data = None,
                    targets = None,
                    weights = None,
@@ -1547,7 +1355,7 @@ def validate_bootstrap_model(train_data = None,
                    verbose = 0,
             ):
 
-    model = Bootstrap_MODNetModel(
+    model = Ensemble_MODNetModel(
         targets,
         weights,
         n_models=n_models,
@@ -1575,7 +1383,7 @@ def validate_bootstrap_model(train_data = None,
     val_loss = model.evaluate(val_data)
 
     #save model
-    model_json = [m.to_json() for m in model.model]
+    model_json = [m.model.to_json() for m in model.model]
     model_weights = [m.get_weights() for m in model.model]
     model.model = None
     model.history = None
@@ -1584,7 +1392,6 @@ def validate_bootstrap_model(train_data = None,
     return val_loss, learning_curves, model, preset_id, fold_id
 
 
-def map_validate_bootstrap_model(kwargs):
+def map_validate_ensemble_model(kwargs):
     return validate_bootstrap_model(**kwargs)
-
 
