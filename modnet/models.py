@@ -1,6 +1,8 @@
 import pickle
 from typing import List, Tuple, Dict, Optional, Callable, Any
 
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -598,82 +600,81 @@ class MODNetModel:
 
     #############
 
-    def save(self, filename: str):
-        """Save the `MODNetModel` across 3 files with the same base
-        filename:
+    def _make_picklable(self):
+        """
+        transforms inner keras model to jsons so that th MODNet object becomes picklable
+        """
 
-        * <filename>.json contains the tf.keras model JSON dump.
-        * <filename>.pkl contains the `MODNetModel` object, excluding the
-          tf.keras model.
-        * <filename>.h5 contains the model weights.
+        model_json = self.model.to_json()
+        model_weights = self.model.get_weights()
+
+        self.model = (model_json, model_weights)
+
+    def _restore_model(self):
+        """
+        restore inner keras model after running make_picklable
+        """
+
+        model_json, model_weights = self.model
+        self.model = tf.keras.models.model_from_json(model_json)
+        self.model.set_weights(model_weights)
+
+
+    def save(self, filename: str):
+        """Save the `MODNetModel` to filename:
 
         Parameters:
             filename: The base filename to save to.
 
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be compressed accordingly by `pandas.to_pickle(...)`.
+
         """
-
-        LOG.info("Saving model...")
-        model_json = self.model.to_json()
-        with open(f"{filename}.json", "w") as f:
-            f.write(model_json)
-        self.model.save_weights(f"{filename}.h5")
-        try:
-            with open(f"{filename}.history.pkl", "wb") as f:
-                pickle.dump(self.model.history.history, f)
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            LOG.info("Failed to save model history.")
-
-        model = self.model
-        self.model = None
-        self.history = None
-        with open(f"{filename}.pkl", "wb") as f:
-            pickle.dump(self, f)
-        self.model = model
-        LOG.info("Saved model to {}(.json/.h5/.pkl)".format(filename))
+        self._make_picklable()
+        pd.to_pickle(self, filename)
+        self._restore_model()
+        LOG.info(f'Data successfully saved as {filename}!')
 
     @staticmethod
     def load(filename: str):
-        """Load the `MODNetModel` from 3 files with the same base
-        filename:
+        """Load `MODNetModel` object pickled by the `.save(...)` method.
 
-        * <filename>.json contains the tf.keras model JSON dump.
-        * <filename>.pkl contains the `MODNetModel` object, excluding the
-          tf.keras model.
-        * <filename>.h5 contains the model weights.
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be decompressed accordingly by `pandas.read_pickle(...)`.
 
         Returns:
             The loaded `MODNetModel` object.
-
         """
+        pickled_data = None
 
-        LOG.info("Loading model from {}(.json/.h5/.pkl)".format(filename))
+        if isinstance(filename, Path):
+            filename = str(filename)
 
-        with open(f"{filename}.pkl", "rb") as f:
-            mod = pickle.load(f)
+        # handle .zip files explicitly for OS X/macOS compatibility
+        if filename.endswith(".zip"):
+            from zipfile import ZipFile
+            with ZipFile(filename, "r") as zf:
+                namelist = zf.namelist()
+                _files = [_ for _ in namelist if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")]
+                if len(_files) == 1:
+                    with zf.open(_files.pop()) as f:
+                        pickled_data = pd.read_pickle(f)
 
-        if not isinstance(mod, MODNetModel):
-            raise RuntimeError(
-                "Pickled data in {filename}.pkl did not contain a `MODNetModel`."
-            )
+        if pickled_data is None:
+            pickled_data = pd.read_pickle(filename)
 
-        with open(f"{filename}.json", "r") as f:
-            model_json = f.read()
 
-        mod.model = tf.keras.models.model_from_json(model_json)
-        mod.model.load_weights(f"{filename}.h5")
+        if isinstance(pickled_data, MODNetModel):
+            if not hasattr(pickled_data, "__modnet_version__"):
+                pickled_data.__modnet_version__ = "<=0.1.7"
+            pickled_data._restore_model()
+            LOG.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
+            return pickled_data
 
-        if not hasattr(mod, "__modnet_version__"):
-            mod.__modnet_version__ = "<=0.1.7"
-
-        LOG.info(
-            "Loaded `MODNetModel` created with modnet version {}.".format(
-                mod.__modnet_version__
-            )
+        raise ValueError(
+            f"File {filename} did not contain compatible data to create a MODData object, "
+            f"instead found {pickled_data.__class__.__name__}."
         )
-
-        return mod
 
 
 def init_worker():
@@ -1253,7 +1254,7 @@ class Ensemble_MODNetModel(MODNetModel):
                 tasks += [{'train_data' : train_data,
                    'targets' : self.targets,
                    'weights' : self.weights,
-                   'n_models': 5
+                   'n_models': 5,
                    'num_classes' : self.num_classes,
                    'n_feat' : n_feat,
                    'num_neurons' : params["num_neurons"],
