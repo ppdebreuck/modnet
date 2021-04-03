@@ -4,7 +4,6 @@ from traceback import print_exc
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
-from joblib import Parallel, delayed
 
 from modnet.preprocessing import MODData
 from modnet.utils import LOG
@@ -35,6 +34,8 @@ def matbench_benchmark(
     target_weights: Dict[str, float],
     fit_settings: Optional[Dict[str, Any]] = None,
     classification: bool = False,
+    model_type: str = "MODNetModel",
+    n_models = 100,
     save_folds: bool = False,
     save_models: bool = False,
     hp_optimization: bool = True,
@@ -55,6 +56,10 @@ def matbench_benchmark(
         fit_settings: Any settings to pass to `model.fit(...)` directly
             (typically when not performing hyperparameter optimisation).
         classification: Whether all tasks are classification rather than regression.
+        model_type: whether to use "MODNetModel" or "Ensemble_MODNetModel" for benchmarking.
+            Ensemble_MODNetModel will additionally provide the "stds" inside the result dict.
+        n_models: number of inner models for "Ensemble_MODNetModel" (if used). Note  that
+            if hp_optimization is set to True this value will be overwritten by fit_preset (125).
         save_folds: Whether to save dataframes with pre-processed fold
             data (e.g. feature selection).
         save_models: Whether to pickle all trained models according to
@@ -107,6 +112,8 @@ def matbench_benchmark(
     args = (target, target_weights, fit_settings)
 
     kwargs = {
+        "model_type":model_type,
+        "n_models":n_models,
         "hp_optimization": hp_optimization,
         "fast": fast,
         "classification": classification,
@@ -133,6 +140,8 @@ def train_fold(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Dict[str, Any],
+    model_type: str = "MODNetModel",
+    n_models=100,
     presets=None,
     hp_optimization=True,
     classification=False,
@@ -158,7 +167,7 @@ def train_fold(
     fold_ind, (train_data, test_data) = fold
 
     results = {}
-    from modnet.models import MODNetModel
+    from modnet.models import MODNetModel, Ensemble_MODNetModel
     if classification:
         fit_settings["num_classes"] = {t: 2 for t in target_weights}
 
@@ -174,11 +183,21 @@ def train_fold(
             "n_feat": fit_settings["n_feat"]
         }
 
-    model = MODNetModel(
-        target,
-        target_weights,
-        **model_settings
-    )
+    if model_type == "MODNetModel":
+        model = MODNetModel(
+            target,
+            target_weights,
+            **model_settings
+        )
+    elif model_type == "Ensemble_MODNetModel":
+        model = Ensemble_MODNetModel(
+            target,
+            target_weights,
+            n_models=n_models,
+            **model_settings
+        )
+    else:
+        raise RuntimeError(f"{model_type} not supported. Please choose from \"MODNetModel\" or \"MODNetModel\".")
 
     if hp_optimization:
         models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
@@ -215,9 +234,15 @@ def train_fold(
 
     try:
         if classification:
-            predictions = model.predict(test_data, return_prob=True)
+            if model_type == "Ensemble_MODNetModel":
+                predictions, stds = model.predict(test_data, return_prob=True, return_unc=True)
+            else:
+                predictions = model.predict(test_data, return_prob=True)
         else:
-            predictions = model.predict(test_data)
+            if model_type == "Ensemble_MODNetModel":
+                predictions, stds = model.predict(test_data, return_unc=True)
+            else:
+                predictions = model.predict(test_data)
         targets = test_data.df_targets
 
         if classification:
@@ -254,6 +279,8 @@ def train_fold(
         df_test.to_csv("folds/test_f{}.csv".format(ind + 1))
 
     results["predictions"] = predictions
+    if model_type == "Ensemble_MODNetModel":
+        results["stds"] = stds
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score

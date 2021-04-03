@@ -403,7 +403,7 @@ class MODNetModel:
 
         if presets is None:
             from modnet.model_presets import gen_presets
-            presets = gen_presets(self.n_feat, len(data.df_targets), classification=classification)
+            presets = gen_presets(len(data.optimal_features), len(data.df_targets), classification=classification)
 
         if fast and len(presets) >= 2:
             presets = presets[:2]
@@ -1214,7 +1214,7 @@ class Ensemble_MODNetModel(MODNetModel):
             classification: Whether or not we are performing classification.
             refit: Whether or not to refit the final model for each fold with
                 the best-performing settings.
-            fast: Used for debugging. If `True`, only fit the first 2 presets and
+            fast: Used for debugging. If `True`, only fit the first 2 presets, use 1-model ensembles and
                 reduce the number of epochs.
             nested: integer specifying whether or not to perform a full nested CV. If 0,
                 a simple validation split is performed based on val_fraction argument.
@@ -1245,7 +1245,7 @@ class Ensemble_MODNetModel(MODNetModel):
 
         if presets is None:
             from modnet.model_presets import gen_presets
-            presets = gen_presets(self.n_feat, len(data.df_targets), classification=classification)
+            presets = gen_presets(len(data.optimal_features), len(data.df_targets), classification=classification)
 
         if fast and len(presets) >= 2:
             presets = presets[:2]
@@ -1280,7 +1280,7 @@ class Ensemble_MODNetModel(MODNetModel):
                 tasks += [{'train_data' : train_data,
                    'targets' : self.targets,
                    'weights' : self.weights,
-                   'n_models': 5,
+                   'n_models': 1 if fast else 5,
                    'num_classes' : self.num_classes,
                    'n_feat' : n_feat,
                    'num_neurons' : params["num_neurons"],
