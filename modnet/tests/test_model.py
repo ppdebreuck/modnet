@@ -306,7 +306,7 @@ def test_train_small_bootstrap_presets(subset_moddata, tf_session):
         weights={"eform": 1, "egap": 1},
         num_neurons=[[16], [8], [8], [4]],
         n_feat=10,
-        n_models=2
+        n_models=2,
     )
 
     # nested=0/False -> no inner loop, so only 1 model

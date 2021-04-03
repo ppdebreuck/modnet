@@ -331,7 +331,8 @@ class MODNetModel:
             metrics=metrics,
             loss_weights=self.weights,
         )
-        self.history = self.model.fit(**fit_params)
+        history = self.model.fit(**fit_params)
+        self.history = history.history
 
     def fit_preset(
         self,
@@ -460,7 +461,7 @@ class MODNetModel:
 
         for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):
             val_loss, learning_curve, model, preset_id, fold_id = res
-
+            LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")
             # reload model
             model._restore_model()
 
@@ -599,12 +600,10 @@ class MODNetModel:
     def _make_picklable(self):
         """
         transforms inner keras model to jsons so that th MODNet object becomes picklable.
-        Note: model.history will be erased.
         """
 
         model_json = self.model.to_json()
         model_weights = self.model.get_weights()
-        self.history=None
 
         self.model = (model_json, model_weights)
 
@@ -733,7 +732,7 @@ def validate_model(train_data = None,
     )
 
 
-    learning_curve = model.model.history.history["val_loss"]
+    learning_curve = model.history["val_loss"]
 
     val_loss = model.evaluate(val_data)
 
@@ -1084,6 +1083,7 @@ class Ensemble_MODNetModel(MODNetModel):
     def fit(
         self,
         training_data: MODData,
+        n_jobs=1,
         **kwargs,
     ) -> None:
         """Train the model on the passed training `MODData` object.
@@ -1093,19 +1093,36 @@ class Ensemble_MODNetModel(MODNetModel):
         """
 
         if self.bootstrap:
-            for i in range(self.n_models):
-                LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
-                idxs = resample(np.arange(len(training_data.df_targets)), replace=True, random_state=2943)
-                bootstrap_data,_ = training_data.split((idxs,[]))
-                self.model[i].fit(bootstrap_data,**kwargs)
-                model_summary = ""
-                for k in self.model[i].history.history.keys():
-                    model_summary += "{}: {:.4f}\t".format(k, self.model[i].history.history[k][-1])
-                LOG.info(model_summary)
+            LOG.info("Generating bootstrap data...")
+            train_datas = [training_data.split((resample(np.arange(len(training_data.df_targets)),
+                    replace=True, random_state=2943),[]))[0] for _ in range(self.n_models)]
         else:
-            for i in range(self.n_models):
-                LOG.info(f"Fitting model #{i + 1}/{self.n_models}")
-                self.model[i].fit(training_data,**kwargs)
+            train_datas = [training_data for _ in range(self.n_models)]
+
+        if n_jobs<=1:
+                for i in range(self.n_models):
+                    LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
+                    self.model[i].fit(train_datas[i], **kwargs)
+                    model_summary = ""
+                    for k in self.model[i].history.keys():
+                        model_summary += "{}: {:.4f}\t".format(k, self.model[i].history[k][-1])
+                    LOG.info(model_summary)
+        else:
+                ctx = multiprocessing.get_context('spawn')
+                pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
+                tasks =[]
+                for i,m in enumerate(self.model):
+                    m._make_picklable()
+                    tasks.append({'model':m, 'training_data':train_datas[i], 'model_id':i, **kwargs})
+                for res in tqdm.tqdm(pool.imap_unordered(_map_fit_MODNet, tasks, chunksize=1),
+                                     total=self.n_models):
+                    model, model_id = res
+                    model._restore_model()
+                    self.model[model_id] = model
+                    model_summary = f"Model #{model_id}\t"
+                    for k in model.history.keys():
+                        model_summary += "{}: {:.4f}\t".format(k, model.history[k][-1])
+                    LOG.info(model_summary)
 
     def predict(self, test_data: MODData, return_unc=False, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
@@ -1287,8 +1304,9 @@ class Ensemble_MODNetModel(MODNetModel):
         pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
         LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
 
-        for res in tqdm.tqdm(pool.imap_unordered(map_validate_ensemble_model, tasks, chunksize=1), total=len(tasks)):
+        for res in tqdm.tqdm(pool.imap_unordered(_map_validate_ensemble_model, tasks, chunksize=1), total=len(tasks)):
             val_loss, learning_curve, model, preset_id, fold_id = res
+            LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")
 
             # reload model
             for m in model.model:
@@ -1335,7 +1353,9 @@ class Ensemble_MODNetModel(MODNetModel):
                 batch_size=best_preset['batch_size'],
                 loss=best_preset['loss'],
                 callbacks=callbacks,
-                verbose=verbose)
+                verbose=verbose,
+                n_jobs=n_jobs,
+            )
         else:
             ### take 5 best 5-models on all inner folds = 125-bootstrap model for a 5  nested CV fold
 
@@ -1350,25 +1370,25 @@ class Ensemble_MODNetModel(MODNetModel):
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
-def validate_ensemble_model(train_data = None,
-                   val_data = None,
-                   targets = None,
-                   weights = None,
-                   n_models=5,
-                   num_classes=None,
-                   n_feat = 100,
-                   num_neurons = [[8],[8],[8],[8]],
-                   lr=0.1,
-                   batch_size = 64,
-                   epochs = 100,
-                   loss='mse',
-                   act = 'relu',
-                   xscale='minmax',
-                   callbacks = [],
-                   preset_id = None,
-                   fold_id = None,
-                   verbose = 0,
-            ):
+def _validate_ensemble_model(train_data = None,
+                             val_data = None,
+                             targets = None,
+                             weights = None,
+                             n_models=5,
+                             num_classes=None,
+                             n_feat = 100,
+                             num_neurons = [[8],[8],[8],[8]],
+                             lr=0.1,
+                             batch_size = 64,
+                             epochs = 100,
+                             loss='mse',
+                             act = 'relu',
+                             xscale='minmax',
+                             callbacks = [],
+                             preset_id = None,
+                             fold_id = None,
+                             verbose = 0,
+                             ):
 
     model = Ensemble_MODNetModel(
         targets,
@@ -1393,7 +1413,7 @@ def validate_ensemble_model(train_data = None,
         val_data = val_data,
     )
 
-    learning_curves = [m.history.history["val_loss"] for m in model.model]
+    learning_curves = [m.history["val_loss"] for m in model.model]
 
     val_loss = model.evaluate(val_data)
 
@@ -1403,6 +1423,15 @@ def validate_ensemble_model(train_data = None,
     return val_loss, learning_curves, model, preset_id, fold_id
 
 
-def map_validate_ensemble_model(kwargs):
-    return validate_ensemble_model(**kwargs)
+def _map_validate_ensemble_model(kwargs):
+    return _validate_ensemble_model(**kwargs)
 
+def _fit_MODNet(model: MODNetModel, training_data: MODData, model_id=None, **kwargs):
+    model._restore_model()
+    model.fit(training_data,**kwargs)
+    model._make_picklable()
+
+    return model, model_id
+
+def _map_fit_MODNet(kwargs):
+    return _fit_MODNet(**kwargs)
