@@ -30,6 +30,7 @@ def test_train_small_model_benchmark(subset_moddata, tf_session):
         "errors",
         "scores",
         "best_presets",
+        "model",
     )
 
     assert all(key in results for key in expected_keys)
@@ -68,6 +69,7 @@ def test_train_small_ensemblemodel_benchmark(subset_moddata, tf_session):
         "errors",
         "scores",
         "best_presets",
+        "model",
     )
     assert all(key in results for key in expected_keys)
     assert all(len(results[key]) == 5 for key in expected_keys)
@@ -114,6 +116,7 @@ def test_train_small_model_benchmark_with_extra_args(subset_moddata):
         "errors",
         "scores",
         "best_presets",
+        "model",
     )
 
     assert all(key in results for key in expected_keys)

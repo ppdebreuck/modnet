@@ -285,5 +285,6 @@ def train_fold(
     results["errors"] = errors
     results["scores"] = score
     results["best_presets"] = best_presets
+    results['model'] = model
 
     return results
