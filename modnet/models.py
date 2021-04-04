@@ -630,7 +630,7 @@ class MODNetModel:
         self._make_picklable()
         pd.to_pickle(self, filename)
         self._restore_model()
-        LOG.info(f'Data successfully saved as {filename}!')
+        LOG.info(f'Model successfully saved as {filename}!')
 
     @staticmethod
     def load(filename: str):
@@ -663,13 +663,13 @@ class MODNetModel:
 
         if isinstance(pickled_data, MODNetModel):
             if not hasattr(pickled_data, "__modnet_version__"):
-                pickled_data.__modnet_version__ = "<=0.1.7"
+                pickled_data.__modnet_version__ = "unknown"
             pickled_data._restore_model()
             LOG.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
             return pickled_data
 
         raise ValueError(
-            f"File {filename} did not contain compatible data to create a MODData object, "
+            f"File {filename} did not contain compatible data to create a MODNetModel object, "
             f"instead found {pickled_data.__class__.__name__}."
         )
 
@@ -1038,6 +1038,11 @@ class Bayesian_MODNetModel(MODNetModel):
             "Not implemented."
         )
 
+    def save(self, filename: str):
+        raise RuntimeError('Save not implemented for Bayesian model')
+    def load(filename: str):
+        raise RuntimeError('Load not implemented for Bayesian model')
+
 ###### Ensemble method ######
 
 class Ensemble_MODNetModel(MODNetModel):
@@ -1064,6 +1069,7 @@ class Ensemble_MODNetModel(MODNetModel):
             modnet_models: List of user provided MODNetModels. Enables to have different architectures. n_models is discarded in this case.
             **kwargs: See MODNetModel
         """
+        self.__modnet_version__ = __version__
         self.bootstrap = bootstrap
         if modnet_models is None:
             self.model = []
@@ -1369,6 +1375,66 @@ class Ensemble_MODNetModel(MODNetModel):
             self.__init__(modnet_models=final_models)
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
+
+    def save(self, filename: str):
+        """Save the `MODNetModel` to filename:
+
+        Parameters:
+            filename: The base filename to save to.
+
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be compressed accordingly by `pandas.to_pickle(...)`.
+
+        """
+        for m in self.model:
+            m._make_picklable()
+        pd.to_pickle(self, filename)
+        for m in self.model:
+            m._restore_model()
+        LOG.info(f'Model successfully saved as {filename}!')
+
+    @staticmethod
+    def load(filename: str):
+        """Load `MODNetModel` object pickled by the `.save(...)` method.
+
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be decompressed accordingly by `pandas.read_pickle(...)`.
+
+        Returns:
+            The loaded `MODNetModel` object.
+        """
+        pickled_data = None
+
+        if isinstance(filename, Path):
+            filename = str(filename)
+
+        # handle .zip files explicitly for OS X/macOS compatibility
+        if filename.endswith(".zip"):
+            from zipfile import ZipFile
+            with ZipFile(filename, "r") as zf:
+                namelist = zf.namelist()
+                _files = [_ for _ in namelist if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")]
+                if len(_files) == 1:
+                    with zf.open(_files.pop()) as f:
+                        pickled_data = pd.read_pickle(f)
+
+        if pickled_data is None:
+            pickled_data = pd.read_pickle(filename)
+
+
+        if isinstance(pickled_data, MODNetModel):
+            if not hasattr(pickled_data, "__modnet_version__"):
+                pickled_data.__modnet_version__ = "unknown"
+            for m in pickled_data.model:
+                m._restore_model()
+            LOG.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
+            return pickled_data
+
+        raise ValueError(
+            f"File {filename} did not contain compatible data to create a MODNetModel object, "
+            f"instead found {pickled_data.__class__.__name__}."
+        )
+
 
 def _validate_ensemble_model(train_data = None,
                              val_data = None,
