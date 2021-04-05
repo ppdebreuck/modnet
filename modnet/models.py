@@ -452,8 +452,8 @@ class MODNetModel:
                 }]
 
         val_losses = np.zeros((len(presets),n_splits))
-        learning_curves = [[None]*n_splits]*len(presets)
-        models = [[None]*n_splits]*len(presets)
+        learning_curves = [[None for _ in range(n_splits)] for _ in range(len(presets))]
+        models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
         ctx = multiprocessing.get_context('spawn')
         pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
@@ -1301,8 +1301,8 @@ class Ensemble_MODNetModel(MODNetModel):
                 }]
 
         val_losses = np.zeros((len(presets),n_splits))
-        learning_curves = [[None]*n_splits]*len(presets)
-        models = [[None]*n_splits]*len(presets)
+        learning_curves = [[None for _ in range(n_splits)] for _ in range(len(presets))]
+        models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
         ctx = multiprocessing.get_context('spawn')
         pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
@@ -1313,8 +1313,7 @@ class Ensemble_MODNetModel(MODNetModel):
             LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")
 
             # reload model
-            for m in model.model:
-                m._restore_model()
+            model._restore_model()
 
             val_losses[preset_id,fold_id] = val_loss
             learning_curves[preset_id][fold_id] = learning_curve
@@ -1365,11 +1364,9 @@ class Ensemble_MODNetModel(MODNetModel):
 
             final_models=[]
             for i in range(n_splits):
-                best_5_idx = np.argsort(val_losses[:,i])
+                best_5_idx = np.argsort(val_losses[:,i])[:5]
                 for idx in best_5_idx:
-                    final_models.append(models[idx][i])
-
-
+                    final_models+=models[idx][i].model
             self.__init__(modnet_models=final_models)
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
@@ -1438,8 +1435,7 @@ def _validate_ensemble_model(train_data = None,
 
     val_loss = model.evaluate(val_data)
 
-    for m in model.model:
-        m._make_picklable()
+    model._make_picklable()
 
     return val_loss, learning_curves, model, preset_id, fold_id
 
