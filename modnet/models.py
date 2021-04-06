@@ -464,7 +464,7 @@ class MODNetModel:
         models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
         ctx = multiprocessing.get_context('spawn')
-        pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
+        pool = ctx.Pool(processes=n_jobs)
         LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
 
         for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):
@@ -679,14 +679,6 @@ class MODNetModel:
             f"File {filename} did not contain compatible data to create a MODNetModel object, "
             f"instead found {pickled_data.__class__.__name__}."
         )
-
-
-def init_worker():
-    '''
-    Add KeyboardInterrupt exception to mutliprocessing workers "
-    '''
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 def validate_model(train_data = None,
                    val_data = None,
@@ -1132,7 +1124,7 @@ class Ensemble_MODNetModel(MODNetModel):
                     LOG.info(model_summary)
         else:
                 ctx = multiprocessing.get_context('spawn')
-                pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
+                pool = ctx.Pool(processes=n_jobs)
                 tasks =[]
                 for i,m in enumerate(self.model):
                     m._make_picklable()
@@ -1325,7 +1317,7 @@ class Ensemble_MODNetModel(MODNetModel):
         models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
         ctx = multiprocessing.get_context('spawn')
-        pool = ctx.Pool(processes=n_jobs, initializer=init_worker)
+        pool = ctx.Pool(processes=n_jobs)
         LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
 
         for res in tqdm.tqdm(pool.imap_unordered(_map_validate_ensemble_model, tasks, chunksize=1), total=len(tasks)):
