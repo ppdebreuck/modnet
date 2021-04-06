@@ -85,6 +85,7 @@ class MODNetModel:
         self.num_classes = num_classes
         self.num_neurons = num_neurons
         self.act = act
+        self.out_act = out_act
 
         self._scaler = None
         self.optimal_descriptors = None
@@ -450,6 +451,7 @@ class MODNetModel:
                    'epochs' : params["epochs"],
                    'loss' : params["loss"],
                    'act' : params["act"],
+                   'out_act': self.out_act,
                    'callbacks' : callbacks,
                    'preset_id' : i,
                    'fold_id' : ind,
@@ -501,6 +503,7 @@ class MODNetModel:
                 num_neurons=best_preset['num_neurons'],
                 n_feat=n_feat,
                 act=best_preset['act'],
+                out_act=self.out_act,
                 num_classes=self.num_classes).model
             self.n_feat = n_feat
             self.fit(
@@ -697,6 +700,7 @@ def validate_model(train_data = None,
                    epochs = 100,
                    loss='mse',
                    act = 'relu',
+                   out_act= 'linear',
                    xscale='minmax',
                    callbacks = [],
                    preset_id = None,
@@ -719,6 +723,7 @@ def validate_model(train_data = None,
         num_neurons=num_neurons,
         n_feat=n_feat,
         act=act,
+        out_act=out_act,
         num_classes=num_classes
     )
 
@@ -818,6 +823,7 @@ class Bayesian_MODNetModel(MODNetModel):
         self.num_classes = num_classes
         self.num_neurons = num_neurons
         self.act = act
+        self.out_act = out_act
 
         self._scaler = None
         self.optimal_descriptors = None
@@ -1095,6 +1101,7 @@ class Ensemble_MODNetModel(MODNetModel):
         self.targets = self.model[0].targets
         self.weights = self.model[0].weights
         self.num_classes = self.model[0].num_classes
+        self.out_act = self.model[0].out_act
 
     def fit(
         self,
@@ -1305,6 +1312,7 @@ class Ensemble_MODNetModel(MODNetModel):
                    'epochs' : params["epochs"],
                    'loss' : params["loss"],
                    'act' : params["act"],
+                   'out_act': self.out_act,
                    'callbacks' : callbacks,
                    'preset_id' : i,
                    'fold_id' : ind,
@@ -1358,6 +1366,7 @@ class Ensemble_MODNetModel(MODNetModel):
                 num_neurons=best_preset['num_neurons'],
                 n_feat=n_feat,
                 act=best_preset['act'],
+                out_act=self.out_act,
                 num_classes=self.num_classes).model
             self.n_feat = n_feat
             self.fit(
@@ -1413,6 +1422,7 @@ def _validate_ensemble_model(train_data = None,
                              epochs = 100,
                              loss='mse',
                              act = 'relu',
+                             out_act = 'linear',
                              xscale='minmax',
                              callbacks = [],
                              preset_id = None,
@@ -1427,6 +1437,7 @@ def _validate_ensemble_model(train_data = None,
         num_neurons=num_neurons,
         n_feat=n_feat,
         act=act,
+        out_act=out_act,
         num_classes=num_classes
     )
 

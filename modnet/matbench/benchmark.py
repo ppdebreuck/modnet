@@ -180,6 +180,7 @@ def train_fold(
             "num_neurons": fit_settings["num_neurons"],
             "num_classes": fit_settings.get("num_classes"),
             "act": fit_settings.get("act"),
+            "out_act": fit_settings.get("out_act","linear"),
             "n_feat": fit_settings["n_feat"]
         }
 
