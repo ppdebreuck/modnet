@@ -51,7 +51,8 @@ class MODNetModel:
         num_neurons=([64], [32], [16], [16]),
         num_classes: Optional[Dict[str, int]] = None,
         n_feat: Optional[int] = 64,
-        act="relu",
+        act: str = "relu",
+        out_act: str = "linear",
     ):
         """Initialise the model on the passed targets with the desired
         architecture, feature count and loss functions and activation functions.
@@ -70,6 +71,8 @@ class MODNetModel:
             n_feat: The number of features to use as model inputs.
             act: A string defining a tf.keras activation function to pass to use
                 in the `tf.keras.layers.Dense` layers.
+            out_act: A string defining a tf.keras activation function to pass to use
+                for the last output layer (regression only)
 
         """
 
@@ -97,7 +100,7 @@ class MODNetModel:
         self._multi_target = len(self.targets_flatten) > 1
 
         self.model = self.build_model(
-            targets, n_feat, num_neurons, act=act, num_classes=self.num_classes
+            targets, n_feat, num_neurons, act=act, out_act=out_act, num_classes=self.num_classes
         )
 
     def build_model(
@@ -107,6 +110,7 @@ class MODNetModel:
         num_neurons: Tuple[List[int], List[int], List[int], List[int]],
         num_classes: Optional[Dict[str, int]] = None,
         act: str = "relu",
+        out_act: str = "linear",
     ):
         """Builds the tf.keras model and sets the `self.model` attribute.
 
@@ -123,6 +127,8 @@ class MODNetModel:
                 with n=0 for regression and n>=2 for classification with n the number of classes.
             act: A string defining a tf.keras activation function to pass to use
                 in the `tf.keras.layers.Dense` layers.
+            out_act: A string defining a tf.keras activation function to pass to use
+                for the last output layer (regression only)
 
         """
 
@@ -178,7 +184,7 @@ class MODNetModel:
                         )(previous_layer)
                     else:
                         out = tf.keras.layers.Dense(
-                            1, activation="linear", name=group[prop_idx][pi]
+                            1, activation=out_act, name=group[prop_idx][pi]
                         )(previous_layer)
                     final_out.append(out)
 
@@ -773,7 +779,8 @@ class Bayesian_MODNetModel(MODNetModel):
         kl_weight=None,
         num_classes: Optional[Dict[str, int]] = None,
         n_feat: Optional[int] = 64,
-        act="relu",
+        act: str = "relu",
+        out_act: str = "linear",
     ):
         """Initialise the model on the passed targets with the desired
         architecture, feature count and loss functions and activation functions.
@@ -797,6 +804,8 @@ class Bayesian_MODNetModel(MODNetModel):
             n_feat: The number of features to use as model inputs.
             act: A string defining a tf.keras activation function to pass to use
                 in the `tf.keras.layers.Dense` layers.
+            out_act: A string defining a tf.keras activation function to pass to use
+                for the last output layer
 
         """
 
@@ -826,7 +835,7 @@ class Bayesian_MODNetModel(MODNetModel):
         self.model = self.build_model(
             targets, n_feat, num_neurons,
             bayesian_layers=bayesian_layers, prior=prior, posterior=posterior, kl_weight=kl_weight,
-            act=act, num_classes=self.num_classes
+            act=act, out_act=out_act, num_classes=self.num_classes
         )
 
     def build_model(
@@ -840,6 +849,7 @@ class Bayesian_MODNetModel(MODNetModel):
         kl_weight=None,
         num_classes: Optional[Dict[str, int]] = None,
         act: str = "relu",
+        out_act: str = "relu"
     ):
         """Builds the Bayesian Neural Network and sets the `self.model` attribute.
 
@@ -856,6 +866,8 @@ class Bayesian_MODNetModel(MODNetModel):
                 with n=0 for regression and n>=2 for classification with n the number of classes.
             act: A string defining a Keras activation function to pass to use
                 in the `keras.layers.Dense` layers.
+            out_act: A string defining a tf.keras activation function to pass to use
+                for the last output layer
 
         """
 
@@ -955,7 +967,7 @@ class Bayesian_MODNetModel(MODNetModel):
                         out = tfp.layers.DenseVariational(
                             1,
                             make_posterior_fn=posterior, make_prior_fn=prior, kl_weight=kl_weight,
-                            activation="linear", name=group[prop_idx][pi]
+                            activation=out_act, name=group[prop_idx][pi]
                         )(previous_layer)
                     final_out.append(out)
 
