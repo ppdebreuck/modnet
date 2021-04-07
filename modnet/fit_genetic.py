@@ -288,13 +288,13 @@ class FitGenetic:
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
         fitness = self.function_fitness(pop,  md_train, y_train, md_val, y_val)
-        pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
+        pop_fitness_sort = np.array(list(sorted(fitness, key=lambda x: x[0])))
         best_individuals = np.zeros(num_generations)
         for j in range(0, num_generations):
             LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
             #select parents
-            liste = [1/l**3 for l in pop_fitness_sort[0]] #**3 in order to give relatively more importance to the best individuals
+            liste = [1/l**3 for l in pop_fitness_sort[:,0]] #**3 in order to give relatively more importance to the best individuals
             weights = [l/sum(liste) for l in liste]
             weights = np.array(list(sorted(weights))) #sorting the weights
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
