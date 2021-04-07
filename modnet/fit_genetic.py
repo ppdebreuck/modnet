@@ -67,7 +67,7 @@ class FitGenetic:
         self,
         data: MODData,
         random_state: int,
-        n_splits: int=10
+        n_splits: int=5
         ):
 
         """Provides train/test indices to split data in train/test sets. Splits MODData dataset into k consecutive folds.
@@ -116,8 +116,8 @@ class FitGenetic:
         Parameter:
             data: 'MODData' data which need to be splitted.
         """
-        i = randint(0,9)
-        self.md_train, self.md_val = self.MDKsplit(data, n_splits=10, random_state=i)[i]
+        i = randint(0,4)
+        self.md_train, self.md_val = self.MDKsplit(data, n_splits=5, random_state=i)[i]
         self.y_train = self.md_train.df_targets
         self.y_val = self.md_val.df_targets
 
@@ -211,7 +211,7 @@ class FitGenetic:
         y_val: pd.DataFrame
         )->None:
 
-        """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MSE calculated on the validation set, the model, and the parameters of that model.
+        """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
         
         Parameters:
             pop: List containing the genetic information (i.e., the parameters) of the model.
@@ -259,8 +259,8 @@ class FitGenetic:
                                     callbacks=callbacks,
                                     verbose=0
                                     )
-                f = mse(modnet_model.predict(md_val),y_val)
-                print('MSE = ', f)
+                f = mae(modnet_model.predict(md_val), y_val)
+                print('MAE = ', f)
                 self.fitness.append([f, modnet_model, w])
             except:
                  pass
@@ -278,7 +278,7 @@ class FitGenetic:
         prob_mut: int = 0.5
         )->None:
 
-        """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MSE on the validation set.
+        """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
 
         Parameters:
             md_train: Input data of the training set.
