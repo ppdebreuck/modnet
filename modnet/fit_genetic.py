@@ -154,7 +154,8 @@ class FitGenetic:
         father: List
         )->None:
 
-        """Does the crossover of two parents and returns a 'child' which have the combined genetic information of both parents.
+        """Does the c
+rossover of two parents and returns a 'child' which have the combined genetic information of both parents.
 
         Parameters:
             mother: List containing the gentic information of the first parent.
@@ -168,34 +169,34 @@ class FitGenetic:
 
     def mutation(
         self,
-        child: List,
+        children: List,
         prob_mut: int = 0.5
         )->None:
 
         """Performs mutation in the genetic information in order to maintain diversity in the population. 
         
         Paramters:
-            child: List containing the genetic information of the 'child'.
+            children: List containing the genetic information of the 'children'.
         """
 
-        for c in range(0, len(child)):
+        for c in range(0, len(children)):
             if np.random.rand() > prob_mut:
                 individual = Individual(self.data)
-                child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
-                child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
-                if child[c][1] == 0:
-                    child[c][1] = 32
+                children[c][0] = np.absolute(int(children[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
+                children[c][1] = np.absolute(children[c][1] + 32*randint(-2,2))
+                if children[c][1] == 0:
+                    children[c][1] = 32
                 i = random.choices([1, 2, 3])
                 if i == 1:
-                    child[c][2] = individual.fraction1
+                    children[c][2] = individual.fraction1
                 elif i == 2:
-                    child[c][3] = individual.fraction2
+                    children[c][3] = individual.fraction2
                 else:
-                    child[c][4] = individual.fraction3
-                child[c][9] = int(child[c][9]*2**randint(-1,1))
+                    children[c][4] = individual.fraction3
+                children[c][9] = int(children[c][9]*2**randint(-1,1))
             else:
                 pass
-        return child
+        return children
 
 
     def function_fitness(
@@ -300,12 +301,12 @@ class FitGenetic:
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             #crossover
-            child = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
-            child = self.mutation(child, prob_mut)
+            children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
+            children = self.mutation(children, prob_mut)
             
             #calculates children's fitness to choose who will pass to the next generation
-            fitness_child = self.function_fitness(child, md_train, y_train, md_val, y_val)
-            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child))
+            fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
+            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children))
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
 
             #selects individuals of the next generation
