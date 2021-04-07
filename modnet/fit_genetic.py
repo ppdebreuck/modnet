@@ -289,15 +289,14 @@ class FitGenetic:
         pop = self.initialization_population(size_pop)
         fitness = self.function_fitness(pop,  md_train, y_train, md_val, y_val)
         pop_fitness_sort = np.array(list(sorted(fitness,key=lambda x: x[0])))
-        liste = np.zeros(len(pop_fitness_sort[:,0]))
-        for i in range(len(pop_fitness_sort[:,0])):
-            liste[i] = i+2
-        weights = [l/sum(liste) for l in liste[::-1]]
         best_individuals = np.zeros(num_generations)
         for j in range(0, num_generations):
             LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
             #select parents
+            liste = [1/l**3 for l in pop_fitness_sort[0]] #**3 in order to give relatively more importance to the best individuals
+            weights = [l/sum(liste) for l in liste]
+            weights = np.array(list(sorted(weights))) #sorting the weights
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             #crossover
@@ -316,8 +315,8 @@ class FitGenetic:
             self.best_individual = sort[0][1]
             
             #early stopping if we have the same best_individual for 3 generations
-            best_individuals[i] = self.best_individual
-            if i > 2 and best_individuals[i-2] == best_individuals[i]:
+            best_individuals[j] = self.best_individual
+            if j > 2 and best_individuals[j-2] == best_individuals[j]:
                 break
 
         return self.best_individual
