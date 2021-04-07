@@ -24,20 +24,14 @@ class FitGenetic:
     def __init__(
         self,
         data: MODData,
-        size_pop=15,
-        num_epochs=5
         ):
 
-        """Initializes parameters used in this class.
+        """Initializes the MODData used in this class.
 
         Parameters:
-            size_pop: Size of the population.
-            num_epochs: Number of generations.
             data: A 'MODData' that has been featurized and feature selected.
         """
 
-        self.size_pop = size_pop
-        self.num_epochs = num_epochs
         self.data = data
 
 
@@ -189,6 +183,8 @@ class FitGenetic:
                 individual = Individual(self.data)
                 child[c][0] = np.absolute(int(child[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
                 child[c][1] = np.absolute(child[c][1] + 32*randint(-2,2))
+                if child[c][1] == 0:
+                    child[c][1] = 32
                 i = random.choices([1, 2, 3])
                 if i == 1:
                     child[c][2] = individual.fraction1
@@ -274,7 +270,7 @@ class FitGenetic:
         md_val: MODData,
         y_val: pd.DataFrame,
         size_pop: int,
-        num_epochs: int,
+        num_generations: int,
         prob_mut: int = 0.5
         )->None:
 
@@ -286,7 +282,7 @@ class FitGenetic:
             md_val: Input data of the validation set.
             y_val: Target values of the validation set.
             size_pop: Size of the population per generation.
-            num_epochs: Number of generations.
+            num_generations: Number of generations.
         """
 
         LOG.info('Generation number 0')
@@ -297,7 +293,7 @@ class FitGenetic:
         for i in range(len(pop_fitness_sort[:,0])):
             liste[i] = i+2
         weights = [l/sum(liste) for l in liste[::-1]]
-        for j in range(0, num_epochs):
+        for j in range(0, num_generations):
             LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
             #select parents
@@ -317,27 +313,30 @@ class FitGenetic:
             #selects individuals of the next generation
             pop_fitness_sort = sort[0:size_pop, :]
             self.best_individual = sort[0][1]
+            
+            #early stopping if we have the same best_individual for 3 generations
+            best_individuals[i] = self.best_individual
+            if i > 2 and best_individuals[i-2] == best_individuals[i]:
+                break
 
         return self.best_individual
 
 
     def get_model(
         self,
-        data: MODData,
         size_pop: Optional[int] = 15,
-        num_epochs: Optional[int] = 5
+        num_generations: Optional[int] = 5
         )->MODNetModel:
 
         """Generates the model with the optimized parameters.
 
         Parameter:
-            data: A 'MODData' that has been featurized and feature selected.
             size_pop: Size of the population per generation. Default = 15.
             num_epochs: Number of generations. Default = 5.
         """
 
-        md_train, md_val, y_train, y_val = self.train_val_split(data)
-        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_epochs, prob_mut=0.5)
+        md_train, md_val, y_train, y_val = self.train_val_split(self.data)
+        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_generations, prob_mut=0.5)
 
         return self.best_individual
 
