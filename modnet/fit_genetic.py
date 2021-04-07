@@ -300,14 +300,12 @@ class FitGenetic:
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             #crossover
-            child_1 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
-            child_2 = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
-            child_2 = self.mutation(child_2, prob_mut)
+            child = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
+            child = self.mutation(child, prob_mut)
             
             #calculates children's fitness to choose who will pass to the next generation
-            fitness_child_1 = self.function_fitness(child_1, md_train, y_train, md_val, y_val)
-            fitness_child_2 = self.function_fitness(child_2, md_train, y_train, md_val, y_val)
-            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child_1, fitness_child_2))
+            fitness_child = self.function_fitness(child, md_train, y_train, md_val, y_val)
+            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_child))
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
 
             #selects individuals of the next generation
