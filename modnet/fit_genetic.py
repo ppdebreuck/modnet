@@ -315,7 +315,7 @@ class FitGenetic:
             self.best_individual = sort[0][1]
             
             #early stopping if we have the same best_individual for 3 generations
-            best_individuals[j] = self.best_individual
+            best_individuals[j] = sort[0][0]
             if j > 2 and best_individuals[j-2] == best_individuals[j]:
                 break
 
