@@ -293,6 +293,7 @@ class FitGenetic:
         for i in range(len(pop_fitness_sort[:,0])):
             liste[i] = i+2
         weights = [l/sum(liste) for l in liste[::-1]]
+        best_individuals = np.zeros(num_generations)
         for j in range(0, num_generations):
             LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
