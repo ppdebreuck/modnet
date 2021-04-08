@@ -254,10 +254,10 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                                   n_feat = self.individual.n_features,
                                   num_neurons = [
                                                 [self.individual.neurons_first_layer],
-                                                [self.individual.neurons_first_layer * self.individual.fractions1],
-                                                [self.individual.neurons_first_layer * self.individual.fractions1 * self.individual.fraction2],
-                                                [self.individual.neurons_first_layer * self.individual.fractions1 * self.individual.fraction2 * self.individual.fraction3]
-                                                ]
+                                                [self.individual.neurons_first_layer * self.individual.fraction1],
+                                                [self.individual.neurons_first_layer * self.individual.fraction1 * self.individual.fraction2],
+                                                [self.individual.neurons_first_layer * self.individual.fraction1 * self.individual.fraction2 * self.individual.fraction3]
+                                                ],
                                   act = self.individual.activation
                                   )
         try:
