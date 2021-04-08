@@ -315,7 +315,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             #crossover
             children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             print('children = ', children)
-            children = self.mutation(children, prob_mut=0.6)
+            children = self.mutation(children, prob_mut)
             print('children = ', children)
             if j > 0:
                 best_child = self.mutation(children, prob_mut=1)
@@ -358,7 +358,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         """
 
         md_train, md_val, y_train, y_val = self.train_val_split(self.data)
-        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_generations, prob_mut)
+        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_generations, prob_mut=0.6)
 
         return self.best_individual
 
