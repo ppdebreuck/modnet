@@ -290,29 +290,41 @@ rossover of two parents and returns a 'child' which have the combined genetic in
 
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
+        print('pop = ', pop)
         fitness = self.function_fitness(pop, md_train, y_train, md_val, y_val)
+        print('fitness = ', fitness)
         pop_fitness_sort = np.array(list(sorted(fitness, key=lambda x: x[0])))
+        print('pop_fitness_sort = ', pop_fitness_sort)
         best_individuals = np.zeros(num_generations)
 
         for j in range(0, num_generations):
             LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
-            
+            print('length = ', length)            
+
             #select parents
             liste = [1/l**3 for l in pop_fitness_sort[:,0]] #**3 in order to give relatively more importance to the best individuals
             weights = [l/sum(liste) for l in liste]
             weights = np.array(list(sorted(weights))) #sorting the weights
+            print('weights = ', weights)
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
+            print('parents_1 = ', parents_1)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
-            
+            print('parents_2 = ', parents_2)
+
             #crossover
             children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
+            print('children = ', children)
             children = self.mutation(children, prob_mut)
-            
+            print('children = ', children)
+
             #calculates children's fitness to choose who will pass to the next generation
             fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
+            print('fitness_children = ', fitness_children)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children))
+            print('pop_fitness_sort = ', pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
+            print('sort = ', sort)
 
             #selects individuals of the next generation
             pop_fitness_sort = sort[0:size_pop, :]
@@ -320,6 +332,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             
             #early stopping if we have the same best_individual for 3 generations
             best_individuals[j] = sort[0][0]
+            print('best_individuals = ', best_individuals)
             if j > 2 and best_individuals[j-2] == best_individuals[j]:
                 break
 
