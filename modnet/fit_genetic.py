@@ -170,7 +170,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
     def mutation(
         self,
         children: List,
-        prob_mut: int = 0.6
+        prob_mut: int
         )->None:
 
         """Performs mutation in the genetic information in order to maintain diversity in the population. 
@@ -274,7 +274,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         y_val: pd.DataFrame,
         size_pop: int,
         num_generations: int,
-        prob_mut: int = 0.6
+        prob_mut: int
         )->None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
@@ -315,19 +315,23 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             #crossover
             children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             print('children = ', children)
-            children = self.mutation(children, prob_mut)
+            children = self.mutation(children, prob_mut=0.6)
             print('children = ', children)
+            if j > 0:
+                best_child = self.mutation(children, prob_mut=1)
 
             #calculates children's fitness to choose who will pass to the next generation
             fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
             print('fitness_children = ', fitness_children)
-            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children))
+            fitness_best_child = self.function_fitness(best_child, md_train, y_train, md_val, y_val)
+            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children, fitness_best_child))
             print('pop_fitness_sort = ', pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
             print('sort = ', sort)
 
             #selects individuals of the next generation
             pop_fitness_sort = sort[0:size_pop, :]
+            best_child = sort[0][2]
             self.best_individual = sort[0][1]
             
             #early stopping if we have the same best_individual for 3 generations
@@ -353,7 +357,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         """
 
         md_train, md_val, y_train, y_val = self.train_val_split(self.data)
-        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_generations, prob_mut=0.6)
+        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_generations, prob_mut)
 
         return self.best_individual
 
