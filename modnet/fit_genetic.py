@@ -190,9 +190,9 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                 if i == 1:
                     children[c]['fraction1'] = individual.fraction1
                 elif i == 2:
-                    children[c]['fraction1'] = individual.fraction2
+                    children[c]['fraction2'] = individual.fraction2
                 else:
-                    children[c]['fraction4'] = individual.fraction3
+                    children[c]['fraction3'] = individual.fraction3
                 children[c]['initial_batch_size'] = int(children[c]['initial_batch_size']*2**randint(-1,1))
             else:
                 pass
@@ -307,6 +307,8 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             weights = [l/sum(liste) for l in liste]
             weights = np.array(list(sorted(weights, reverse=True))) #sorting the weights
             print('weights = ', weights)
+            print('pop_fitness_sort[:,2] = ', pop_fitness_sort[:,2])
+            print('type = ', type(pop_fitness_sort[:,2]))
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             print('parents_1 = ', parents_1)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
@@ -320,7 +322,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             #calculates children's fitness to choose who will pass to the next generation
             fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
             print('fitness_children = ', fitness_children)
-            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children, fitness_best_child))
+            pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children))
             print('pop_fitness_sort = ', pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
             print('sort = ', sort)
