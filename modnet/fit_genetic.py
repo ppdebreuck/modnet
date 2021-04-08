@@ -134,16 +134,16 @@ class FitGenetic:
         for i in range(0, size_pop):
             individual = Individual(self.data)
             self.pop[i] = {
-                          'n_feat'=individual.n_features,
-                          'n_neurons_first_layer'=individual.n_neurons_first_layer,
-                          'fraction1'=individual.fraction1,
-                          'fraction2'=individual.fraction2,
-                          'fraction3'=individual.fraction3,
-                          'act'=individual.activation,
-                          'loss'=individual.loss,
-                          'xscale'=individual.xscale,
-                          'lr'=individual.lr,
-                          'initial_batch_size'=individual.initial_batch_size
+                          'n_feat':individual.n_features,
+                          'n_neurons_first_layer':individual.n_neurons_first_layer,
+                          'fraction1':individual.fraction1,
+                          'fraction2':individual.fraction2,
+                          'fraction3':individual.fraction3,
+                          'act':individual.activation,
+                          'loss':individual.loss,
+                          'xscale':individual.xscale,
+                          'lr':individual.lr,
+                          'initial_batch_size':individual.initial_batch_size
                           }
         return self.pop
 
