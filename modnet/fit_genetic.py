@@ -129,22 +129,22 @@ class FitGenetic:
             size_pop: Size of the population.
         """
 
-        self.pop =  [[]]*size_pop
+        self.pop =  [{}]*size_pop
 
         for i in range(0, size_pop):
-            self.individual = Individual(self.data)
-            self.pop[i] = [
-                          self.individual.n_features,
-                          self.individual.n_neurons_first_layer,
-                          self.individual.fraction1,
-                          self.individual.fraction2,
-                          self.individual.fraction3,
-                          self.individual.activation,
-                          self.individual.loss,
-                          self.individual.xscale,
-                          self.individual.lr,
-                          self.individual.initial_batch_size
-                          ]
+            individual = Individual(self.data)
+            self.pop[i] = {
+                          'n_feat'=individual.n_features,
+                          'n_neurons_first_layer'=individual.n_neurons_first_layer,
+                          'fraction1'=individual.fraction1,
+                          'fraction2'=individual.fraction2,
+                          'fraction3'=individual.fraction3,
+                          'act'=individual.activation,
+                          'loss'=individual.loss,
+                          'xscale'=individual.xscale,
+                          'lr'=individual.lr,
+                          'initial_batch_size'=individual.initial_batch_size
+                          }
         return self.pop
 
 
@@ -163,7 +163,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         """
 
         genes_from_mother = random.sample(range(10), k=5)
-        child = [mother[i] if i in genes_from_mother else father[i] for i in range(10)]   
+        child = child = {list(mother.keys())[i]:list(mother.values())[i] if i in genes_from_mother else list(father.values())[i] for i in range(10)}   
         return child
 
 
@@ -182,24 +182,18 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         for c in range(0, len(children)):
             if np.random.rand() > prob_mut:
                 individual = Individual(self.data)
-                children[c][0] = np.absolute(int(children[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
-                self.individual.n_features = children[c][0]
-                children[c][1] = np.absolute(children[c][1] + 32*randint(-2,2))
-                if children[c][1] == 0:
-                    children[c][1] = 32
-                self.individual.n_neurons_first_layer = children[c][1]
+                children[c]['n_feat'] = np.absolute(int(children[c]['n_feat'] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
+                children[c]['n_neurons_first_layer'] = np.absolute(children[c]['n_neurons_first_layer'] + 32*randint(-2,2))
+                if children[c]['n_neurons_first_layer'] == 0:
+                    children[c]['n_neurons_first_layer'] = 32
                 i = random.choices([1, 2, 3])
                 if i == 1:
-                    children[c][2] = individual.fraction1
-                    self.individual.fraction1 = children[c][2]
+                    children[c]['fraction1'] = individual.fraction1
                 elif i == 2:
-                    children[c][3] = individual.fraction2
-                    self.individual.fraction2 = children[c][3]
+                    children[c]['fraction1'] = individual.fraction2
                 else:
-                    children[c][4] = individual.fraction3
-                    self.individual.fraction3 = children[c][4]
-                children[c][9] = int(children[c][9]*2**randint(-1,1))
-                self.individual.initial_batch_size = children[c][9]
+                    children[c]['fraction4'] = individual.fraction3
+                children[c]['initial_batch_size'] = int(children[c]['initial_batch_size']*2**randint(-1,1))
             else:
                 pass
         return children
@@ -237,17 +231,18 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             restore_best_weights=True,
         )
         callbacks = [es]
-        modnet_model = MODNetModel(
-                                  [[[md_train.df_targets.columns[0]]]],
-                                  {md_train.df_targets.columns[0]:1},
-                                  n_feat = self.individual.n_features,
-                                  num_neurons = [
-                                                [self.individual.n_neurons_first_layer],
-                                                [self.individual.n_neurons_first_layer * self.individual.fraction1],
-                                                [self.individual.n_neurons_first_layer * self.individual.fraction1 * self.individual.fraction2],
-                                                [self.individual.n_neurons_first_layer * self.individual.fraction1 * self.individual.fraction2 * self.individual.fraction3]
-                                                ],
-                                  act = self.individual.activation
+        for gene in self.pop:
+            modnet_model = MODNetModel(
+                                      [[[md_train.df_targets.columns[0]]]],
+                                      {md_train.df_targets.columns[0]:1},
+                                      n_feat =  gene['n_feat'],
+                                      num_neurons = [
+                                                    [ int(gene['n_neurons_first_layer']) ],
+                                                    [ int(gene['n_neurons_first_layer'] * gene['fraction1']) ],
+                                                    [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2']) ],
+                                                    [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2'] * gene['fraction3']) ]
+                                                    ],
+                                  act = gene['act']
                                   )
         try:
             for i in range(4):
@@ -255,11 +250,11 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                                 md_train,
                                 val_fraction = 0,
                                 val_key = md_train.df_targets.columns[0],
-                                loss = self.individual.loss,
-                                lr = self.individual.lr,
+                                loss = gene['loss'],
+                                lr = gene['lr'],
                                 epochs = 250,
-                                batch_size = (2**i) * self.individual.initial_batch_size,
-                                xscale = self.individual.xscale,
+                                batch_size = (2**i) * gene['initial_batch_size'],
+                                xscale = gene['xscale'],
                                 callbacks = callbacks,
                                 verbose = 0
                                 )
