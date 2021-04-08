@@ -145,6 +145,17 @@ class FitGenetic:
                           individual.lr,
                           individual.initial_batch_size
                           ]
+
+            self.individual.n_features = individual.n_features
+            self.individual.n_neurons_first_layer = individual.n_neurons_first_layer
+            self.individual.fraction1 = individual.fraction1
+            self.individual.fraction2 = individual.fraction2
+            self.individual.fraction3 = individual.fraction3
+            self.individual.activation = individual.activation
+            self.individual.loss = individual.loss
+            self.individual.xscale = individual.xscale
+            self.individual.lr = individual.lr
+            self.individual.initial_batch_size = individual.initial_batch_size
         return self.pop
 
 
@@ -183,17 +194,23 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             if np.random.rand() > prob_mut:
                 individual = Individual(self.data)
                 children[c][0] = np.absolute(int(children[c][0] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
+                self.individual.n_features = children[c][0]
                 children[c][1] = np.absolute(children[c][1] + 32*randint(-2,2))
                 if children[c][1] == 0:
                     children[c][1] = 32
+                self.individual.neurons_first_layer = children[c][1]
                 i = random.choices([1, 2, 3])
                 if i == 1:
                     children[c][2] = individual.fraction1
+                    self.individual.fraction1 = children[c][2]
                 elif i == 2:
                     children[c][3] = individual.fraction2
+                    self.individual.fraction2 = children[c][3]
                 else:
                     children[c][4] = individual.fraction3
+                    self.individual.fraction3 = children[c][4]
                 children[c][9] = int(children[c][9]*2**randint(-1,1))
+                self.individual.initial_batch_size = children[c][9]
             else:
                 pass
         return children
@@ -231,36 +248,37 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             restore_best_weights=True,
         )
         callbacks = [es]
-        for w in self.pop:
-            modnet_model = MODNetModel(
-                                      [[[md_train.df_targets.columns[0]]]],
-                                      {md_train.df_targets.columns[0]:1},
-                                      n_feat=w[0],
-                                      num_neurons=[[int(w[1])],
-                                      [int(w[1]*w[2])],
-                                      [int(w[1]*w[2]*w[3])],
-                                      [int(w[1]*w[2]*w[3]*w[4])]],
-                                      act=w[5]
-                                      )
-            try:
-                for i in range(4):
-                    modnet_model.fit(
-                                    md_train,
-                                    val_fraction=0,
-                                    val_key=md_train.df_targets.columns[0],
-                                    loss=w[6],
-                                    lr=w[8],
-                                    epochs = 250,
-                                    batch_size = (2**i)*w[9],
-                                    xscale=w[7],
-                                    callbacks=callbacks,
-                                    verbose=0
-                                    )
-                f = mae(modnet_model.predict(md_val), y_val)
-                print('MAE = ', f)
-                self.fitness.append([f, modnet_model, w])
-            except:
-                 pass
+        modnet_model = MODNetModel(
+                                  [[[md_train.df_targets.columns[0]]]],
+                                  {md_train.df_targets.columns[0]:1},
+                                  n_feat = self.individual.n_features,
+                                  num_neurons = [
+                                                [self.individual.neurons_first_layer],
+                                                [self.individual.neurons_first_layer * self.individual.fractions1],
+                                                [self.individual.neurons_first_layer * self.individual.fractions1 * self.individual.fraction2],
+                                                [self.individual.neurons_first_layer * self.individual.fractions1 * self.individual.fraction2 * self.individual.fraction3]
+                                                ]
+                                  act = self.individual.activation
+                                  )
+        try:
+            for i in range(4):
+                modnet_model.fit(
+                                md_train,
+                                val_fraction = 0,
+                                val_key = md_train.df_targets.columns[0],
+                                loss = self.individual.loss,
+                                lr = self.individual.lr,
+                                epochs = 250,
+                                batch_size = (2**i) * self.individual.initial_batch_size,
+                                xscale = self.individual.xscale,
+                                callbacks = callbacks,
+                                verbose = 0
+                                )
+            f = mae(modnet_model.predict(md_val), y_val)
+            print('MAE = ', f)
+            self.fitness.append([f, modnet_model, w])
+        except:
+            pass
         return self.fitness
 
 
@@ -288,18 +306,21 @@ rossover of two parents and returns a 'child' which have the combined genetic in
 
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
-        fitness = self.function_fitness(pop,  md_train, y_train, md_val, y_val)
+        fitness = self.function_fitness(pop, md_train, y_train, md_val, y_val)
         pop_fitness_sort = np.array(list(sorted(fitness, key=lambda x: x[0])))
         best_individuals = np.zeros(num_generations)
+
         for j in range(0, num_generations):
             LOG.info("Generation number {}".format(j+1))
             length = len(pop_fitness_sort)
+            
             #select parents
             liste = [1/l**3 for l in pop_fitness_sort[:,0]] #**3 in order to give relatively more importance to the best individuals
             weights = [l/sum(liste) for l in liste]
             weights = np.array(list(sorted(weights))) #sorting the weights
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
+            
             #crossover
             children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             children = self.mutation(children, prob_mut)
