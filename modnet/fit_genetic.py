@@ -303,9 +303,9 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             print('length = ', length)            
 
             #select parents
-            liste = [1/l**3 for l in pop_fitness_sort[:,0]] #**3 in order to give relatively more importance to the best individuals
+            liste = [1/l**10 for l in pop_fitness_sort[:,0]] #**10 in order to give relatively more importance to the best individuals
             weights = [l/sum(liste) for l in liste]
-            weights = np.array(list(sorted(weights))) #sorting the weights
+            weights = np.array(list(sorted(weights, reverse=True))) #sorting the weights
             print('weights = ', weights)
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             print('parents_1 = ', parents_1)
@@ -317,14 +317,9 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             print('children = ', children)
             children = self.mutation(children, prob_mut)
             print('children = ', children)
-            if j > 0:
-                best_child = self.mutation(children, prob_mut=1)
-                print('best_child =', best_child)
             #calculates children's fitness to choose who will pass to the next generation
             fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
             print('fitness_children = ', fitness_children)
-            fitness_best_child = self.function_fitness(best_child, md_train, y_train, md_val, y_val)
-            print('fitness_best_child =', fitness_best_child)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children, fitness_best_child))
             print('pop_fitness_sort = ', pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
