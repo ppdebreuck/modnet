@@ -244,25 +244,25 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                                                     ],
                                   act = gene['act']
                                   )
-        try:
-            for i in range(4):
-                modnet_model.fit(
-                                md_train,
-                                val_fraction = 0,
-                                val_key = md_train.df_targets.columns[0],
-                                loss = gene['loss'],
-                                lr = gene['lr'],
-                                epochs = 250,
-                                batch_size = (2**i) * gene['initial_batch_size'],
-                                xscale = gene['xscale'],
-                                callbacks = callbacks,
-                                verbose = 0
-                                )
-            f = mae(modnet_model.predict(md_val), y_val)
-            print('MAE = ', f)
-            self.fitness.append([f, modnet_model, w])
-        except:
-            pass
+            try:
+                for i in range(4):
+                    modnet_model.fit(
+                                    md_train,
+                                    val_fraction = 0,
+                                    val_key = md_train.df_targets.columns[0],
+                                    loss = gene['loss'],
+                                    lr = gene['lr'],
+                                    epochs = 250,
+                                    batch_size = (2**i) * gene['initial_batch_size'],
+                                    xscale = gene['xscale'],
+                                    callbacks = callbacks,
+                                    verbose = 0
+                                    )
+                f = mae(modnet_model.predict(md_val), y_val)
+                print('MAE = ', f)
+                self.fitness.append([f, modnet_model, gene])
+            except:
+                pass
         return self.fitness
 
 
