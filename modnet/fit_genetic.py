@@ -319,11 +319,12 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             print('children = ', children)
             if j > 0:
                 best_child = self.mutation(children, prob_mut=1)
-
+                print('best_child =', best_child)
             #calculates children's fitness to choose who will pass to the next generation
             fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
             print('fitness_children = ', fitness_children)
             fitness_best_child = self.function_fitness(best_child, md_train, y_train, md_val, y_val)
+            print('fitness_best_child =', fitness_best_child)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children, fitness_best_child))
             print('pop_fitness_sort = ', pop_fitness_sort)
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
