@@ -187,7 +187,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                 children[c][1] = np.absolute(children[c][1] + 32*randint(-2,2))
                 if children[c][1] == 0:
                     children[c][1] = 32
-                self.individual.neurons_first_layer = children[c][1]
+                self.individual.n_neurons_first_layer = children[c][1]
                 i = random.choices([1, 2, 3])
                 if i == 1:
                     children[c][2] = individual.fraction1
@@ -242,10 +242,10 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                                   {md_train.df_targets.columns[0]:1},
                                   n_feat = self.individual.n_features,
                                   num_neurons = [
-                                                [self.individual.neurons_first_layer],
-                                                [self.individual.neurons_first_layer * self.individual.fraction1],
-                                                [self.individual.neurons_first_layer * self.individual.fraction1 * self.individual.fraction2],
-                                                [self.individual.neurons_first_layer * self.individual.fraction1 * self.individual.fraction2 * self.individual.fraction3]
+                                                [self.individual.n_neurons_first_layer],
+                                                [self.individual.n_neurons_first_layer * self.individual.fraction1],
+                                                [self.individual.n_neurons_first_layer * self.individual.fraction1 * self.individual.fraction2],
+                                                [self.individual.n_neurons_first_layer * self.individual.fraction1 * self.individual.fraction2 * self.individual.fraction3]
                                                 ],
                                   act = self.individual.activation
                                   )
