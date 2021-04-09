@@ -338,7 +338,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             num_epochs: Number of generations. Default = 6.
         """
 
-        self.best_individual = self.gen_alg(md, size_pop, num_generations, prob_mut=0.6)
+        self.best_individual = self.gen_alg(self.data, size_pop, num_generations, prob_mut=0.6)
 
         return self.best_individual
 
