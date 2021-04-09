@@ -261,8 +261,8 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                                     callbacks = callbacks,
                                     verbose = 0
                                     )
-            MAE = mae(modnet_model.predict(md_val), y_val)
-            maes[k] = MAE
+                MAE = mae(modnet_model.predict(md_val), y_val)
+                maes[k] = MAE
             f = maes.mean()
             print('MAE = ', maes)
             self.fitness.append([f, modnet_model, gene])
