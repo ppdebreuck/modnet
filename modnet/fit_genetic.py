@@ -202,10 +202,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
     def function_fitness(
         self,
         pop: List,
-        md_train: MODData,
-        y_train: pd.DataFrame,
-        md_val: MODData,
-        y_val: pd.DataFrame
+        md: MODData
         )->None:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
@@ -232,34 +229,42 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         )
         callbacks = [es]
         for gene in self.pop:
-            modnet_model = MODNetModel(
-                                      [[[md_train.df_targets.columns[0]]]],
-                                      {md_train.df_targets.columns[0]:1},
-                                      n_feat =  gene['n_feat'],
-                                      num_neurons = [
-                                                    [ int(gene['n_neurons_first_layer']) ],
-                                                    [ int(gene['n_neurons_first_layer'] * gene['fraction1']) ],
-                                                    [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2']) ],
-                                                    [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2'] * gene['fraction3']) ]
-                                                    ],
-                                  act = gene['act']
-                                  )
-            try:
-                for i in range(4):
-                    modnet_model.fit(
-                                    md_train,
-                                    val_fraction = 0,
-                                    val_key = md_train.df_targets.columns[0],
-                                    loss = gene['loss'],
-                                    lr = gene['lr'],
-                                    epochs = 250,
-                                    batch_size = (2**i) * gene['initial_batch_size'],
-                                    xscale = gene['xscale'],
-                                    callbacks = callbacks,
-                                    verbose = 0
-                                    )
-                f = mae(modnet_model.predict(md_val), y_val)
-                print('MAE = ', f)
+            folds = MDKsplit(md,n_splits=5,random_state=22)
+            maes = np.ones(5)
+            for i,f in enumerate(folds):
+                md_train = f[0]
+                y_train = md_train.df_targets
+                md_val = f[1]
+                y_val = md_val.df_targets
+                modnet_model = MODNetModel(
+                                          [[[y_train.columns[0]]]],
+                                          {y_train.columns[0]:1},
+                                          n_feat =  gene['n_feat'],
+                                          num_neurons = [
+                                                        [ int(gene['n_neurons_first_layer']) ],
+                                                        [ int(gene['n_neurons_first_layer'] * gene['fraction1']) ],
+                                                        [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2']) ],
+                                                        [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2'] * gene['fraction3']) ]
+                                                        ],
+                                          act = gene['act']
+                                          )
+                try:
+                    for i in range(4):
+                        modnet_model.fit(
+                                        md_train,
+                                        val_fraction = 0,
+                                        val_key = y_train.columns[0],
+                                        loss = gene['loss'],
+                                        lr = gene['lr'],
+                                        epochs = 250,
+                                        batch_size = (2**i) * gene['initial_batch_size'],
+                                        xscale = gene['xscale'],
+                                        callbacks = callbacks,
+                                        verbose = 0
+                                        )
+                    mae = mae(modnet_model.predict(md_val), y_val)
+                    maes[i] = mae
+                print('MAE = ', maes.mean())
                 self.fitness.append([f, modnet_model, gene])
             except:
                 pass
@@ -268,10 +273,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
 
     def gen_alg(
         self,
-        md_train: MODData,
-        y_train: pd.DataFrame,
-        md_val: MODData,
-        y_val: pd.DataFrame,
+        md: MODData,
         size_pop: int,
         num_generations: int,
         prob_mut: int
@@ -280,17 +282,14 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
 
         Parameters:
-            md_train: Input data of the training set.
-            y_train: Target values of the training set.
-            md_val: Input data of the validation set.
-            y_val: Target values of the validation set.
+            md: A 'MODData' that has been featurized and feature selected.
             size_pop: Size of the population per generation.
             num_generations: Number of generations.
         """
 
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)
-        fitness = self.function_fitness(pop, md_train, y_train, md_val, y_val)
+        fitness = self.function_fitness(pop, md)
         pop_fitness_sort = np.array(list(sorted(fitness, key=lambda x: x[0])))
         best_individuals = np.zeros(num_generations)
 
@@ -309,7 +308,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
             children = self.mutation(children, prob_mut)
             #calculates children's fitness to choose who will pass to the next generation
-            fitness_children = self.function_fitness(children, md_train, y_train, md_val, y_val)
+            fitness_children = self.function_fitness(children, md)
             pop_fitness_sort = np.concatenate((pop_fitness_sort, fitness_children))
             sort = np.array(list(sorted(pop_fitness_sort,key=lambda x: x[0])))        
 
@@ -319,7 +318,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             
             #early stopping if we have the same best_individual for 3 generations
             best_individuals[j] = sort[0][0]
-            if j > 2 and best_individuals[j-2] == best_individuals[j]:
+            if j > 1 and best_individuals[j-2] == best_individuals[j]:
                 break
 
         return self.best_individual
@@ -338,8 +337,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             num_epochs: Number of generations. Default = 6.
         """
 
-        md_train, md_val, y_train, y_val = self.train_val_split(self.data)
-        self.best_individual = self.gen_alg(md_train, y_train, md_val, y_val, size_pop, num_generations, prob_mut=0.6)
+        self.best_individual = self.gen_alg(md, size_pop, num_generations, prob_mut=0.6)
 
         return self.best_individual
 
