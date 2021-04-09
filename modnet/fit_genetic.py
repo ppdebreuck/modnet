@@ -229,7 +229,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         )
         callbacks = [es]
         for gene in self.pop:
-            folds = MDKsplit(md,n_splits=5,random_state=22)
+            folds = self.MDKsplit(md,n_splits=5,random_state=22)
             maes = np.ones(5)
             for k,f in enumerate(folds):
                 md_train = f[0]
