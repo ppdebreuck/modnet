@@ -100,24 +100,6 @@ class FitGenetic:
         return folds    
 
 
-    def train_val_split(
-        self,
-        data: MODData
-        )->None:
-
-        """Splits arrays or matrices into random train and validation subsets.
-        
-        Parameter:
-            data: 'MODData' data which need to be splitted.
-        """
-        i = randint(0,4)
-        self.md_train, self.md_val = self.MDKsplit(data, n_splits=5, random_state=i)[i]
-        self.y_train = self.md_train.df_targets
-        self.y_val = self.md_val.df_targets
-
-        return self.md_train, self.md_val, self.y_train, self.y_val
-
-
     def initialization_population(
         self,
         size_pop: int
@@ -132,7 +114,7 @@ class FitGenetic:
         self.pop =  [{}]*size_pop
 
         for i in range(0, size_pop):
-            individual = Individual(self.data)
+            individual = Individual(self.data) #details about the possible values of each gene are in this class
             self.pop[i] = {
                           'n_feat':individual.n_features,
                           'n_neurons_first_layer':individual.n_neurons_first_layer,
@@ -154,15 +136,14 @@ class FitGenetic:
         father: List
         )->None:
 
-        """Does the c
-rossover of two parents and returns a 'child' which have the combined genetic information of both parents.
+        """Does the crossover of two parents and returns a 'child' which have the combined genetic information of both parents.
 
         Parameters:
             mother: List containing the gentic information of the first parent.
             father: List containing the gentic information of the second parent.
         """
 
-        genes_from_mother = random.sample(range(10), k=5)
+        genes_from_mother = random.sample(range(10), k=5) #creates indices to take randomly 5 genes from one parent, and 5 genes from the other
         child = child = {list(mother.keys())[i]:list(mother.values())[i] if i in genes_from_mother else list(father.values())[i] for i in range(10)}   
         return child
 
@@ -182,10 +163,13 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         for c in range(0, len(children)):
             if np.random.rand() > prob_mut:
                 individual = Individual(self.data)
+                #modification of the number of features in a [-10%, +10%] range
                 children[c]['n_feat'] = np.absolute(int(children[c]['n_feat'] + randint(-int(0.1*len(self.data.get_optimal_descriptors())), int(0.1*len(self.data.get_optimal_descriptors())))))
+                #modification of the number of neurons in the first layer of [-64, -32, 0, 32, 64]
                 children[c]['n_neurons_first_layer'] = np.absolute(children[c]['n_neurons_first_layer'] + 32*randint(-2,2))
                 if children[c]['n_neurons_first_layer'] == 0:
                     children[c]['n_neurons_first_layer'] = 32
+                #modification of the 1st, 2nd or 3rd fraction
                 i = random.choices([1, 2, 3])
                 if i == 1:
                     children[c]['fraction1'] = individual.fraction1
@@ -193,6 +177,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                     children[c]['fraction2'] = individual.fraction2
                 else:
                     children[c]['fraction3'] = individual.fraction3
+                #multiplication of the initial batch size by a factor of [1/2, 1, 2]
                 children[c]['initial_batch_size'] = int(children[c]['initial_batch_size']*2**randint(-1,1))
             else:
                 pass
@@ -228,10 +213,11 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             restore_best_weights=True,
         )
         callbacks = [es]
-        for gene in self.pop:
+
+        for ind in self.pop: #Going through each individual of the population
             folds = self.MDKsplit(md,n_splits=5,random_state=22)
             maes = np.ones(5)
-            for k,f in enumerate(folds):
+            for k,f in enumerate(folds): #K-Fold cross-validation to reduce overfitting
                 md_train = f[0]
                 y_train = md_train.df_targets
                 md_val = f[1]
@@ -239,25 +225,25 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                 modnet_model = MODNetModel(
                                           [[[y_train.columns[0]]]],
                                           {y_train.columns[0]:1},
-                                          n_feat =  gene['n_feat'],
+                                          n_feat =  ind['n_feat'],
                                           num_neurons = [
-                                                        [ int(gene['n_neurons_first_layer']) ],
-                                                        [ int(gene['n_neurons_first_layer'] * gene['fraction1']) ],
-                                                        [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2']) ],
-                                                        [ int(gene['n_neurons_first_layer'] * gene['fraction1'] * gene['fraction2'] * gene['fraction3']) ]
+                                                        [ int(ind['n_neurons_first_layer']) ],
+                                                        [ int(ind['n_neurons_first_layer'] * ind['fraction1']) ],
+                                                        [ int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2']) ],
+                                                        [ int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'] * ind['fraction3']) ]
                                                         ],
-                                          act = gene['act']
+                                          act = ind['act']
                                           )
                 for i in range(4):
                     modnet_model.fit(
                                     md_train,
                                     val_fraction = 0,
                                     val_key = y_train.columns[0],
-                                    loss = gene['loss'],
-                                    lr = gene['lr'],
+                                    loss = ind['loss'],
+                                    lr = ind['lr'],
                                     epochs = 250,
-                                    batch_size = (2**i) * gene['initial_batch_size'],
-                                    xscale = gene['xscale'],
+                                    batch_size = (2**i) * ind['initial_batch_size'],
+                                    xscale = ind['xscale'],
                                     callbacks = callbacks,
                                     verbose = 0
                                     )
@@ -286,9 +272,9 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         """
 
         LOG.info('Generation number 0')
-        pop = self.initialization_population(size_pop)
-        fitness = self.function_fitness(pop, md)
-        pop_fitness_sort = np.array(list(sorted(fitness, key=lambda x: x[0])))
+        pop = self.initialization_population(size_pop) #initialization of the population
+        fitness = self.function_fitness(pop, md) #fitness evaluation of the population
+        pop_fitness_sort = np.array(list(sorted(fitness, key=lambda x: x[0]))) #ranking of the fitness of each individual
         best_individuals = np.zeros(num_generations)
 
         for j in range(0, num_generations):
@@ -299,6 +285,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
             liste = [1/l**10 for l in pop_fitness_sort[:,0]] #**10 in order to give relatively more importance to the best individuals
             weights = [l/sum(liste) for l in liste]
             weights = np.array(list(sorted(weights, reverse=True))) #sorting the weights
+            #selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
             parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
             parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
 
