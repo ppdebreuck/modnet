@@ -251,7 +251,7 @@ class FitGenetic:
                 maes[k] = MAE
             f = maes.mean()
             print('MAE = ', f)
-            self.fitness.append([f, modnet_model, gene])
+            self.fitness.append([f, modnet_model, ind])
         return self.fitness
 
 
