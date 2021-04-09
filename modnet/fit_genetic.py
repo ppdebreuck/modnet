@@ -231,7 +231,7 @@ rossover of two parents and returns a 'child' which have the combined genetic in
         for gene in self.pop:
             folds = MDKsplit(md,n_splits=5,random_state=22)
             maes = np.ones(5)
-            for i,f in enumerate(folds):
+            for k,f in enumerate(folds):
                 md_train = f[0]
                 y_train = md_train.df_targets
                 md_val = f[1]
@@ -263,11 +263,12 @@ rossover of two parents and returns a 'child' which have the combined genetic in
                                         verbose = 0
                                         )
                     mae = mae(modnet_model.predict(md_val), y_val)
-                    maes[i] = mae
-                print('MAE = ', maes.mean())
-                self.fitness.append([f, modnet_model, gene])
-            except:
-                pass
+                    maes[k] = mae
+                except:
+                    pass
+            f = maes.mean()
+            print('MAE = ', f)
+            self.fitness.append([f, modnet_model, gene])
         return self.fitness
 
 
