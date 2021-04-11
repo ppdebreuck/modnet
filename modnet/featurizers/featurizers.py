@@ -129,7 +129,7 @@ class MODFeaturizer(abc.ABC):
             df, column, multiindex=True, ignore_errors=True
         )
 
-    def featurize_composition(self, df: pd.DataFrame) -> pd.DataFrame:
+    def featurize_composition(self, df: pd.DataFrame, fast_oxid=False) -> pd.DataFrame:
         """ Decorate input `pandas.DataFrame` of structures with composition
         features from matminer, specified by the MODFeaturizer preset.
 
@@ -158,7 +158,10 @@ class MODFeaturizer(abc.ABC):
 
         if self.oxid_composition_featurizers:
             LOG.info("Applying oxidation state featurizers...")
-            df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
+            if fast_oxid:
+                df = CompositionToOxidComposition(all_oxi_states=False, max_sites=-1).featurize_dataframe(df, "composition")
+            else:
+                df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
             df = self._fit_apply_featurizers(df, self.oxid_composition_featurizers, "composition_oxid")
             df = df.rename(columns={'Input Data': ''})
             df.columns = df.columns.map('|'.join).str.strip('|')
