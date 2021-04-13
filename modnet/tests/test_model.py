@@ -72,7 +72,6 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
     model.predict(data)
 
 
-@pytest.mark.skip(msg="Slow test")
 def test_train_small_model_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets
@@ -131,7 +130,6 @@ def test_model_integration(subset_moddata, tf_session):
     assert model.predict(data) == loaded_model.predict(data)
 
 
-###### Bayesian_MODNet Tests ######
 def test_train_small_bayesian_single_target(subset_moddata, tf_session):
     """Tests the single target training."""
     from modnet.models import BayesianMODNetModel
@@ -183,6 +181,7 @@ def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
     model.predict(data)
     model.predict(data, return_unc=True)
 
+
 def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""
     from modnet.models import BayesianMODNetModel
@@ -204,8 +203,6 @@ def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
     model.predict(data)
     model.predict(data, return_unc=True)
 
-
-###### Bootstrap_MODNet Tests ######
 
 def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
     """Tests the single target training."""
@@ -262,6 +259,7 @@ def test_train_small_bootstrap_single_target_classif(subset_moddata, tf_session)
     model.predict(data, return_unc=True)
     model.predict(data, return_unc=True)
 
+
 def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""
     from modnet.models import EnsembleMODNetModel
@@ -284,7 +282,8 @@ def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
     model.fit(data, epochs=5)
     model.predict(data, return_unc=True)
 
-@pytest.mark.skip(msg="Slow test")
+
+@pytest.mark.slow
 def test_train_small_bootstrap_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets
