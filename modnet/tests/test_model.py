@@ -134,7 +134,7 @@ def test_model_integration(subset_moddata, tf_session):
 ###### Bayesian_MODNet Tests ######
 def test_train_small_bayesian_single_target(subset_moddata, tf_session):
     """Tests the single target training."""
-    from modnet.models import Bayesian_MODNetModel
+    from modnet.models import BayesianMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -142,7 +142,7 @@ def test_train_small_bayesian_single_target(subset_moddata, tf_session):
         col for col in data.df_featurized.columns if col.startswith("ElementProperty")
     ]
 
-    model = Bayesian_MODNetModel(
+    model = BayesianMODNetModel(
         [[["eform"]]],
         weights={"eform": 1},
         num_neurons=[[16], [8], [8], [4]],
@@ -156,7 +156,7 @@ def test_train_small_bayesian_single_target(subset_moddata, tf_session):
 
 def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
     """Tests the single target training."""
-    from modnet.models import Bayesian_MODNetModel
+    from modnet.models import BayesianMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -171,7 +171,7 @@ def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
             return 0
 
     data.df_targets["is_metal"] = data.df_targets["egap"].apply(is_metal)
-    model = Bayesian_MODNetModel(
+    model = BayesianMODNetModel(
         [[["is_metal"]]],
         weights={"is_metal": 1},
         num_neurons=[[16], [8], [8], [4]],
@@ -185,7 +185,7 @@ def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
 
 def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""
-    from modnet.models import Bayesian_MODNetModel
+    from modnet.models import BayesianMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -193,7 +193,7 @@ def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
         col for col in data.df_featurized.columns if col.startswith("ElementProperty")
     ]
 
-    model = Bayesian_MODNetModel(
+    model = BayesianMODNetModel(
         [[["eform", "egap"]]],
         weights={"eform": 1, "egap": 1},
         num_neurons=[[16], [8], [8], [4]],
@@ -209,7 +209,7 @@ def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
 
 def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
     """Tests the single target training."""
-    from modnet.models import Ensemble_MODNetModel
+    from modnet.models import EnsembleMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -217,7 +217,7 @@ def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
         col for col in data.df_featurized.columns if col.startswith("ElementProperty")
     ]
 
-    model = Ensemble_MODNetModel(
+    model = EnsembleMODNetModel(
         [[["eform"]]],
         weights={"eform": 1},
         num_neurons=[[16], [8], [8], [4]],
@@ -233,7 +233,7 @@ def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
 
 def test_train_small_bootstrap_single_target_classif(subset_moddata, tf_session):
     """Tests the single target training."""
-    from modnet.models import Ensemble_MODNetModel
+    from modnet.models import EnsembleMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -248,7 +248,7 @@ def test_train_small_bootstrap_single_target_classif(subset_moddata, tf_session)
             return 0
 
     data.df_targets["is_metal"] = data.df_targets["egap"].apply(is_metal)
-    model = Ensemble_MODNetModel(
+    model = EnsembleMODNetModel(
         [[["is_metal"]]],
         weights={"is_metal": 1},
         num_neurons=[[16], [8], [8], [4]],
@@ -264,7 +264,7 @@ def test_train_small_bootstrap_single_target_classif(subset_moddata, tf_session)
 
 def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""
-    from modnet.models import Ensemble_MODNetModel
+    from modnet.models import EnsembleMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -272,7 +272,7 @@ def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
         col for col in data.df_featurized.columns if col.startswith("ElementProperty")
     ]
 
-    model = Ensemble_MODNetModel(
+    model = EnsembleMODNetModel(
         [[["eform", "egap"]]],
         weights={"eform": 1, "egap": 1},
         num_neurons=[[16], [8], [8], [4]],
@@ -288,7 +288,7 @@ def test_train_small_bootstrap_multi_target(subset_moddata, tf_session):
 def test_train_small_bootstrap_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets
-    from modnet.models import Ensemble_MODNetModel
+    from modnet.models import EnsembleMODNetModel
 
     modified_presets = gen_presets(100, 100)[:2]
 
@@ -301,7 +301,7 @@ def test_train_small_bootstrap_presets(subset_moddata, tf_session):
         col for col in data.df_featurized.columns if col.startswith("ElementProperty")
     ]
 
-    model = Ensemble_MODNetModel(
+    model = EnsembleMODNetModel(
         [[["eform", "egap"]]],
         weights={"eform": 1, "egap": 1},
         num_neurons=[[16], [8], [8], [4]],

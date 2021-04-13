@@ -36,9 +36,8 @@ def test_train_small_model_benchmark(subset_moddata, tf_session):
     assert all(key in results for key in expected_keys)
     assert all(len(results[key]) == 5 for key in expected_keys)
 
-@pytest.mark.skip(msg="Slow test")
 def test_train_small_ensemblemodel_benchmark(subset_moddata, tf_session):
-    """Tests the `matbench_benchmark()` method with optional arguments."""
+    """Tests the `matbench_benchmark()` method for ensemble models."""
     from modnet.matbench.benchmark import matbench_benchmark
 
     data = subset_moddata
@@ -51,7 +50,7 @@ def test_train_small_ensemblemodel_benchmark(subset_moddata, tf_session):
         data,
         [[["eform"]]],
         {"eform": 1},
-        model_type="Ensemble_MODNetModel",
+        model_type="EnsembleMODNetModel",
         n_models = 2,
         inner_feat_selection=False,
         fast=True,
