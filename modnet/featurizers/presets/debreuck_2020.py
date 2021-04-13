@@ -115,13 +115,13 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
     def __init__(self,fast_oxid=False):
         self.fast_oxid = fast_oxid
-    
+
     def featurize_composition(self, df):
         """Applies the preset composition featurizers to the input dataframe,
         renames some fields and cleans the output dataframe.
 
         """
-        df = super().featurize_composition(df,fast_oxid=self.fast_oxid)
+        df = super().featurize_composition(df)
 
         _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
         df["AtomicOrbitals|HOMO_character"] = df["AtomicOrbitals|HOMO_character"].map(
@@ -210,5 +210,3 @@ class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
     oxid_composition_featurizers = ()
     structure_featurizers = ()
     site_featurizers = ()
-
-

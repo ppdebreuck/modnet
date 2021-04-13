@@ -2,13 +2,11 @@ import abc
 from typing import Optional, Iterable, Tuple, Dict
 
 import pandas as pd
-import numpy as np
 
 from matminer.featurizers.base import MultipleFeaturizer, BaseFeaturizer
 from matminer.featurizers.structure import SiteStatsFingerprint
 from matminer.featurizers.conversions import CompositionToOxidComposition
 
-import modnet.featurizers
 from modnet.utils import LOG
 
 
@@ -81,14 +79,14 @@ class MODFeaturizer(abc.ABC):
         df_composition = pd.DataFrame([])
         if self.composition_featurizers or self.oxid_composition_featurizers:
             df_composition = self.featurize_composition(df)
-            
-        df_structure = pd.DataFrame([])            
+
+        df_structure = pd.DataFrame([])
         if self.structure_featurizers:
             df_structure = self.featurize_structure(df)
-            
+
         df_site = pd.DataFrame([])
         if self.site_featurizers:
-            df_site = self.featurize_site(df)           
+            df_site = self.featurize_site(df)
 
         return df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
 
@@ -129,7 +127,7 @@ class MODFeaturizer(abc.ABC):
             df, column, multiindex=True, ignore_errors=True
         )
 
-    def featurize_composition(self, df: pd.DataFrame, fast_oxid=False) -> pd.DataFrame:
+    def featurize_composition(self, df: pd.DataFrame) -> pd.DataFrame:
         """ Decorate input `pandas.DataFrame` of structures with composition
         features from matminer, specified by the MODFeaturizer preset.
 
@@ -158,7 +156,7 @@ class MODFeaturizer(abc.ABC):
 
         if self.oxid_composition_featurizers:
             LOG.info("Applying oxidation state featurizers...")
-            if fast_oxid:
+            if getattr(self, "fast_oxid", False):
                 df = CompositionToOxidComposition(all_oxi_states=False, max_sites=-1).featurize_dataframe(df, "composition")
             else:
                 df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
