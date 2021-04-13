@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import pytest
 
 def test_train_small_model_benchmark(subset_moddata, tf_session):
     """Tests the `matbench_benchmark()` method with optional arguments."""
@@ -39,6 +38,7 @@ def test_train_small_model_benchmark(subset_moddata, tf_session):
 def test_train_small_ensemblemodel_benchmark(subset_moddata, tf_session):
     """Tests the `matbench_benchmark()` method for ensemble models."""
     from modnet.matbench.benchmark import matbench_benchmark
+    from modnet.models import EnsembleMODNetModel
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -50,7 +50,7 @@ def test_train_small_ensemblemodel_benchmark(subset_moddata, tf_session):
         data,
         [[["eform"]]],
         {"eform": 1},
-        model_type="EnsembleMODNetModel",
+        model_type=EnsembleMODNetModel,
         n_models = 2,
         inner_feat_selection=False,
         fast=True,

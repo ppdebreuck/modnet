@@ -14,7 +14,6 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
 from modnet.preprocessing import MODData
-from modnet.matbench.benchmark import matbench_kfold_splits
 from modnet.utils import LOG
 from modnet import __version__
 
@@ -387,6 +386,8 @@ class MODNetModel:
             - The settings of the best-performing preset.
 
         """
+
+        from modnet.matbench.benchmark import matbench_kfold_splits
 
         if callbacks is None:
             es = tf.keras.callbacks.EarlyStopping(
