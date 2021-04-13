@@ -1,29 +1,21 @@
-import pickle
 from typing import List, Tuple, Dict, Optional, Callable, Any
-
 from pathlib import Path
+from functools import partial
+import multiprocessing
 
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
-
 import tensorflow as tf
-tf.config.threading.set_intra_op_parallelism_threads(1)
-tf.config.threading.set_inter_op_parallelism_threads(1)
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-os.environ["OMP_NUM_THREADS"] = "1"
-
 import tensorflow_probability as tfp
+
 from modnet.preprocessing import MODData
 from modnet.matbench.benchmark import matbench_kfold_splits
 from modnet.utils import LOG
 from modnet import __version__
 
-from functools import partial
-import multiprocessing
 import tqdm
 
 __all__ = ("MODNetModel",)
