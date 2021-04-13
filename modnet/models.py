@@ -258,7 +258,6 @@ class MODNetModel:
             y.append(y_inner)
 
         # Scale the input features:
-        # x = np.nan_to_num(x)
         if self.xscale == "minmax":
             self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
 
@@ -272,7 +271,6 @@ class MODNetModel:
             val_x = val_data.get_featurized_df()[
                 self.optimal_descriptors[: self.n_feat]
             ].values
-            #val_x = np.nan_to_num(val_x)
             val_x = self._scaler.transform(val_x)
             val_x = np.nan_to_num(val_x,nan=-1)
             try:
@@ -451,7 +449,7 @@ class MODNetModel:
                    **val_params,
                 }]
 
-        val_losses = np.zeros((len(presets),n_splits))
+        val_losses = 1e20 * np.ones((len(presets),n_splits))
         learning_curves = [[None for _ in range(n_splits)] for _ in range(len(presets))]
         models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
@@ -462,12 +460,13 @@ class MODNetModel:
         for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):
             val_loss, learning_curve, model, preset_id, fold_id = res
             LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")
-            # reload model
+            # reload the model object after serialization
             model._restore_model()
 
             val_losses[preset_id,fold_id] = val_loss
             learning_curves[preset_id][fold_id] = learning_curve
             models[preset_id][fold_id] = model
+
         pool.close()
         pool.join()
 
@@ -691,15 +690,10 @@ def validate_model(train_data = None,
                    fold_id = None,
                    verbose = 0,
             ):
+    """For a given set of parameters, create a new model and train it on the passed training data,
+    validating it against the passed validation data and returning some relevant metrics.
 
-    #deprecated
-    # data type can get messed up when passed to new process
-    #train_data.df_featurized = train_data.df_featurized.apply(pd.to_numeric)
-    #train_data.df_targets = train_data.df_targets.apply(pd.to_numeric)
-    #if val_data is not None:
-    #    val_data.df_featurized = val_data.df_featurized.apply(pd.to_numeric)
-    #    val_data.df_targets = val_data.df_targets.apply(pd.to_numeric)
-    #verbose=1
+    """
 
     model = MODNetModel(
         targets,
