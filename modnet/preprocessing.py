@@ -121,7 +121,7 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     return mutual_info
 
 
-def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy=False, **kwargs) -> pd.DataFrame:
+def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy=False, n_jobs: int = None, **kwargs) -> pd.DataFrame:
     """
     Computes the Normalized Mutual Information (NMI) between input features.
 
@@ -152,9 +152,12 @@ def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy=F
     # Prepare the output DataFrame and compute the mutual information
     mutual_info = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
 
-    #create pool of workers
-    pool = Pool(processes=cpu_count())
-    LOG.info(f'Multiprocessing on {cpu_count()} workers.')
+    # create pool of workers
+    if n_jobs is None:
+        n_jobs = 1
+    pool = Pool(processes=n_jobs)
+
+    LOG.info(f'Multiprocessing on {n_jobs} workers.')
 
     # Compute the "self" mutual information (i.e. information entropy) of the features
     LOG.info('Computing "self" MI (i.e. information entropy) of features')
@@ -640,7 +643,8 @@ class MODData:
             self,
             n: int = 1500,
             cross_nmi: Optional[pd.DataFrame] = None,
-            use_precomputed_cross_nmi: bool = False
+            use_precomputed_cross_nmi: bool = False,
+            n_jobs: int = None,
     ):
         """ Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
@@ -656,6 +660,7 @@ class MODData:
             use_precomputed_cross_nmi: Whether or not to use the cross NMI
                 that was computed on Materials Project features, instead of
                 precomputing.
+            n_jobs: max. number of processes to use when calculating cross NMI.
 
         """
         if getattr(self, "df_featurized", None) is None:
@@ -688,11 +693,11 @@ class MODData:
 
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
-            self.cross_nmi, self.feature_entropy = get_cross_nmi(df, return_entropy=True)
+            self.cross_nmi, self.feature_entropy = get_cross_nmi(df, return_entropy=True, n_jobs=n_jobs)
 
         if self.cross_nmi.isna().sum().sum() > 0:
             raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero.")
-            
+
         for i, name in enumerate(self.names):
             LOG.info(f"Starting target {i + 1}/{len(self.names)}: {self.names[i]} ...")
 
