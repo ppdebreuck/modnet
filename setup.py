@@ -14,6 +14,10 @@ version = re.search('__version__ = "(.*)"', lines).group(1)
 
 tests_require = ["pytest>=6.0", "pytest-cov>=2.10", "flake8>=3.8"]
 
+dev_require = [
+    "pre-commit~=2.11",
+]
+
 setuptools.setup(
     name="modnet",
     version=version,
@@ -40,7 +44,10 @@ setuptools.setup(
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",
-    extras_require={"test": tests_require},
+    extras_require={
+        "test": tests_require,
+        "dev": dev_require,
+    },
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Intended Audience :: Science/Research",
