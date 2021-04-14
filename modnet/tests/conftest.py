@@ -10,8 +10,8 @@ _TEST_DATA_HASHES = {
         "1786091a73f53985b08868c5be431a3c700f7f1776002df28ebf3a12a79ab1a1"
     ),
     "MP_2018.6_small.zip": (
-        "b7f31d066113d1ad1f4f3990250019835bad96c18eddefd4a0b3866fd23a6037"
-        "d1ad90b1f4a1e08d12d7f0a7ce2ebcf4a1a4b673500e1118543b687dbd1749e6"
+        "0efc2ce998faaadc9cf54a25e1db80834c5f53b1298da0e824ee2675124f47c8"
+        "3fce2a86971a92eb3d0a860d29e0eb37683aa47ec80af2b6c8dee879584b1491"
     ),
     "MP_2018.6_small_composition.zip": (
         "59f8c4e546df005799e3fb7a1e64daa0edfece48fa346ab0d2efe92aa107d0d1"

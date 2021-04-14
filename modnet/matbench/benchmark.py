@@ -1,12 +1,12 @@
 import os
 from collections import defaultdict
 from traceback import print_exc
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Type
 
 import numpy as np
-from joblib import Parallel, delayed
 
 from modnet.preprocessing import MODData
+from modnet.models import MODNetModel
 from modnet.utils import LOG
 
 MATBENCH_SEED = 18012019
@@ -35,6 +35,7 @@ def matbench_benchmark(
     target_weights: Dict[str, float],
     fit_settings: Optional[Dict[str, Any]] = None,
     classification: bool = False,
+    model_type: Type[MODNetModel] = MODNetModel,
     save_folds: bool = False,
     save_models: bool = False,
     hp_optimization: bool = True,
@@ -44,6 +45,7 @@ def matbench_benchmark(
     fast: bool = False,
     n_jobs: Optional[int] = None,
     nested: bool = False,
+    **model_init_kwargs,
 ) -> dict:
     """Train and cross-validate a model against Matbench data splits, optionally
     performing hyperparameter optimisation.
@@ -55,6 +57,7 @@ def matbench_benchmark(
         fit_settings: Any settings to pass to `model.fit(...)` directly
             (typically when not performing hyperparameter optimisation).
         classification: Whether all tasks are classification rather than regression.
+        model_type: The type of the model to create and benchmark.
         save_folds: Whether to save dataframes with pre-processed fold
             data (e.g. feature selection).
         save_models: Whether to pickle all trained models according to
@@ -66,9 +69,10 @@ def matbench_benchmark(
             from the Materials Project dataset, or recompute per fold.
         presets: Override the built-in hyperparameter grid with these presets.
         fast: Whether to perform debug training, i.e. reduced presets and epochs.
-        n_jobs: Try to parallelize the 5-fold CV over this number of
-            processes. Maxes out at number of CV folds.
+        n_jobs: Try to parallelize the inner fit_preset over this number of
+            processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
+        **model_init_kwargs: Additional arguments to pass to the model on creation.
 
     Returns:
         A dictionary containing all the results from the training, broken
@@ -106,7 +110,8 @@ def matbench_benchmark(
 
     args = (target, target_weights, fit_settings)
 
-    kwargs = {
+    model_kwargs = {
+        "model_type":model_type,
         "hp_optimization": hp_optimization,
         "fast": fast,
         "classification": classification,
@@ -114,16 +119,14 @@ def matbench_benchmark(
         "presets": presets,
         "save_models": save_models,
         "nested": nested,
+        "n_jobs": n_jobs,
     }
 
-    if n_jobs is None:
-        n_jobs = 1
-    n_jobs = min(n_jobs, len(fold_data))
+    model_kwargs.update(model_init_kwargs)
 
-    fold_results = Parallel(n_jobs=n_jobs)(
-        delayed(train_fold)(fold, *args, **kwargs)
-        for fold in enumerate(fold_data)
-    )
+    fold_results = []
+    for fold in enumerate(fold_data):
+        fold_results.append(train_fold(fold, *args, **model_kwargs))
 
     for fold in fold_results:
         for key in fold:
@@ -137,6 +140,7 @@ def train_fold(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Dict[str, Any],
+    model_type: Type[MODNetModel] = MODNetModel,
     presets=None,
     hp_optimization=True,
     classification=False,
@@ -144,6 +148,8 @@ def train_fold(
     fast=False,
     save_models=False,
     nested=False,
+    n_jobs=None,
+    **model_kwargs,
 ) -> dict:
     """Train one fold of a CV.
 
@@ -161,7 +167,6 @@ def train_fold(
     fold_ind, (train_data, test_data) = fold
 
     results = {}
-    from modnet.models import MODNetModel
     if classification:
         fit_settings["num_classes"] = {t: 2 for t in target_weights}
 
@@ -174,10 +179,13 @@ def train_fold(
             "num_neurons": fit_settings["num_neurons"],
             "num_classes": fit_settings.get("num_classes"),
             "act": fit_settings.get("act"),
+            "out_act": fit_settings.get("out_act","linear"),
             "n_feat": fit_settings["n_feat"]
         }
 
-    model = MODNetModel(
+    model_settings.update(model_kwargs)
+
+    model = model_type(
         target,
         target_weights,
         **model_settings
@@ -185,7 +193,7 @@ def train_fold(
 
     if hp_optimization:
         models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
-            train_data, presets=presets, fast=fast, classification=classification, nested=nested
+            train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
         )
         if save_models:
             for ind, nested_model in enumerate(models):
@@ -217,10 +225,19 @@ def train_fold(
             model.fit(train_data, **fit_settings)
 
     try:
+        predict_kwargs = {}
         if classification:
-            predictions = model.predict(test_data, return_prob=True)
+            predict_kwargs["return_prob"] = True
+        if model.can_return_uncertainty:
+            predict_kwargs["return_unc"] = True
+
+        pred_results = model.predict(test_data, **predict_kwargs)
+        if isinstance(pred_results, tuple):
+            predictions, stds = pred_results
         else:
-            predictions = model.predict(test_data)
+            predictions = pred_results
+            stds = None
+
         targets = test_data.df_targets
 
         if classification:
@@ -257,9 +274,12 @@ def train_fold(
         df_test.to_csv("folds/test_f{}.csv".format(ind + 1))
 
     results["predictions"] = predictions
+    if stds is not None:
+        results["stds"] = stds
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score
     results["best_presets"] = best_presets
+    results['model'] = model
 
     return results

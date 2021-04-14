@@ -2,7 +2,6 @@ import abc
 from typing import Optional, Iterable, Tuple, Dict
 
 import pandas as pd
-import numpy as np
 
 from matminer.featurizers.base import MultipleFeaturizer, BaseFeaturizer
 from matminer.featurizers.structure import SiteStatsFingerprint
@@ -80,14 +79,14 @@ class MODFeaturizer(abc.ABC):
         df_composition = pd.DataFrame([])
         if self.composition_featurizers or self.oxid_composition_featurizers:
             df_composition = self.featurize_composition(df)
-            
-        df_structure = pd.DataFrame([])            
+
+        df_structure = pd.DataFrame([])
         if self.structure_featurizers:
             df_structure = self.featurize_structure(df)
-            
+
         df_site = pd.DataFrame([])
         if self.site_featurizers:
-            df_site = self.featurize_site(df)           
+            df_site = self.featurize_site(df)
 
         return df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
 
@@ -151,15 +150,16 @@ class MODFeaturizer(abc.ABC):
 
             LOG.info("Applying composition featurizers...")
             df['composition'] = df['structure'].apply(lambda s: s.composition)
-
             df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
-            df = df.replace([np.inf, -np.inf, np.nan], 0)
             df = df.rename(columns={'Input Data': ''})
             df.columns = df.columns.map('|'.join).str.strip('|')
 
         if self.oxid_composition_featurizers:
             LOG.info("Applying oxidation state featurizers...")
-            df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
+            if getattr(self, "fast_oxid", False):
+                df = CompositionToOxidComposition(all_oxi_states=False, max_sites=-1).featurize_dataframe(df, "composition")
+            else:
+                df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
             df = self._fit_apply_featurizers(df, self.oxid_composition_featurizers, "composition_oxid")
             df = df.rename(columns={'Input Data': ''})
             df.columns = df.columns.map('|'.join).str.strip('|')
