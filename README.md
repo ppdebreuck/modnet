@@ -28,7 +28,7 @@ and can be used for learning *multiple* properties together by using **joint lea
 This repository also contains two pretrained models that can be used for predicting
 the refractive index and vibrational thermodynamics from any crystal structure.
 
-See the MODNet papers and repositories below for more details: 
+See the MODNet papers and repositories below for more details:
 
 - _Machine learning materials properties for small datasets_, De Breuck *et al.* (2020), [arXiv:2004.14766](https://arxiv.org/abs/2004.14766).
 
@@ -60,8 +60,8 @@ pip install modnet
 The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
 
 Especially, carefully read the two main classes, `MODData` and `MODNetModel` found in preprocessing and models modules.
-- A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties.  
-- A `MODNetModel` instance is used for training and predicting of one or more properties or classes.  
+- A `MODData` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties.
+- A `MODNetModel` instance is used for training and predicting of one or more properties or classes.
 
 
 <a name="usage"></a>
@@ -216,7 +216,7 @@ data.get_featurized_df()
 
 # List of the optimal features, in ranked order
 data.get_optimal_descriptors()
-    
+
 # get_featurized_df limited to the best features
 data.get_optimal_df()
 ```
