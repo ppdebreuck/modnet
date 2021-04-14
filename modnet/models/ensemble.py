@@ -85,13 +85,13 @@ class EnsembleMODNetModel(MODNetModel):
             train_datas = [training_data for _ in range(self.n_models)]
 
         if n_jobs<=1:
-                for i in range(self.n_models):
-                    LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
-                    self.model[i].fit(train_datas[i], **kwargs)
-                    model_summary = ""
-                    for k in self.model[i].history.keys():
-                        model_summary += "{}: {:.4f}\t".format(k, self.model[i].history[k][-1])
-                    LOG.info(model_summary)
+            for i in range(self.n_models):
+                LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
+                self.model[i].fit(train_datas[i], **kwargs)
+                model_summary = ""
+                for k in self.model[i].history.keys():
+                    model_summary += "{}: {:.4f}\t".format(k, self.model[i].history[k][-1])
+                LOG.info(model_summary)
         else:
                 ctx = multiprocessing.get_context('spawn')
                 pool = ctx.Pool(processes=n_jobs)
@@ -108,6 +108,8 @@ class EnsembleMODNetModel(MODNetModel):
                     for k in model.history.keys():
                         model_summary += "{}: {:.4f}\t".format(k, model.history[k][-1])
                     LOG.info(model_summary)
+                pool.close()
+                pool.join()
 
     def predict(self, test_data: MODData, return_unc=False, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
@@ -170,7 +172,7 @@ class EnsembleMODNetModel(MODNetModel):
         fast: bool = False,
         nested: int = 5,
         callbacks: List[Any] = None,
-        n_jobs=None,
+        n_jobs: int = 1,
         ) -> Tuple[List[List[Any]],
                    np.ndarray,
                    Optional[List[float]],
@@ -205,7 +207,7 @@ class EnsembleMODNetModel(MODNetModel):
                 a simple validation split is performed based on val_fraction argument.
                 If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
                 Note: If set to 1, the value will be overwritten to a default of 5 folds.
-            n_jobs: number of jobs for multiprocessing
+            n_jobs: number of concurrent processes to use when multiprocessing
 
         Returns:
             - A list of length num_outer_folds containing lists of MODNet models of length num_inner_folds.
