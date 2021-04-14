@@ -239,7 +239,7 @@ class EnsembleMODNetModel(MODNetModel):
         if fast and len(presets) >= 2:
             presets = presets[:2]
             for k, _ in enumerate(presets):
-                presets[k]["epochs"] = 100
+                presets[k]["epochs"] = 5
 
         val_losses = 1e20 * np.ones((len(presets),))
 
