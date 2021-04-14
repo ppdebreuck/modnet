@@ -417,20 +417,23 @@ class MODNetModel:
             num_nested_folds = 5
 
         # create tasks
+        splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
+        if not nested:
+            splits = [train_test_split(range(len(data.df_featurized)),test_size=val_fraction)]
+            n_splits = 1
+        else:
+            n_splits = num_nested_folds
+        train_val_datas = []
+        for train, val in splits:
+            train_val_datas.append(data.split((train, val)))
+
         tasks = []
         for i, params in enumerate(presets):
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
 
-            splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
-            if not nested:
-                splits = [train_test_split(range(len(data.df_featurized)),test_size=val_fraction)]
-                n_splits = 1
-            else:
-                n_splits = num_nested_folds
-
-            for ind, (train, val) in enumerate(splits):
+            for ind in range(n_splits):
                 val_params = {}
-                train_data, val_data = data.split((train, val))
+                train_data, val_data = train_val_datas[ind]
                 val_params["val_data"] = val_data
 
                 tasks += [{'train_data' : train_data,
