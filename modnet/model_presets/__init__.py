@@ -4,4 +4,4 @@
 
 from .presets import gen_presets
 
-# MODNET_PRESETS = hyperparam_presets
+__all__ = ("gen_presets",)

@@ -19,7 +19,7 @@ from sklearn.feature_selection import mutual_info_regression, mutual_info_classi
 import pandas as pd
 import numpy as np
 import tqdm
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool
 
 from modnet.featurizers import MODFeaturizer
 from modnet import __version__

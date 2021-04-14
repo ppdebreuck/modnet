@@ -636,7 +636,6 @@ class MODNetModel:
                     test_data.df_targets[targ].values,
                     num_classes=self.num_classes[targ],
                 )
-                loss = "categorical_crossentropy"
             else:
                 y_inner = test_data.df_targets[targ].values.astype(np.float, copy=False)
             y.append(y_inner)

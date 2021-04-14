@@ -358,7 +358,6 @@ class EnsembleMODNetModel(MODNetModel):
         best_model_idx = int(np.argmin(val_losses[best_preset_idx, :]))
         best_preset = presets[best_preset_idx]
         best_learning_curve = learning_curves[best_preset_idx][best_model_idx]
-        best_model = models[best_preset_idx][best_model_idx]
 
         LOG.info(
             "Preset #{} resulted in lowest validation loss with params {}".format(
@@ -394,8 +393,7 @@ class EnsembleMODNetModel(MODNetModel):
                 n_jobs=n_jobs,
             )
         else:
-            ### take 5 best 5-models on all inner folds = 125-bootstrap model for a 5  nested CV fold
-
+            # take 5 best 5-models on all inner folds = 125-bootstrap model for a 5  nested CV fold
             final_models = []
             for i in range(n_splits):
                 best_5_idx = np.argsort(val_losses[:, i])[:5]
