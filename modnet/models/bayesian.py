@@ -16,7 +16,7 @@ from modnet import __version__
 from modnet.models.vanilla import MODNetModel
 from modnet.preprocessing import MODData
 
-__all__ = ("BayesianMODNetModel", )
+__all__ = ("BayesianMODNetModel",)
 
 
 class BayesianMODNetModel(MODNetModel):
@@ -102,9 +102,16 @@ class BayesianMODNetModel(MODNetModel):
         self._multi_target = len(self.targets_flatten) > 1
 
         self.model = self.build_model(
-            targets, n_feat, num_neurons,
-            bayesian_layers=bayesian_layers, prior=prior, posterior=posterior, kl_weight=kl_weight,
-            act=act, out_act=out_act, num_classes=self.num_classes
+            targets,
+            n_feat,
+            num_neurons,
+            bayesian_layers=bayesian_layers,
+            prior=prior,
+            posterior=posterior,
+            kl_weight=kl_weight,
+            act=act,
+            out_act=out_act,
+            num_classes=self.num_classes,
         )
 
     def build_model(
@@ -118,7 +125,7 @@ class BayesianMODNetModel(MODNetModel):
         kl_weight=None,
         num_classes: Optional[Dict[str, int]] = None,
         act: str = "relu",
-        out_act: str = "relu"
+        out_act: str = "relu",
     ):
         """Builds the Bayesian Neural Network and sets the `self.model` attribute.
 
@@ -146,36 +153,50 @@ class BayesianMODNetModel(MODNetModel):
         tfd = tfp.distributions
 
         if bayesian_layers is None:
-            bayesian_layers = [[False]*nl for nl in num_layers]
+            bayesian_layers = [[False] * nl for nl in num_layers]
 
         if posterior is None:
+
             def posterior(kernel_size, bias_size=0, dtype=None):
                 n = kernel_size + bias_size
-                c = np.log(np.expm1(1.))
-                return tf.keras.Sequential([
-                    tfp.layers.VariableLayer(2 * n, dtype=dtype),
-                    tfp.layers.DistributionLambda(lambda t: tfd.Independent(
-                        tfd.Normal(loc=t[..., :n],
-                                    scale=1e-5 + tf.nn.softplus(c + t[..., n:])),
-                        reinterpreted_batch_ndims=1)),
-                ])
+                c = np.log(np.expm1(1.0))
+                return tf.keras.Sequential(
+                    [
+                        tfp.layers.VariableLayer(2 * n, dtype=dtype),
+                        tfp.layers.DistributionLambda(
+                            lambda t: tfd.Independent(
+                                tfd.Normal(
+                                    loc=t[..., :n],
+                                    scale=1e-5 + tf.nn.softplus(c + t[..., n:]),
+                                ),
+                                reinterpreted_batch_ndims=1,
+                            )
+                        ),
+                    ]
+                )
 
         if prior is None:
+
             def prior(kernel_size, bias_size=0, dtype=None):
                 n = kernel_size + bias_size
-                return tf.keras.Sequential([
-                    tfp.layers.VariableLayer(n, dtype=dtype),
-                    tfp.layers.DistributionLambda(lambda t: tfd.Independent(
-                        tfd.Normal(loc=t, scale=1),
-                        reinterpreted_batch_ndims=1)),
-                ])
+                return tf.keras.Sequential(
+                    [
+                        tfp.layers.VariableLayer(n, dtype=dtype),
+                        tfp.layers.DistributionLambda(
+                            lambda t: tfd.Independent(
+                                tfd.Normal(loc=t, scale=1), reinterpreted_batch_ndims=1
+                            )
+                        ),
+                    ]
+                )
 
-
-        bayesian_layer = partial(tfp.layers.DenseVariational,
-                                 make_posterior_fn=posterior,
-                                 make_prior_fn=prior,
-                                 kl_weight=1/3619,
-                                 activation=act)
+        bayesian_layer = partial(
+            tfp.layers.DenseVariational,
+            make_posterior_fn=posterior,
+            make_prior_fn=prior,
+            kl_weight=1 / 3619,
+            activation=act,
+        )
         dense_layer = partial(tf.keras.layers.Dense, activation=act)
 
         # Build first common block
@@ -200,7 +221,9 @@ class BayesianMODNetModel(MODNetModel):
                 else:
                     previous_layer = dense_layer(num_neurons[1][j])(previous_layer)
                 if self._multi_target:
-                    previous_layer = tf.keras.layers.BatchNormalization()(previous_layer)
+                    previous_layer = tf.keras.layers.BatchNormalization()(
+                        previous_layer
+                    )
             intermediate_models_out.append(previous_layer)
 
         # Build outputs
@@ -210,7 +233,9 @@ class BayesianMODNetModel(MODNetModel):
                 previous_layer = intermediate_models_out[group_idx]
                 for k in range(num_layers[2]):
                     if bayesian_layers[2][k]:
-                        previous_layer = bayesian_layer(num_neurons[2][k])(previous_layer)
+                        previous_layer = bayesian_layer(num_neurons[2][k])(
+                            previous_layer
+                        )
                     else:
                         previous_layer = dense_layer(num_neurons[2][k])(previous_layer)
                     if self._multi_target:
@@ -222,27 +247,39 @@ class BayesianMODNetModel(MODNetModel):
                     previous_layer = clayer
                     for li in range(num_layers[3]):
                         if bayesian_layers[3][li]:
-                            previous_layer = bayesian_layer(num_neurons[3][li])(previous_layer)
+                            previous_layer = bayesian_layer(num_neurons[3][li])(
+                                previous_layer
+                            )
                         else:
-                            previous_layer = dense_layer(num_neurons[3][li])(previous_layer)
+                            previous_layer = dense_layer(num_neurons[3][li])(
+                                previous_layer
+                            )
                     n = num_classes[group[prop_idx][pi]]
                     if n >= 2:
                         out = tfp.layers.DenseVariational(
                             n,
-                            make_posterior_fn=posterior, make_prior_fn=prior, kl_weight=kl_weight,
-                            activation="softmax", name=group[prop_idx][pi]
+                            make_posterior_fn=posterior,
+                            make_prior_fn=prior,
+                            kl_weight=kl_weight,
+                            activation="softmax",
+                            name=group[prop_idx][pi],
                         )(previous_layer)
                     else:
                         out = tfp.layers.DenseVariational(
                             1,
-                            make_posterior_fn=posterior, make_prior_fn=prior, kl_weight=kl_weight,
-                            activation=out_act, name=group[prop_idx][pi]
+                            make_posterior_fn=posterior,
+                            make_prior_fn=prior,
+                            kl_weight=kl_weight,
+                            activation=out_act,
+                            name=group[prop_idx][pi],
                         )(previous_layer)
                     final_out.append(out)
 
         return tf.keras.models.Model(inputs=f_input, outputs=final_out)
 
-    def predict(self, test_data: MODData, return_prob=False, return_unc=False) -> pd.DataFrame:
+    def predict(
+        self, test_data: MODData, return_prob=False, return_unc=False
+    ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
         Parameters:
@@ -260,9 +297,13 @@ class BayesianMODNetModel(MODNetModel):
 
         """
         # prevents Nan predictions if some features are inf
-        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
-            self.optimal_descriptors[:self.n_feat]
-        ].values
+        x = (
+            test_data.get_featurized_df()
+            .replace([np.inf, -np.inf, np.nan], 0)[
+                self.optimal_descriptors[: self.n_feat]
+            ]
+            .values
+        )
 
         # Scale the input features:
         x = np.nan_to_num(x)
@@ -284,20 +325,26 @@ class BayesianMODNetModel(MODNetModel):
             if self.num_classes[name] >= 2:
                 if return_prob:
                     preds = np.array([pred[i] for pred in all_predictions])
-                    probs = preds/(preds.sum(axis=-1)).reshape((-1, 1))
+                    probs = preds / (preds.sum(axis=-1)).reshape((-1, 1))
                     mean_prob = probs.mean()
                     std_prob = probs.std()
                     for j in range(mean_prob.shape[-1]):
-                        p_dic['{}_prob_{}'.format(name, j)] = mean_prob[:,j]
-                        unc_dic['{}_prob_{}'.format(name, j)] = std_prob[:,j]
+                        p_dic["{}_prob_{}".format(name, j)] = mean_prob[:, j]
+                        unc_dic["{}_prob_{}".format(name, j)] = std_prob[:, j]
                 else:
-                    p_dic[name] = np.argmax(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
-                    unc_dic[name] = np.max(np.array([pred[i] for pred in all_predictions]).mean(axis=0), axis=1)
+                    p_dic[name] = np.argmax(
+                        np.array([pred[i] for pred in all_predictions]).mean(axis=0),
+                        axis=1,
+                    )
+                    unc_dic[name] = np.max(
+                        np.array([pred[i] for pred in all_predictions]).mean(axis=0),
+                        axis=1,
+                    )
             else:
                 mean_p = np.array([pred[i] for pred in all_predictions]).mean(axis=0)
                 std_p = np.array([pred[i] for pred in all_predictions]).std(axis=0)
-                p_dic[name] = mean_p[:,0]
-                unc_dic[name] = std_p[:,0]
+                p_dic[name] = mean_p[:, 0]
+                unc_dic[name] = std_p[:, 0]
 
         predictions = pd.DataFrame(p_dic)
         unc = pd.DataFrame(unc_dic)
@@ -310,14 +357,13 @@ class BayesianMODNetModel(MODNetModel):
         else:
             return predictions
 
-    def fit_preset(*args,**kwargs):
-        '''Not implemented'''
+    def fit_preset(*args, **kwargs):
+        """Not implemented"""
 
-        raise RuntimeError(
-            "Not implemented."
-        )
+        raise RuntimeError("Not implemented.")
 
     def save(self, filename: str):
-        raise RuntimeError('Save not implemented for Bayesian model')
+        raise RuntimeError("Save not implemented for Bayesian model")
+
     def load(filename: str):
-        raise RuntimeError('Load not implemented for Bayesian model')
+        raise RuntimeError("Load not implemented for Bayesian model")

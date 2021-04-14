@@ -38,22 +38,36 @@ class CompositionContainer:
 EPS = 1e-16
 
 
-def compute_mi(x:np.ndarray=None, y:np.ndarray=None, x_name: str=None, y_name: str=None, random_state= None, n_neighbors= 3):
+def compute_mi(
+    x: np.ndarray = None,
+    y: np.ndarray = None,
+    x_name: str = None,
+    y_name: str = None,
+    random_state=None,
+    n_neighbors=3,
+):
 
-    mi = mutual_info_regression(x.reshape(-1, 1),
-                            y,
-                            random_state = random_state,
-                            n_neighbors = n_neighbors,
-                           )[0]
+    mi = mutual_info_regression(
+        x.reshape(-1, 1),
+        y,
+        random_state=random_state,
+        n_neighbors=n_neighbors,
+    )[0]
 
     return mi, x_name, y_name
+
 
 def map_mi(kwargs):
     return compute_mi(**kwargs)
 
 
-def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
-               task_type: str = "regression", drop_constant_features: bool = True, **kwargs) -> pd.DataFrame:
+def nmi_target(
+    df_feat: pd.DataFrame,
+    df_target: pd.DataFrame,
+    task_type: str = "regression",
+    drop_constant_features: bool = True,
+    **kwargs,
+) -> pd.DataFrame:
     """
     Computes the Normalized Mutual Information (NMI) between a list of
     input features and a target variable.
@@ -78,12 +92,12 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     """
     # Initial checks
     if df_target.shape[1] != 1:
-        raise ValueError('The target DataFrame should have exactly one column.')
+        raise ValueError("The target DataFrame should have exactly one column.")
 
     if len(df_feat) != len(df_target):
         raise ValueError(
-            'The input features DataFrame and the target variable DataFrame '
-            'should contain the same number of data points.'
+            "The input features DataFrame and the target variable DataFrame "
+            "should contain the same number of data points."
         )
 
     # Drop features which have the same value for the entire data set
@@ -107,21 +121,34 @@ def nmi_target(df_feat: pd.DataFrame, df_target: pd.DataFrame,
     mutual_info.loc[:, target_name] = _mifun(df_feat, df_target[target_name], **kwargs)
 
     # Compute the "self" mutual information (i.e. information entropy) of the target variable and of the input features
-    target_mi = _self_mifun(df_target[target_name].values.reshape(-1, 1),
-                            df_target[target_name], **kwargs)[0]
+    target_mi = _self_mifun(
+        df_target[target_name].values.reshape(-1, 1), df_target[target_name], **kwargs
+    )[0]
     diag = {}
     for x in df_feat.columns:
-        diag[x] = (mutual_info_regression(df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs))[0]
+        diag[x] = (
+            mutual_info_regression(
+                df_feat[x].values.reshape(-1, 1), df_feat[x], **kwargs
+            )
+        )[0]
 
     # Normalize the mutual information
     for x in mutual_info.index:
-        mutual_info.loc[x, target_name] = mutual_info.loc[x, target_name] / ((target_mi + diag[x]) / 2)
+        mutual_info.loc[x, target_name] = mutual_info.loc[x, target_name] / (
+            (target_mi + diag[x]) / 2
+        )
 
     mutual_info.fillna(0, inplace=True)  # if na => no relation => set to zero
     return mutual_info
 
 
-def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy=False, n_jobs: int = None, **kwargs) -> pd.DataFrame:
+def get_cross_nmi(
+    df_feat: pd.DataFrame,
+    drop_thr: float = 0.2,
+    return_entropy=False,
+    n_jobs: int = None,
+    **kwargs,
+) -> pd.DataFrame:
     """
     Computes the Normalized Mutual Information (NMI) between input features.
 
@@ -157,51 +184,69 @@ def get_cross_nmi(df_feat: pd.DataFrame, drop_thr: float = 0.2, return_entropy=F
         n_jobs = 1
     pool = Pool(processes=n_jobs)
 
-    LOG.info(f'Multiprocessing on {n_jobs} workers.')
+    LOG.info(f"Multiprocessing on {n_jobs} workers.")
 
     # Compute the "self" mutual information (i.e. information entropy) of the features
     LOG.info('Computing "self" MI (i.e. information entropy) of features')
     diag = {}
     tasks = []
     for x_feat in df_feat.columns:
-        tasks += [{'x': df_feat[x_feat].values,
-                   'y': df_feat[x_feat].values,
-                   'x_name': x_feat,
-                   'y_name': x_feat,
-                   'random_state' : seed,
-                   'n_neighbors': n_neighbors,
-        }]
+        tasks += [
+            {
+                "x": df_feat[x_feat].values,
+                "y": df_feat[x_feat].values,
+                "x_name": x_feat,
+                "y_name": x_feat,
+                "random_state": seed,
+                "n_neighbors": n_neighbors,
+            }
+        ]
 
-    for res in tqdm.tqdm(pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)):
+    for res in tqdm.tqdm(
+        pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)
+    ):
         feat_name = res[1]
         diag[feat_name] = res[0]
-        if diag[feat_name] < drop_thr or abs(df_feat[feat_name].max() - df_feat[feat_name].min()) < EPS:
+        if (
+            diag[feat_name] < drop_thr
+            or abs(df_feat[feat_name].max() - df_feat[feat_name].min()) < EPS
+        ):
             mutual_info.drop(feat_name, axis=0, inplace=True)
             mutual_info.drop(feat_name, axis=1, inplace=True)
         else:
             mutual_info.loc[feat_name, feat_name] = 1.0
 
     tasks = []
-    LOG.info('Computing cross NMI between all features...')
+    LOG.info("Computing cross NMI between all features...")
     for idx, x_feat in enumerate(mutual_info.columns):
-        for y_feat in mutual_info.columns[idx + 1:]:
-            tasks += [{'x': df_feat[x_feat].values,
-                       'y': df_feat[y_feat].values,
-                       'x_name': x_feat,
-                       'y_name': y_feat,
-                       'random_state' : seed,
-                       'n_neighbors': n_neighbors,
-            }]
+        for y_feat in mutual_info.columns[idx + 1 :]:
+            tasks += [
+                {
+                    "x": df_feat[x_feat].values,
+                    "y": df_feat[y_feat].values,
+                    "x_name": x_feat,
+                    "y_name": y_feat,
+                    "random_state": seed,
+                    "n_neighbors": n_neighbors,
+                }
+            ]
 
-    for res in tqdm.tqdm(pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)):
-        mutual_info.loc[res[1], res[2]] = mutual_info.loc[res[2], res[1]] = res[0] / (0.5 * (diag[res[1]] + diag[res[2]]))
+    for res in tqdm.tqdm(
+        pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)
+    ):
+        mutual_info.loc[res[1], res[2]] = mutual_info.loc[res[2], res[1]] = res[0] / (
+            0.5 * (diag[res[1]] + diag[res[2]])
+        )
     pool.close()
     pool.join()
 
     mutual_info.fillna(0, inplace=True)  # if na => no relation => set to zero
 
     if return_entropy:
-        return mutual_info, diag  # diag can be useful for future elimination based on entropy without the need of recomputing the cross NMI
+        return (
+            mutual_info,
+            diag,
+        )  # diag can be useful for future elimination based on entropy without the need of recomputing the cross NMI
     else:
         return mutual_info
 
@@ -235,11 +280,11 @@ def get_rr_c_parameter_default(nn: int) -> float:
 
 
 def get_features_relevance_redundancy(
-        target_nmi: pd.DataFrame,
-        cross_nmi: pd.DataFrame,
-        n_feat: Optional[int] = None,
-        rr_parameters: Optional[Dict[str, Union[float, Callable[[int], float]]]] = None,
-        return_pc: bool = False
+    target_nmi: pd.DataFrame,
+    cross_nmi: pd.DataFrame,
+    n_feat: Optional[int] = None,
+    rr_parameters: Optional[Dict[str, Union[float, Callable[[int], float]]]] = None,
+    return_pc: bool = False,
 ) -> List:
     """
     Select features from the Relevance Redundancy (RR) score between the input
@@ -278,24 +323,32 @@ def get_features_relevance_redundancy(
     """
     # Initial checks
     if set(cross_nmi.index) != set(cross_nmi.columns):
-        raise ValueError('The cross_nmi DataFrame should have its indices and columns identical.')
+        raise ValueError(
+            "The cross_nmi DataFrame should have its indices and columns identical."
+        )
     if not set(target_nmi.index).issubset(set(cross_nmi.index)):
-        raise ValueError('The indices of the target DataFrame should be included in the cross_nmi DataFrame indices.')
+        raise ValueError(
+            "The indices of the target DataFrame should be included in the cross_nmi DataFrame indices."
+        )
 
     # Define the functions for the parameters
     if rr_parameters is None:
         get_p = get_rr_p_parameter_default
         get_c = get_rr_c_parameter_default
     else:
-        if 'p' not in rr_parameters or 'c' not in rr_parameters:
-            raise ValueError('When tuning p and c with rr_parameters in get_features_relevance_redundancy, '
-                             'both parameters should be tuned')
+        if "p" not in rr_parameters or "c" not in rr_parameters:
+            raise ValueError(
+                "When tuning p and c with rr_parameters in get_features_relevance_redundancy, "
+                "both parameters should be tuned"
+            )
         # Set up p
         if callable(rr_parameters["p"]):
             get_p = rr_parameters["p"]
-        elif rr_parameters['p'].get('function') == 'constant':
+        elif rr_parameters["p"].get("function") == "constant":
+
             def get_p(_):
-                return rr_parameters['p']['value']
+                return rr_parameters["p"]["value"]
+
         else:
             raise ValueError(
                 'If not passing a callable, "p" dict must contain keys "function" and "value".'
@@ -303,9 +356,11 @@ def get_features_relevance_redundancy(
         # Set up c
         if callable(rr_parameters["c"]):
             get_c = rr_parameters["c"]
-        elif rr_parameters['c'].get('function') == 'constant':
+        elif rr_parameters["c"].get("function") == "constant":
+
             def get_c(_):
-                return rr_parameters['c']['value']
+                return rr_parameters["c"]["value"]
+
         else:
             raise ValueError(
                 'If not passing a callable, "c" dict must contain keys "function" and "value".'
@@ -318,10 +373,14 @@ def get_features_relevance_redundancy(
     target_column = target_nmi.columns[0]
     first_feature = target_nmi.nlargest(1, columns=target_column).index[0]
     feature_set = [first_feature]
-    feat_out = {'feature': first_feature, 'RR_score': None, 'NMI_target': target_nmi[target_column][first_feature]}
+    feat_out = {
+        "feature": first_feature,
+        "RR_score": None,
+        "NMI_target": target_nmi[target_column][first_feature],
+    }
     if return_pc:
-        feat_out['RR_p'] = None
-        feat_out['RR_c'] = None
+        feat_out["RR_p"] = None
+        feat_out["RR_c"] = None
     out.append(feat_out)
 
     # Default is to get the RR score for all features
@@ -357,11 +416,14 @@ def get_features_relevance_redundancy(
         feature_set.append(next_feature)
 
         # Add the results for the next feature to the list
-        feat_out = {'feature': next_feature, 'RR_score': scores_remaining_features[next_feature],
-                    'NMI_target': target_nmi[target_column][next_feature]}
+        feat_out = {
+            "feature": next_feature,
+            "RR_score": scores_remaining_features[next_feature],
+            "NMI_target": target_nmi[target_column][next_feature],
+        }
         if return_pc:
-            feat_out['RR_p'] = p
-            feat_out['RR_c'] = c
+            feat_out["RR_p"] = p
+            feat_out["RR_c"] = c
 
         out.append(feat_out)
 
@@ -409,7 +471,7 @@ def get_features_dyn(n_feat, cross_nmi, target_nmi):
 
 
 def merge_ranked(lists: List[List[Hashable]]) -> List[Hashable]:
-    """ For multiple lists of ranked feature names/IDs (e.g. for different
+    """For multiple lists of ranked feature names/IDs (e.g. for different
     targets), work through the lists and merge them such that each
     feature is included once according to its highest rank across each
     list.
@@ -440,7 +502,7 @@ def merge_ranked(lists: List[List[Hashable]]) -> List[Hashable]:
 
 
 class MODData:
-    """ The MODData class takes takes a list of `pymatgen.Structure`
+    """The MODData class takes takes a list of `pymatgen.Structure`
     objects and creates a `pandas.DataFrame` that contains many matminer
     features per structure. It then uses mutual information between
     features and targets, and between the features themselves, to
@@ -468,17 +530,17 @@ class MODData:
     """
 
     def __init__(
-            self,
-            materials: Optional[List[Union[Structure, Composition]]] = None,
-            targets: Optional[Union[List[float], np.ndarray]] = None,
-            target_names: Optional[Iterable] = None,
-            structure_ids: Optional[Iterable] = None,
-            num_classes: Optional[Dict[str, int]] = None,
-            df_featurized: Optional[pd.DataFrame] = None,
-            featurizer: Optional[Union[MODFeaturizer, str]] = None,
-            structures: Optional[List[Union[Structure, Composition]]] = None,
+        self,
+        materials: Optional[List[Union[Structure, Composition]]] = None,
+        targets: Optional[Union[List[float], np.ndarray]] = None,
+        target_names: Optional[Iterable] = None,
+        structure_ids: Optional[Iterable] = None,
+        num_classes: Optional[Dict[str, int]] = None,
+        df_featurized: Optional[pd.DataFrame] = None,
+        featurizer: Optional[Union[MODFeaturizer, str]] = None,
+        structures: Optional[List[Union[Structure, Composition]]] = None,
     ):
-        """ Initialise the MODData object either from a list of structures
+        """Initialise the MODData object either from a list of structures
         or from an already featurized dataframe. Prediction targets per
         structure can be specified as lists or an array alongside their
         target names. A list of unique IDs can be provided to label the
@@ -502,6 +564,7 @@ class MODData:
         """
 
         from modnet.featurizers.presets import FEATURIZER_PRESETS
+
         self.__modnet_version__ = __version__
         self.df_featurized = df_featurized
         self.featurizer = featurizer
@@ -512,7 +575,9 @@ class MODData:
 
         if materials is not None and self.df_featurized is not None:
             if len(materials) != len(self.df_featurized):
-                raise RuntimeError("Mismatched shape of structures and passed df_featurized")
+                raise RuntimeError(
+                    "Mismatched shape of structures and passed df_featurized"
+                )
 
         if materials is None and self.df_featurized is None:
             raise RuntimeError(
@@ -525,7 +590,8 @@ class MODData:
         if materials is not None and targets is not None:
             if np.shape(targets)[0] != len(materials):
                 raise ValueError(
-                    f"Targets must have same length as structures: {np.shape(targets)} vs {len(materials)}")
+                    f"Targets must have same length as structures: {np.shape(targets)} vs {len(materials)}"
+                )
 
         if materials is not None and isinstance(materials[0], Composition):
             materials = [CompositionContainer(s) for s in materials]
@@ -535,7 +601,8 @@ class MODData:
             self.featurizer = FEATURIZER_PRESETS.get(featurizer)()
             if self.featurizer is None:
                 raise RuntimeError(
-                    "Requested preset {featurizer} not found in available presets: {FEATURIZER_PRESETS.keys()}")
+                    "Requested preset {featurizer} not found in available presets: {FEATURIZER_PRESETS.keys()}"
+                )
         elif isinstance(featurizer, MODFeaturizer):
             self.featurizer = featurizer
         elif featurizer is None and self.df_featurized is None:
@@ -551,36 +618,46 @@ class MODData:
             if np.shape(targets)[-1] != len(target_names):
                 raise ValueError("Target names must be supplied for every target.")
         elif targets is not None:
-            target_names = ['prop' + str(i) for i in range(len(targets))]
+            target_names = ["prop" + str(i) for i in range(len(targets))]
 
         if structure_ids is not None:
             # for backwards compat, always store the *passed* list of
             # IDs, so they can be used when loading from a database file
             # check ids are unique
             if len(set(structure_ids)) != len(structure_ids):
-                raise ValueError("List of IDs (`structure_ids`) provided must be unique.")
+                raise ValueError(
+                    "List of IDs (`structure_ids`) provided must be unique."
+                )
 
             if len(structure_ids) != len(materials):
-                raise ValueError("List of IDs (`structure_ids`) must have same length as list of structure.")
+                raise ValueError(
+                    "List of IDs (`structure_ids`) must have same length as list of structure."
+                )
 
         else:
-            num_entries = len(materials) if materials is not None else len(df_featurized)
+            num_entries = (
+                len(materials) if materials is not None else len(df_featurized)
+            )
             structure_ids = [f"id{i}" for i in range(num_entries)]
 
         if targets is not None:
             # set up dataframe for targets with columns (id, property_1, ..., property_n)
-            self.df_targets = pd.DataFrame(targets, index=structure_ids, columns=target_names)
+            self.df_targets = pd.DataFrame(
+                targets, index=structure_ids, columns=target_names
+            )
             # set up number of classes
             self.num_classes = {name: 0 for name in self.target_names}
             if num_classes is not None:
                 self.num_classes.update(num_classes)
 
         # set up dataframe for structures with columns (id, structure)
-        self.df_structure = pd.DataFrame({'id': structure_ids, 'structure': materials})
-        self.df_structure.set_index('id', inplace=True)
+        self.df_structure = pd.DataFrame({"id": structure_ids, "structure": materials})
+        self.df_structure.set_index("id", inplace=True)
 
-    def featurize(self, fast: bool = False, db_file: str = 'feature_database.pkl', n_jobs=None):
-        """ For the input structures, construct many matminer features
+    def featurize(
+        self, fast: bool = False, db_file: str = "feature_database.pkl", n_jobs=None
+    ):
+        """For the input structures, construct many matminer features
         and save a featurized dataframe. If `db_file` is specified, this
         method will try to load previous feature calculations for each
         structure ID instead of recomputing.
@@ -594,7 +671,7 @@ class MODData:
 
         """
 
-        LOG.info('Computing features, this can take time...')
+        LOG.info("Computing features, this can take time...")
 
         df_done = None
         df_todo = None
@@ -606,7 +683,7 @@ class MODData:
             raise RuntimeError("Not overwriting existing featurized dataframe.")
 
         if fast:
-            LOG.info('Fast featurization on, retrieving from database...')
+            LOG.info("Fast featurization on, retrieving from database...")
 
             global DATABASE
             if DATABASE.empty:
@@ -614,7 +691,9 @@ class MODData:
 
             ids_done = [x for x in self.structure_ids if x in DATABASE.index]
 
-            LOG.info(f"Retrieved features for {len(ids_done)} out of {len(self.structure_ids)} materials")
+            LOG.info(
+                f"Retrieved features for {len(ids_done)} out of {len(self.structure_ids)} materials"
+            )
             df_done = DATABASE.loc[ids_done]
             df_todo = self.df_structure.drop(ids_done, axis=0)
 
@@ -637,16 +716,16 @@ class MODData:
         df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
 
         self.df_featurized = df_final
-        LOG.info('Data has successfully been featurized!')
+        LOG.info("Data has successfully been featurized!")
 
     def feature_selection(
-            self,
-            n: int = 1500,
-            cross_nmi: Optional[pd.DataFrame] = None,
-            use_precomputed_cross_nmi: bool = False,
-            n_jobs: int = None,
+        self,
+        n: int = 1500,
+        cross_nmi: Optional[pd.DataFrame] = None,
+        use_precomputed_cross_nmi: bool = False,
+        n_jobs: int = None,
     ):
-        """ Compute the mutual information between features and targets,
+        """Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
         features.
 
@@ -665,9 +744,12 @@ class MODData:
         """
         if getattr(self, "df_featurized", None) is None:
             raise RuntimeError(
-                "Mutual information feature selection requiresd featurized data, please call `.featurize()`")
+                "Mutual information feature selection requiresd featurized data, please call `.featurize()`"
+            )
         if getattr(self, "df_targets", None) is None:
-            raise RuntimeError("Mutual information feature selection requires target properties")
+            raise RuntimeError(
+                "Mutual information feature selection requires target properties"
+            )
 
         ranked_lists = []
         optimal_features_by_target = {}
@@ -681,6 +763,7 @@ class MODData:
         if use_precomputed_cross_nmi:
             LOG.info("Loading cross NMI from 'Features_cross' file.")
             from modnet.ext_data import load_ext_dataset
+
             cnmi_path = load_ext_dataset("MP_2018.6_CROSS_NMI", "cross_nmi")
             self.cross_nmi = pd.read_pickle(cnmi_path)
             precomputed_cols = set(self.cross_nmi.columns)
@@ -693,10 +776,14 @@ class MODData:
 
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
-            self.cross_nmi, self.feature_entropy = get_cross_nmi(df, return_entropy=True, n_jobs=n_jobs)
+            self.cross_nmi, self.feature_entropy = get_cross_nmi(
+                df, return_entropy=True, n_jobs=n_jobs
+            )
 
         if self.cross_nmi.isna().sum().sum() > 0:
-            raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero.")
+            raise RuntimeError(
+                "Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero."
+            )
 
         for i, name in enumerate(self.names):
             LOG.info(f"Starting target {i + 1}/{len(self.names)}: {self.names[i]} ...")
@@ -707,18 +794,22 @@ class MODData:
                 task_type = "classification"
             else:
                 task_type = "regression"
-            self.target_nmi = nmi_target(self.df_featurized, self.df_targets[[name]], task_type)[name]
+            self.target_nmi = nmi_target(
+                self.df_featurized, self.df_targets[[name]], task_type
+            )[name]
 
-            LOG.info('Computing optimal features...')
-            optimal_features_by_target[name] = get_features_dyn(n, self.cross_nmi, self.target_nmi)
+            LOG.info("Computing optimal features...")
+            optimal_features_by_target[name] = get_features_dyn(
+                n, self.cross_nmi, self.target_nmi
+            )
             ranked_lists.append(optimal_features_by_target[name])
 
             LOG.info("Done with target {}/{}: {}.".format(i + 1, len(self.names), name))
 
-        LOG.info('Merging all features...')
+        LOG.info("Merging all features...")
         self.optimal_features = merge_ranked(ranked_lists)
         self.optimal_features_by_target = optimal_features_by_target
-        LOG.info('Done.')
+        LOG.info("Done.")
 
     def shuffle(self):
         # caution, not fully implemented
@@ -757,7 +848,7 @@ class MODData:
         return list(self.df_structure.index)
 
     def save(self, filename: str):
-        """ Pickle the contents of the `MODData` object
+        """Pickle the contents of the `MODData` object
         so that it can be loaded in  with `MODData.load()`.
 
         If the filename ends in "tgz", "bz2" or "zip", the pickle
@@ -765,11 +856,11 @@ class MODData:
 
         """
         pd.to_pickle(self, filename)
-        LOG.info(f'Data successfully saved as {filename}!')
+        LOG.info(f"Data successfully saved as {filename}!")
 
     @staticmethod
     def load(filename: Union[str, Path]) -> MODData:
-        """ Load `MODData` object pickled by the `.save(...)` method.
+        """Load `MODData` object pickled by the `.save(...)` method.
 
         If the filename ends in "tgz", "bz2" or "zip", the pickle
         will be decompressed accordingly by `pandas.read_pickle(...)`.
@@ -783,9 +874,14 @@ class MODData:
         # handle .zip files explicitly for OS X/macOS compatibility
         if filename.endswith(".zip"):
             from zipfile import ZipFile
+
             with ZipFile(filename, "r") as zf:
                 namelist = zf.namelist()
-                _files = [_ for _ in namelist if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")]
+                _files = [
+                    _
+                    for _ in namelist
+                    if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")
+                ]
                 if len(_files) == 1:
                     with zf.open(_files.pop()) as f:
                         pickled_data = pd.read_pickle(f)
@@ -796,7 +892,9 @@ class MODData:
         if isinstance(pickled_data, MODData):
             if not hasattr(pickled_data, "__modnet_version__"):
                 pickled_data.__modnet_version__ = "<=0.1.7"
-            LOG.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
+            LOG.info(
+                f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}"
+            )
             return pickled_data
 
         raise ValueError(
@@ -806,7 +904,7 @@ class MODData:
 
     @classmethod
     def load_precomputed(cls, dataset_name: str):
-        """ Load a `MODData` object from a pre-computed dataset.
+        """Load a `MODData` object from a pre-computed dataset.
 
         Note:
             Datasets may require significant (~10 GB) amounts of memory
@@ -821,6 +919,7 @@ class MODData:
 
         """
         from modnet.ext_data import load_ext_dataset
+
         model_path = load_ext_dataset(dataset_name, "MODData")
         return cls.load(str(model_path))
 
@@ -839,8 +938,10 @@ class MODData:
     def get_optimal_df(self):
         return self.df_featurized[self.optimal_features].join(self.get_target_df())
 
-    def split(self, train_test_split: Tuple[List[int], List[int]]) -> Tuple[MODData, MODData]:
-        """ Create two new MODData's that contain only the data corresponding
+    def split(
+        self, train_test_split: Tuple[List[int], List[int]]
+    ) -> Tuple[MODData, MODData]:
+        """Create two new MODData's that contain only the data corresponding
         to the indices passed in the `train_test_split` tuple.
 
         Arguments:
@@ -858,7 +959,7 @@ class MODData:
         return train_moddata, test_moddata
 
     def from_indices(self, indices: List[int]) -> MODData:
-        """ Create a new MODData that contains only the data at the given
+        """Create a new MODData that contains only the data at the given
         rows indices provided.
 
         Arguments:

@@ -98,7 +98,13 @@ def test_train_small_model_presets(subset_moddata, tf_session):
     # nested=0/False -> no inner loop, so only 1 model
     # nested=1/True -> inner loop, but default n_folds so 5
     for num_nested, nested_option in zip([5, 1, 5], [5, 0, 1]):
-        results = model.fit_preset(data, presets=modified_presets, nested=nested_option, val_fraction=0.2, n_jobs=1)
+        results = model.fit_preset(
+            data,
+            presets=modified_presets,
+            nested=nested_option,
+            val_fraction=0.2,
+            n_jobs=1,
+        )
         models = results[0]
         assert len(models) == len(modified_presets)
         assert len(models[0]) == num_nested
@@ -312,7 +318,13 @@ def test_train_small_bootstrap_presets(small_moddata, tf_session):
     # nested=0/False -> no inner loop, so only 1 model
     # nested=1/True -> inner loop, but default n_folds so 5
     for num_nested, nested_option in zip([2, 1], [2, 0]):
-        results = model.fit_preset(data, presets=modified_presets, nested=nested_option, val_fraction=0.2, n_jobs=2)
+        results = model.fit_preset(
+            data,
+            presets=modified_presets,
+            nested=nested_option,
+            val_fraction=0.2,
+            n_jobs=2,
+        )
         models = results[0]
         assert len(models) == len(modified_presets)
         assert len(models[0]) == num_nested

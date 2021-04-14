@@ -96,7 +96,12 @@ class MODNetModel:
         self._multi_target = len(self.targets_flatten) > 1
 
         self.model = self.build_model(
-            targets, n_feat, num_neurons, act=act, out_act=out_act, num_classes=self.num_classes
+            targets,
+            n_feat,
+            num_neurons,
+            act=act,
+            out_act=out_act,
+            num_classes=self.num_classes,
         )
 
     def build_model(
@@ -146,11 +151,13 @@ class MODNetModel:
         for _ in range(len(targets)):
             previous_layer = common_out
             for j in range(num_layers[1]):
-                previous_layer = tf.keras.layers.Dense(num_neurons[1][j], activation=act)(
-                    previous_layer
-                )
+                previous_layer = tf.keras.layers.Dense(
+                    num_neurons[1][j], activation=act
+                )(previous_layer)
                 if self._multi_target:
-                    previous_layer = tf.keras.layers.BatchNormalization()(previous_layer)
+                    previous_layer = tf.keras.layers.BatchNormalization()(
+                        previous_layer
+                    )
             intermediate_models_out.append(previous_layer)
 
         # Build outputs
@@ -243,7 +250,10 @@ class MODNetModel:
 
         # For compatibility with MODNet 0.1.7; if there is only one target in the training data,
         # use that for the name of the target too.
-        if len(self.targets_flatten) == 1 and len(training_data.df_targets.columns) == 1:
+        if (
+            len(self.targets_flatten) == 1
+            and len(training_data.df_targets.columns) == 1
+        ):
             self.targets_flatten = list(training_data.df_targets.columns)
 
         y = []
@@ -268,21 +278,25 @@ class MODNetModel:
             self._scaler = StandardScaler()
 
         x = self._scaler.fit_transform(x)
-        x = np.nan_to_num(x,nan=-1)
+        x = np.nan_to_num(x, nan=-1)
 
         if val_data is not None:
             val_x = val_data.get_featurized_df()[
                 self.optimal_descriptors[: self.n_feat]
             ].values
             val_x = self._scaler.transform(val_x)
-            val_x = np.nan_to_num(val_x,nan=-1)
+            val_x = np.nan_to_num(val_x, nan=-1)
             try:
                 val_y = list(
-                    val_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False).transpose()
+                    val_data.get_target_df()[self.targets_flatten]
+                    .values.astype(np.float, copy=False)
+                    .transpose()
                 )
             except Exception:
                 val_y = list(
-                    val_data.get_target_df().values.astype(np.float, copy=False).transpose()
+                    val_data.get_target_df()
+                    .values.astype(np.float, copy=False)
+                    .transpose()
                 )
             validation_data = (val_x, val_y)
         else:
@@ -346,12 +360,13 @@ class MODNetModel:
         nested: int = 5,
         callbacks: List[Any] = None,
         n_jobs=None,
-        ) -> Tuple[List[List[Any]],
-                   np.ndarray,
-                   Optional[List[float]],
-                   List[List[float]],
-                   Dict[str, Any]
-        ]:
+    ) -> Tuple[
+        List[List[Any]],
+        np.ndarray,
+        Optional[List[float]],
+        List[List[float]],
+        Dict[str, Any],
+    ]:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
         This function implements the "inner loop" of a cross-validation workflow. By
@@ -405,7 +420,12 @@ class MODNetModel:
 
         if presets is None:
             from modnet.model_presets import gen_presets
-            presets = gen_presets(len(data.optimal_features), len(data.df_targets), classification=classification)
+
+            presets = gen_presets(
+                len(data.optimal_features),
+                len(data.df_targets),
+                classification=classification,
+            )
 
         if fast and len(presets) >= 2:
             presets = presets[:2]
@@ -419,9 +439,13 @@ class MODNetModel:
             num_nested_folds = 5
 
         # create tasks
-        splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
+        splits = matbench_kfold_splits(
+            data, n_splits=num_nested_folds, classification=classification
+        )
         if not nested:
-            splits = [train_test_split(range(len(data.df_featurized)),test_size=val_fraction)]
+            splits = [
+                train_test_split(range(len(data.df_featurized)), test_size=val_fraction)
+            ]
             n_splits = 1
         else:
             n_splits = num_nested_folds
@@ -438,56 +462,64 @@ class MODNetModel:
                 train_data, val_data = train_val_datas[ind]
                 val_params["val_data"] = val_data
 
-                tasks += [{'train_data' : train_data,
-                   'targets' : self.targets,
-                   'weights' : self.weights,
-                   'num_classes' : self.num_classes,
-                   'n_feat' : n_feat,
-                   'num_neurons' : params["num_neurons"],
-                   'lr' : params["lr"],
-                   'batch_size' : params["batch_size"],
-                   'epochs' : params["epochs"],
-                   'loss' : params["loss"],
-                   'act' : params["act"],
-                   'out_act': self.out_act,
-                   'callbacks' : callbacks,
-                   'preset_id' : i,
-                   'fold_id' : ind,
-                   'verbose' : verbose,
-                   **val_params,
-                }]
+                tasks += [
+                    {
+                        "train_data": train_data,
+                        "targets": self.targets,
+                        "weights": self.weights,
+                        "num_classes": self.num_classes,
+                        "n_feat": n_feat,
+                        "num_neurons": params["num_neurons"],
+                        "lr": params["lr"],
+                        "batch_size": params["batch_size"],
+                        "epochs": params["epochs"],
+                        "loss": params["loss"],
+                        "act": params["act"],
+                        "out_act": self.out_act,
+                        "callbacks": callbacks,
+                        "preset_id": i,
+                        "fold_id": ind,
+                        "verbose": verbose,
+                        **val_params,
+                    }
+                ]
 
-        val_losses = 1e20 * np.ones((len(presets),n_splits))
+        val_losses = 1e20 * np.ones((len(presets), n_splits))
         learning_curves = [[None for _ in range(n_splits)] for _ in range(len(presets))]
         models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
-        ctx = multiprocessing.get_context('spawn')
+        ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(processes=n_jobs)
-        LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
+        LOG.info(
+            f"Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available."
+        )
 
-        for res in tqdm.tqdm(pool.imap_unordered(map_validate_model, tasks, chunksize=1), total=len(tasks)):
+        for res in tqdm.tqdm(
+            pool.imap_unordered(map_validate_model, tasks, chunksize=1),
+            total=len(tasks),
+        ):
             val_loss, learning_curve, model, preset_id, fold_id = res
             LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")
             # reload the model object after serialization
             model._restore_model()
 
-            val_losses[preset_id,fold_id] = val_loss
+            val_losses[preset_id, fold_id] = val_loss
             learning_curves[preset_id][fold_id] = learning_curve
             models[preset_id][fold_id] = model
 
         pool.close()
         pool.join()
 
-        val_loss_per_preset = np.mean(val_losses,axis=1)
+        val_loss_per_preset = np.mean(val_losses, axis=1)
         best_preset_idx = int(np.argmin(val_loss_per_preset))
-        best_model_idx =int(np.argmin(val_losses[best_preset_idx,:]))
+        best_model_idx = int(np.argmin(val_losses[best_preset_idx, :]))
         best_preset = presets[best_preset_idx]
         best_learning_curve = learning_curves[best_preset_idx][best_model_idx]
         best_model = models[best_preset_idx][best_model_idx]
 
         LOG.info(
             "Preset #{} resulted in lowest validation loss with params {}".format(
-                best_preset_idx + 1, tasks[n_splits*best_preset_idx+best_model_idx]
+                best_preset_idx + 1, tasks[n_splits * best_preset_idx + best_model_idx]
             )
         )
 
@@ -495,25 +527,27 @@ class MODNetModel:
             LOG.info("Refitting with all data and parameters: {}".format(best_preset))
             # Building final model
 
-            n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
+            n_feat = min(len(data.get_optimal_descriptors()), best_preset["n_feat"])
             self.model = MODNetModel(
                 self.targets,
                 self.weights,
-                num_neurons=best_preset['num_neurons'],
+                num_neurons=best_preset["num_neurons"],
                 n_feat=n_feat,
-                act=best_preset['act'],
+                act=best_preset["act"],
                 out_act=self.out_act,
-                num_classes=self.num_classes).model
+                num_classes=self.num_classes,
+            ).model
             self.n_feat = n_feat
             self.fit(
                 data,
                 val_fraction=0,
-                lr=best_preset['lr'],
-                epochs=best_preset['epochs'],
-                batch_size=best_preset['batch_size'],
-                loss=best_preset['loss'],
+                lr=best_preset["lr"],
+                epochs=best_preset["epochs"],
+                batch_size=best_preset["batch_size"],
+                loss=best_preset["loss"],
                 callbacks=callbacks,
-                verbose=verbose)
+                verbose=verbose,
+            )
         else:
             self.n_feat = best_model.n_feat
             self.model = best_model.model
@@ -536,15 +570,19 @@ class MODNetModel:
 
         """
         # prevents Nan predictions if some features are inf
-        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
-            self.optimal_descriptors[:self.n_feat]
-        ].values
+        x = (
+            test_data.get_featurized_df()
+            .replace([np.inf, -np.inf, np.nan], 0)[
+                self.optimal_descriptors[: self.n_feat]
+            ]
+            .values
+        )
 
         # Scale the input features:
         x = np.nan_to_num(x)
         if self._scaler is not None:
             x = self._scaler.transform(x)
-            x = np.nan_to_num(x,nan=-1)
+            x = np.nan_to_num(x, nan=-1)
 
         p = np.array(self.model.predict(x))
         if len(p.shape) == 2:
@@ -555,7 +593,7 @@ class MODNetModel:
                 if return_prob:
                     temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
                     for j in range(temp.shape[-1]):
-                        p_dic['{}_prob_{}'.format(name, j)] = temp[:, j]
+                        p_dic["{}_prob_{}".format(name, j)] = temp[:, j]
                 else:
                     p_dic[name] = np.argmax(p[i, :, :], axis=1)
             else:
@@ -577,15 +615,19 @@ class MODNetModel:
             Loss score
         """
         # prevents Nan predictions if some features are inf
-        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
-            self.optimal_descriptors[:self.n_feat]
-        ].values
+        x = (
+            test_data.get_featurized_df()
+            .replace([np.inf, -np.inf, np.nan], 0)[
+                self.optimal_descriptors[: self.n_feat]
+            ]
+            .values
+        )
 
         # Scale the input features:
         x = np.nan_to_num(x)
         if self._scaler is not None:
             x = self._scaler.transform(x)
-            x = np.nan_to_num(x,nan=-1)
+            x = np.nan_to_num(x, nan=-1)
 
         y = []
         for targ in self.targets_flatten:
@@ -596,12 +638,10 @@ class MODNetModel:
                 )
                 loss = "categorical_crossentropy"
             else:
-                y_inner = test_data.df_targets[targ].values.astype(
-                    np.float, copy=False
-                )
+                y_inner = test_data.df_targets[targ].values.astype(np.float, copy=False)
             y.append(y_inner)
 
-        return self.model.evaluate(x,y)[0]
+        return self.model.evaluate(x, y)[0]
 
     def _make_picklable(self):
         """
@@ -622,7 +662,6 @@ class MODNetModel:
         self.model = tf.keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
 
-
     def save(self, filename: str):
         """Save the `MODNetModel` to filename:
 
@@ -636,7 +675,7 @@ class MODNetModel:
         self._make_picklable()
         pd.to_pickle(self, filename)
         self._restore_model()
-        LOG.info(f'Model successfully saved as {filename}!')
+        LOG.info(f"Model successfully saved as {filename}!")
 
     @staticmethod
     def load(filename: str):
@@ -656,9 +695,14 @@ class MODNetModel:
         # handle .zip files explicitly for OS X/macOS compatibility
         if filename.endswith(".zip"):
             from zipfile import ZipFile
+
             with ZipFile(filename, "r") as zf:
                 namelist = zf.namelist()
-                _files = [_ for _ in namelist if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")]
+                _files = [
+                    _
+                    for _ in namelist
+                    if not _.startswith("__MACOSX/") or _.startswith(".DS_STORE")
+                ]
                 if len(_files) == 1:
                     with zf.open(_files.pop()) as f:
                         pickled_data = pd.read_pickle(f)
@@ -666,12 +710,13 @@ class MODNetModel:
         if pickled_data is None:
             pickled_data = pd.read_pickle(filename)
 
-
         if isinstance(pickled_data, MODNetModel):
             if not hasattr(pickled_data, "__modnet_version__"):
                 pickled_data.__modnet_version__ = "unknown"
             pickled_data._restore_model()
-            LOG.info(f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}")
+            LOG.info(
+                f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}"
+            )
             return pickled_data
 
         raise ValueError(
@@ -679,25 +724,27 @@ class MODNetModel:
             f"instead found {pickled_data.__class__.__name__}."
         )
 
-def validate_model(train_data = None,
-                   val_data = None,
-                   targets = None,
-                   weights = None,
-                   num_classes=None,
-                   n_feat = 100,
-                   num_neurons = [[8],[8],[8],[8]],
-                   lr=0.1,
-                   batch_size = 64,
-                   epochs = 100,
-                   loss='mse',
-                   act = 'relu',
-                   out_act= 'linear',
-                   xscale='minmax',
-                   callbacks = [],
-                   preset_id = None,
-                   fold_id = None,
-                   verbose = 0,
-            ):
+
+def validate_model(
+    train_data=None,
+    val_data=None,
+    targets=None,
+    weights=None,
+    num_classes=None,
+    n_feat=100,
+    num_neurons=[[8], [8], [8], [8]],
+    lr=0.1,
+    batch_size=64,
+    epochs=100,
+    loss="mse",
+    act="relu",
+    out_act="linear",
+    xscale="minmax",
+    callbacks=[],
+    preset_id=None,
+    fold_id=None,
+    verbose=0,
+):
     """For a given set of parameters, create a new model and train it on the passed training data,
     validating it against the passed validation data and returning some relevant metrics.
 
@@ -710,28 +757,27 @@ def validate_model(train_data = None,
         n_feat=n_feat,
         act=act,
         out_act=out_act,
-        num_classes=num_classes
+        num_classes=num_classes,
     )
 
     model.fit(
         train_data,
-        lr = lr,
-        epochs = epochs,
-        batch_size = batch_size,
-        loss = loss,
+        lr=lr,
+        epochs=epochs,
+        batch_size=batch_size,
+        loss=loss,
         xscale=xscale,
-        callbacks = callbacks,
-        verbose = verbose,
-        val_fraction = 0,
-        val_data = val_data,
+        callbacks=callbacks,
+        verbose=verbose,
+        val_fraction=0,
+        val_data=val_data,
     )
-
 
     learning_curve = model.history["val_loss"]
 
     val_loss = model.evaluate(val_data)
 
-    #save model
+    # save model
     model._make_picklable()
 
     return val_loss, learning_curve, model, preset_id, fold_id

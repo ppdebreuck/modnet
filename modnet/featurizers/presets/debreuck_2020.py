@@ -113,7 +113,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         VoronoiFingerprint(),
     )
 
-    def __init__(self,fast_oxid=False):
+    def __init__(self, fast_oxid=False):
         super().__init__()
         self.fast_oxid = fast_oxid
 

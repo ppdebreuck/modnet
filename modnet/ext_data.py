@@ -30,7 +30,7 @@ DATASETS = {
         ),
         filename="MP_2018.6.zip",
         md5="06280c4e539508bbcc5266f07698f8d1",
-        usage=Usage["MODData"]
+        usage=Usage["MODData"],
     ),
     "MP_2018.6_CROSS_NMI": Dataset(
         url="https://ndownloader.figshare.com/files/25584803",

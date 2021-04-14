@@ -7,7 +7,7 @@ with open("README.md", "r") as f:
 with open("modnet/__init__.py", "r") as f:
     lines = ""
     for item in f.readlines():
-        lines += item + '\n'
+        lines += item + "\n"
 
 
 version = re.search('__version__ = "(.*)"', lines).group(1)
@@ -34,5 +34,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.8',
+    python_requires=">=3.8",
 )

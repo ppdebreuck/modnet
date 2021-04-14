@@ -40,7 +40,9 @@ class EnsembleMODNetModel(MODNetModel):
 
     can_return_uncertainty = True
 
-    def __init__(self,*args,n_models=100, bootstrap=True, modnet_models=None, **kwargs):
+    def __init__(
+        self, *args, n_models=100, bootstrap=True, modnet_models=None, **kwargs
+    ):
         """
         Args:
             *args: See MODNetModel
@@ -55,9 +57,7 @@ class EnsembleMODNetModel(MODNetModel):
             self.model = []
             self.n_models = n_models
             for i in range(self.n_models):
-                self.model.append(
-                    MODNetModel(*args, **kwargs)
-                )
+                self.model.append(MODNetModel(*args, **kwargs))
         else:
             self.model = modnet_models
             self.n_models = len(modnet_models)
@@ -81,39 +81,63 @@ class EnsembleMODNetModel(MODNetModel):
 
         if self.bootstrap:
             LOG.info("Generating bootstrap data...")
-            train_datas = [training_data.split((resample(np.arange(len(training_data.df_targets)),
-                    replace=True, random_state=2943),[]))[0] for _ in range(self.n_models)]
+            train_datas = [
+                training_data.split(
+                    (
+                        resample(
+                            np.arange(len(training_data.df_targets)),
+                            replace=True,
+                            random_state=2943,
+                        ),
+                        [],
+                    )
+                )[0]
+                for _ in range(self.n_models)
+            ]
         else:
             train_datas = [training_data for _ in range(self.n_models)]
 
-        if n_jobs<=1:
+        if n_jobs <= 1:
             for i in range(self.n_models):
                 LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
                 self.model[i].fit(train_datas[i], **kwargs)
                 model_summary = ""
                 for k in self.model[i].history.keys():
-                    model_summary += "{}: {:.4f}\t".format(k, self.model[i].history[k][-1])
+                    model_summary += "{}: {:.4f}\t".format(
+                        k, self.model[i].history[k][-1]
+                    )
                 LOG.info(model_summary)
         else:
-                ctx = multiprocessing.get_context('spawn')
-                pool = ctx.Pool(processes=n_jobs)
-                tasks =[]
-                for i,m in enumerate(self.model):
-                    m._make_picklable()
-                    tasks.append({'model':m, 'training_data':train_datas[i], 'model_id':i, **kwargs})
-                for res in tqdm.tqdm(pool.imap_unordered(_map_fit_MODNet, tasks, chunksize=1),
-                                     total=self.n_models):
-                    model, model_id = res
-                    model._restore_model()
-                    self.model[model_id] = model
-                    model_summary = f"Model #{model_id}\t"
-                    for k in model.history.keys():
-                        model_summary += "{}: {:.4f}\t".format(k, model.history[k][-1])
-                    LOG.info(model_summary)
-                pool.close()
-                pool.join()
+            ctx = multiprocessing.get_context("spawn")
+            pool = ctx.Pool(processes=n_jobs)
+            tasks = []
+            for i, m in enumerate(self.model):
+                m._make_picklable()
+                tasks.append(
+                    {
+                        "model": m,
+                        "training_data": train_datas[i],
+                        "model_id": i,
+                        **kwargs,
+                    }
+                )
+            for res in tqdm.tqdm(
+                pool.imap_unordered(_map_fit_MODNet, tasks, chunksize=1),
+                total=self.n_models,
+            ):
+                model, model_id = res
+                model._restore_model()
+                self.model[model_id] = model
+                model_summary = f"Model #{model_id}\t"
+                for k in model.history.keys():
+                    model_summary += "{}: {:.4f}\t".format(k, model.history[k][-1])
+                LOG.info(model_summary)
+            pool.close()
+            pool.join()
 
-    def predict(self, test_data: MODData, return_unc=False, return_prob=False) -> pd.DataFrame:
+    def predict(
+        self, test_data: MODData, return_unc=False, return_prob=False
+    ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
         Parameters:
@@ -157,11 +181,10 @@ class EnsembleMODNetModel(MODNetModel):
             Loss score
         """
         all_losses = np.zeros(self.n_models)
-        for i,m in enumerate(self.model):
+        for i, m in enumerate(self.model):
             all_losses[i] = m.evaluate(test_data)
 
         return all_losses.mean()
-
 
     def fit_preset(
         self,
@@ -175,12 +198,13 @@ class EnsembleMODNetModel(MODNetModel):
         nested: int = 5,
         callbacks: List[Any] = None,
         n_jobs: int = 1,
-        ) -> Tuple[List[List[Any]],
-                   np.ndarray,
-                   Optional[List[float]],
-                   List[List[float]],
-                   Dict[str, Any]
-        ]:
+    ) -> Tuple[
+        List[List[Any]],
+        np.ndarray,
+        Optional[List[float]],
+        List[List[float]],
+        Dict[str, Any],
+    ]:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
 
         This function implements the "inner loop" of a cross-validation workflow. By
@@ -236,7 +260,12 @@ class EnsembleMODNetModel(MODNetModel):
 
         if presets is None:
             from modnet.model_presets import gen_presets
-            presets = gen_presets(len(data.optimal_features), len(data.df_targets), classification=classification)
+
+            presets = gen_presets(
+                len(data.optimal_features),
+                len(data.df_targets),
+                classification=classification,
+            )
 
         if fast and len(presets) >= 2:
             presets = presets[:2]
@@ -252,9 +281,13 @@ class EnsembleMODNetModel(MODNetModel):
             num_nested_folds = 5
 
         # create tasks
-        splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
+        splits = matbench_kfold_splits(
+            data, n_splits=num_nested_folds, classification=classification
+        )
         if not nested:
-            splits = [train_test_split(range(len(data.df_featurized)),test_size=val_fraction)]
+            splits = [
+                train_test_split(range(len(data.df_featurized)), test_size=val_fraction)
+            ]
             n_splits = 1
         else:
             n_splits = num_nested_folds
@@ -271,57 +304,65 @@ class EnsembleMODNetModel(MODNetModel):
                 train_data, val_data = train_val_datas[ind]
                 val_params["val_data"] = val_data
 
-                tasks += [{'train_data' : train_data,
-                   'targets' : self.targets,
-                   'weights' : self.weights,
-                   'n_models': 1 if fast else 5,
-                   'num_classes' : self.num_classes,
-                   'n_feat' : n_feat,
-                   'num_neurons' : params["num_neurons"],
-                   'lr' : params["lr"],
-                   'batch_size' : params["batch_size"],
-                   'epochs' : params["epochs"],
-                   'loss' : params["loss"],
-                   'act' : params["act"],
-                   'out_act': self.out_act,
-                   'callbacks' : callbacks,
-                   'preset_id' : i,
-                   'fold_id' : ind,
-                   'verbose' : verbose,
-                   **val_params,
-                }]
+                tasks += [
+                    {
+                        "train_data": train_data,
+                        "targets": self.targets,
+                        "weights": self.weights,
+                        "n_models": 1 if fast else 5,
+                        "num_classes": self.num_classes,
+                        "n_feat": n_feat,
+                        "num_neurons": params["num_neurons"],
+                        "lr": params["lr"],
+                        "batch_size": params["batch_size"],
+                        "epochs": params["epochs"],
+                        "loss": params["loss"],
+                        "act": params["act"],
+                        "out_act": self.out_act,
+                        "callbacks": callbacks,
+                        "preset_id": i,
+                        "fold_id": ind,
+                        "verbose": verbose,
+                        **val_params,
+                    }
+                ]
 
-        val_losses = np.zeros((len(presets),n_splits))
+        val_losses = np.zeros((len(presets), n_splits))
         learning_curves = [[None for _ in range(n_splits)] for _ in range(len(presets))]
         models = [[None for _ in range(n_splits)] for _ in range(len(presets))]
 
-        ctx = multiprocessing.get_context('spawn')
+        ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(processes=n_jobs)
-        LOG.info(f'Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available.')
+        LOG.info(
+            f"Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available."
+        )
 
-        for res in tqdm.tqdm(pool.imap_unordered(_map_validate_ensemble_model, tasks, chunksize=1), total=len(tasks)):
+        for res in tqdm.tqdm(
+            pool.imap_unordered(_map_validate_ensemble_model, tasks, chunksize=1),
+            total=len(tasks),
+        ):
             val_loss, learning_curve, model, preset_id, fold_id = res
             LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")
 
             # reload model
             model._restore_model()
 
-            val_losses[preset_id,fold_id] = val_loss
+            val_losses[preset_id, fold_id] = val_loss
             learning_curves[preset_id][fold_id] = learning_curve
             models[preset_id][fold_id] = model
         pool.close()
         pool.join()
 
-        val_loss_per_preset = np.mean(val_losses,axis=1)
+        val_loss_per_preset = np.mean(val_losses, axis=1)
         best_preset_idx = int(np.argmin(val_loss_per_preset))
-        best_model_idx =int(np.argmin(val_losses[best_preset_idx,:]))
+        best_model_idx = int(np.argmin(val_losses[best_preset_idx, :]))
         best_preset = presets[best_preset_idx]
         best_learning_curve = learning_curves[best_preset_idx][best_model_idx]
         best_model = models[best_preset_idx][best_model_idx]
 
         LOG.info(
             "Preset #{} resulted in lowest validation loss with params {}".format(
-                best_preset_idx + 1, tasks[n_splits*best_preset_idx+best_model_idx]
+                best_preset_idx + 1, tasks[n_splits * best_preset_idx + best_model_idx]
             )
         )
 
@@ -329,24 +370,25 @@ class EnsembleMODNetModel(MODNetModel):
             LOG.info("Refitting with all data and parameters: {}".format(best_preset))
             # Building final model
 
-            n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
+            n_feat = min(len(data.get_optimal_descriptors()), best_preset["n_feat"])
             self.model = EnsembleMODNetModel(
                 self.targets,
                 self.weights,
                 n_models=self.n_models,
-                num_neurons=best_preset['num_neurons'],
+                num_neurons=best_preset["num_neurons"],
                 n_feat=n_feat,
-                act=best_preset['act'],
+                act=best_preset["act"],
                 out_act=self.out_act,
-                num_classes=self.num_classes).model
+                num_classes=self.num_classes,
+            ).model
             self.n_feat = n_feat
             self.fit(
                 data,
                 val_fraction=0,
-                lr=best_preset['lr'],
-                epochs=best_preset['epochs'],
-                batch_size=best_preset['batch_size'],
-                loss=best_preset['loss'],
+                lr=best_preset["lr"],
+                epochs=best_preset["epochs"],
+                batch_size=best_preset["batch_size"],
+                loss=best_preset["loss"],
                 callbacks=callbacks,
                 verbose=verbose,
                 n_jobs=n_jobs,
@@ -354,11 +396,11 @@ class EnsembleMODNetModel(MODNetModel):
         else:
             ### take 5 best 5-models on all inner folds = 125-bootstrap model for a 5  nested CV fold
 
-            final_models=[]
+            final_models = []
             for i in range(n_splits):
-                best_5_idx = np.argsort(val_losses[:,i])[:5]
+                best_5_idx = np.argsort(val_losses[:, i])[:5]
                 for idx in best_5_idx:
-                    final_models+=models[idx][i].model
+                    final_models += models[idx][i].model
             self.__init__(modnet_models=final_models)
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
@@ -380,26 +422,27 @@ class EnsembleMODNetModel(MODNetModel):
             m._restore_model()
 
 
-def _validate_ensemble_model(train_data = None,
-                             val_data = None,
-                             targets = None,
-                             weights = None,
-                             n_models=5,
-                             num_classes=None,
-                             n_feat = 100,
-                             num_neurons = [[8],[8],[8],[8]],
-                             lr=0.1,
-                             batch_size = 64,
-                             epochs = 100,
-                             loss='mse',
-                             act = 'relu',
-                             out_act = 'linear',
-                             xscale='minmax',
-                             callbacks = [],
-                             preset_id = None,
-                             fold_id = None,
-                             verbose = 0,
-                             ):
+def _validate_ensemble_model(
+    train_data=None,
+    val_data=None,
+    targets=None,
+    weights=None,
+    n_models=5,
+    num_classes=None,
+    n_feat=100,
+    num_neurons=[[8], [8], [8], [8]],
+    lr=0.1,
+    batch_size=64,
+    epochs=100,
+    loss="mse",
+    act="relu",
+    out_act="linear",
+    xscale="minmax",
+    callbacks=[],
+    preset_id=None,
+    fold_id=None,
+    verbose=0,
+):
 
     model = EnsembleMODNetModel(
         targets,
@@ -409,20 +452,20 @@ def _validate_ensemble_model(train_data = None,
         n_feat=n_feat,
         act=act,
         out_act=out_act,
-        num_classes=num_classes
+        num_classes=num_classes,
     )
 
     model.fit(
         train_data,
-        lr = lr,
-        epochs = epochs,
-        batch_size = batch_size,
-        loss = loss,
+        lr=lr,
+        epochs=epochs,
+        batch_size=batch_size,
+        loss=loss,
         xscale=xscale,
-        callbacks = callbacks,
-        verbose = verbose,
-        val_fraction = 0,
-        val_data = val_data,
+        callbacks=callbacks,
+        verbose=verbose,
+        val_fraction=0,
+        val_data=val_data,
     )
 
     learning_curves = [m.history["val_loss"] for m in model.model]
@@ -437,12 +480,14 @@ def _validate_ensemble_model(train_data = None,
 def _map_validate_ensemble_model(kwargs):
     return _validate_ensemble_model(**kwargs)
 
+
 def _fit_MODNet(model: MODNetModel, training_data: MODData, model_id=None, **kwargs):
     model._restore_model()
-    model.fit(training_data,**kwargs)
+    model.fit(training_data, **kwargs)
     model._make_picklable()
 
     return model, model_id
+
 
 def _map_fit_MODNet(kwargs):
     return _fit_MODNet(**kwargs)
