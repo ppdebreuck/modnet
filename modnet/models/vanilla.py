@@ -37,6 +37,8 @@ class MODNetModel:
 
     """
 
+    can_return_uncertainty = False
+
     def __init__(
         self,
         targets: List,

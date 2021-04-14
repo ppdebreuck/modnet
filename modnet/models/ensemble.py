@@ -38,6 +38,8 @@ class EnsembleMODNetModel(MODNetModel):
 
     """
 
+    can_return_uncertainty = True
+
     def __init__(self,*args,n_models=100, bootstrap=True, modnet_models=None, **kwargs):
         """
         Args:

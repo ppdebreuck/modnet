@@ -225,16 +225,19 @@ def train_fold(
             model.fit(train_data, **fit_settings)
 
     try:
+        predict_kwargs = {}
         if classification:
-            if model_type == "EnsembleMODNetModel":
-                predictions, stds = model.predict(test_data, return_prob=True, return_unc=True)
-            else:
-                predictions = model.predict(test_data, return_prob=True)
+            predict_kwargs["return_prob"] = True
+        if model.can_return_uncertainty:
+            predict_kwargs["return_unc"] = True
+
+        pred_results = model.predict(test_data, **predict_kwargs)
+        if isinstance(pred_results, tuple):
+            predictions, stds = pred_results
         else:
-            if model_type == "EnsembleMODNetModel":
-                predictions, stds = model.predict(test_data, return_unc=True)
-            else:
-                predictions = model.predict(test_data)
+            predictions = pred_results
+            stds = None
+
         targets = test_data.df_targets
 
         if classification:
@@ -271,7 +274,7 @@ def train_fold(
         df_test.to_csv("folds/test_f{}.csv".format(ind + 1))
 
     results["predictions"] = predictions
-    if model_type == "EnsembleMODNetModel":
+    if stds is not None:
         results["stds"] = stds
     results["targets"] = targets
     results["errors"] = errors

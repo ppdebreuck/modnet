@@ -34,6 +34,8 @@ class BayesianMODNetModel(MODNetModel):
 
     """
 
+    can_return_uncertainty = True
+
     def __init__(
         self,
         targets: List,
