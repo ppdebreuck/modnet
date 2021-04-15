@@ -15,6 +15,8 @@ from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
 from modnet.utils import LOG
 from modnet.individual import Individual
+import multiprocessing as mp
+import concurrent
 
 
 class FitGenetic:
@@ -144,7 +146,7 @@ class FitGenetic:
         """
 
         genes_from_mother = random.sample(range(10), k=5) #creates indices to take randomly 5 genes from one parent, and 5 genes from the other
-        child = child = {list(mother.keys())[i]:list(mother.values())[i] if i in genes_from_mother else list(father.values())[i] for i in range(10)}   
+        child = {list(mother.keys())[i]:list(mother.values())[i] if i in genes_from_mother else list(father.values())[i] for i in range(10)}   
         return child
 
 
@@ -184,6 +186,103 @@ class FitGenetic:
         return children
 
 
+    def mae_of_individual(
+        self,
+        ind: List,
+        md: MODData
+        ):
+
+        es = keras.callbacks.EarlyStopping(
+            monitor="loss",
+            min_delta=0.001,
+            patience=300,
+            verbose=0,
+            mode="auto",
+            baseline=None,
+            restore_best_weights=True,
+        )
+        callbacks = [es]
+
+        md_train = f[0]
+        y_train = md_train.df_targets
+        md_val = f[1]
+        y_val = md_val.df_targets
+        modnet_model = MODNetModel(
+                                  [[[y_train.columns[0]]]],
+                                  {y_train.columns[0]: 1},
+                                  n_feat=ind['n_feat'],
+                                  num_neurons=[
+                                              [int(ind['n_neurons_first_layer'])],
+                                              [int(ind['n_neurons_first_layer'] * ind['fraction1'])],
+                                              [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'])],
+                                              [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'] * ind['fraction3'])]
+                                              ],
+                                  act=ind['act']
+                                  )
+        for i in range(4):
+            modnet_model.fit(
+                            md_train,
+                            val_fraction=0,
+                            val_key=y_train.columns[0],
+                            loss=ind['loss'],
+                            lr=ind['lr'],
+                            epochs=250,
+                            batch_size=(2 ** i) * ind['initial_batch_size'],
+                            xscale=ind['xscale'],
+                            callbacks=callbacks,
+                            verbose=0
+                            )
+        MAE = mae(modnet_model.predict(md_val), y_val)
+        return MAE
+
+
+    def model_of_individual(
+        self,
+        ind: List,
+        md: MODData
+        ):
+
+        es = keras.callbacks.EarlyStopping(
+            monitor="loss",
+            min_delta=0.001,
+            patience=300,
+            verbose=0,
+            mode="auto",
+            baseline=None,
+            restore_best_weights=True,
+        )
+        callbacks = [es]
+
+        y = md.df_targets
+
+        modnet_model = MODNetModel(
+                                  [[[y.columns[0]]]],
+                                  {y.columns[0]: 1},
+                                  n_feat=ind['n_feat'],
+                                  num_neurons=[
+                                  [int(ind['n_neurons_first_layer'])],
+                                  [int(ind['n_neurons_first_layer'] * ind['fraction1'])],
+                                  [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'])],
+                                  [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'] * ind['fraction3'])]
+                                  ],
+                                  act=ind['act']
+                                  )
+        for i in range(4):
+            modnet_model.fit(
+                            md,
+                            val_fraction=0,
+                            val_key=y.columns[0],
+                            loss=ind['loss'],
+                            lr=ind['lr'],
+                            epochs=250,
+                            batch_size=(2 ** i) * ind['initial_batch_size'],
+                            xscale=ind['xscale'],
+                            callbacks=callbacks,
+                            verbose=0
+                            )
+        return modnet_model
+
+
     def function_fitness(
         self,
         pop: List,
@@ -201,57 +300,20 @@ class FitGenetic:
         """
 
         self.fitness = []
-        j = 0
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-        es = keras.callbacks.EarlyStopping(
-            monitor="loss",
-            min_delta=0.001,
-            patience=300,
-            verbose=0,
-            mode="auto",
-            baseline=None,
-            restore_best_weights=True,
-        )
-        callbacks = [es]
+        folds = self.MDKsplit(md, n_splits=5, random_state=1)
 
-        for ind in self.pop: #Going through each individual of the population
-            folds = self.MDKsplit(md,n_splits=5,random_state=22)
-            maes = np.ones(5)
-            for k,f in enumerate(folds): #K-Fold cross-validation to reduce overfitting
-                md_train = f[0]
-                y_train = md_train.df_targets
-                md_val = f[1]
-                y_val = md_val.df_targets
-                modnet_model = MODNetModel(
-                                          [[[y_train.columns[0]]]],
-                                          {y_train.columns[0]:1},
-                                          n_feat =  ind['n_feat'],
-                                          num_neurons = [
-                                                        [ int(ind['n_neurons_first_layer']) ],
-                                                        [ int(ind['n_neurons_first_layer'] * ind['fraction1']) ],
-                                                        [ int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2']) ],
-                                                        [ int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'] * ind['fraction3']) ]
-                                                        ],
-                                          act = ind['act']
-                                          )
-                for i in range(4):
-                    modnet_model.fit(
-                                    md_train,
-                                    val_fraction = 0,
-                                    val_key = y_train.columns[0],
-                                    loss = ind['loss'],
-                                    lr = ind['lr'],
-                                    epochs = 250,
-                                    batch_size = (2**i) * ind['initial_batch_size'],
-                                    xscale = ind['xscale'],
-                                    callbacks = callbacks,
-                                    verbose = 0
-                                    )
-                MAE = mae(modnet_model.predict(md_val), y_val)
-                maes[k] = MAE
-            f = maes.mean()
-            print('MAE = ', f)
-            self.fitness.append([f, modnet_model, ind])
+        for ind in pop: #Going through each individual of the population
+            maes = []
+            with concurrent.futures.ThreadPoolExecutor() as executor: #Using parallelization for cross-validation
+                results = [executor.submit(self.mae_of_individual, ind, f) for f in enumerate(folds)]
+                for r in concurrent.futures.as_completed(results):
+                    maes.append(r.result())
+            maes = np.array(maes)
+            mae_avg = maes.mean()
+            print('MAE = ', mae_avg)
+            modnet_model = self.model_of_individual(ind, md)
+            self.fitness.append([mae_avg, modnet_model, ind])
         return self.fitness
 
 
@@ -286,8 +348,8 @@ class FitGenetic:
             weights = [l/sum(liste) for l in liste]
             weights = np.array(list(sorted(weights, reverse=True))) #sorting the weights
             #selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
-            parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
-            parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length//2)
+            parents_1 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length)
+            parents_2 = random.choices(pop_fitness_sort[:,2], weights=weights, k=length)
 
             #crossover
             children = [self.crossover(parents_1[i], parents_2[i]) for i in range(0, np.min([len(parents_2), len(parents_1)]))]
