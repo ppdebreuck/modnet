@@ -18,7 +18,6 @@ __all__ = ("MODNetModel",)
 class MODNetModel:
     """Container class for the underlying Keras `Model`, that handles
     setting up the architecture, activations, training and learning curve.
-
     Attributes:
         n_feat: The number of features used in the model.
         weights: The relative loss weights for each target.
@@ -27,7 +26,6 @@ class MODNetModel:
         model: The `keras.model.Model` of the network itself.
         target_names: The list of targets names that the model
             was trained for.
-
     """
 
     def __init__(
@@ -41,7 +39,6 @@ class MODNetModel:
     ):
         """Initialise the model on the passed targets with the desired
         architecture, feature count and loss functions and activation functions.
-
         Parameters:
             targets: A nested list of targets names that defines the hierarchy
                 of the output layers.
@@ -56,7 +53,6 @@ class MODNetModel:
             n_feat: The number of features to use as model inputs.
             act: A string defining a Keras activation function to pass to use
                 in the `keras.layers.Dense` layers.
-
         """
 
         self.__modnet_version__ = __version__
@@ -93,7 +89,6 @@ class MODNetModel:
         act: str = "relu",
     ):
         """Builds the Keras model and sets the `self.model` attribute.
-
         Parameters:
             targets: A nested list of targets names that defines the hierarchy
                 of the output layers.
@@ -107,7 +102,6 @@ class MODNetModel:
                 with n=0 for regression and n>=2 for classification with n the number of classes.
             act: A string defining a Keras activation function to pass to use
                 in the `keras.layers.Dense` layers.
-
         """
 
         num_layers = [len(x) for x in num_neurons]
@@ -185,7 +179,6 @@ class MODNetModel:
         **fit_params,
     ) -> None:
         """Train the model on the passed training `MODData` object.
-
         Paramters:
             training_data: A `MODData` that has been featurized and
                 feature selected. The first `self.n_feat` entries in
@@ -206,7 +199,6 @@ class MODNetModel:
             fit_params: Any additional parameters to pass to `fit(...)`,
                 these will be overwritten by the explicit keyword
                 arguments above.
-
         """
 
         if self.n_feat > len(training_data.get_optimal_descriptors()):
@@ -214,9 +206,11 @@ class MODNetModel:
                 "The model requires more features than computed in data. "
                 f"Please reduce n_feat below or equal to {len(training_data.get_optimal_descriptors())}"
             )
+
         self.xscale = xscale
         self.target_names = list(self.weights.keys())
         self.optimal_descriptors = training_data.get_optimal_descriptors()
+
         x = training_data.get_featurized_df()[
             self.optimal_descriptors[: self.n_feat]
         ].values
@@ -258,11 +252,11 @@ class MODNetModel:
             val_x = self._scaler.transform(val_x)
             try:
                 val_y = list(
-                    val_data.get_target_df()[self.targets_flatten].values.astype(np.float, copy=False).transpose()
+                    val_data.get_target_df()[self.targets_flatten].values.transpose()
                 )
             except Exception:
                 val_y = list(
-                    val_data.get_target_df().values.astype(np.float, copy=False).transpose()
+                    val_data.get_target_df().values.transpose()
                 )
             validation_data = (val_x, val_y)
         else:
@@ -332,17 +326,13 @@ class MODNetModel:
                    Dict[str, Any]
         ]:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
-
         This function implements the "inner loop" of a cross-validation workflow. By
         modifying the `nested` argument, it can be run in full nested mode (i.e.
         train n_fold * n_preset models) or just with a simple random hold-out set.
-
         The data is first fitted on several well working MODNet presets
         with a validation set (10% of the furnished data by default).
-
         Sets the `self.model` attribute to the model with the lowest mean validation loss across
         all folds.
-
         Args:
             data: MODData object contain training and validation samples.
             presets: A list of dictionaries containing custom presets.
@@ -357,14 +347,12 @@ class MODNetModel:
                 a simple validation split is performed based on val_fraction argument.
                 If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
                 Note: If set to 1, the value will be overwritten to a default of 5 folds.
-
         Returns:
             - A list of length num_outer_folds containing lists of MODNet models of length num_inner_folds.
             - A list of validation losses achieved by the best model for each fold during validation (excluding refit).
             - The learning curve of the final (refitted) model (or `None` if `refit` is `False`)
             - A nested list of learning curves for each trained model of lengths (num_outer_folds,  num_inner folds).
             - The settings of the best-performing preset.
-
         """
 
         if callbacks is None:
@@ -510,17 +498,13 @@ class MODNetModel:
 
     def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
-
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
             return_prob: For a classification tasks only: whether to return the probability of each
                 class OR only return the most probable class.
-
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
-
-
         """
         # prevents Nan predictions if some features are inf
         x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
@@ -555,15 +539,12 @@ class MODNetModel:
     def save(self, filename: str):
         """Save the `MODNetModel` across 3 files with the same base
         filename:
-
         * <filename>.json contains the Keras model JSON dump.
         * <filename>.pkl contains the `MODNetModel` object, excluding the
           Keras model.
         * <filename>.h5 contains the model weights.
-
         Parameters:
             filename: The base filename to save to.
-
         """
 
         LOG.info("Saving model...")
@@ -591,15 +572,12 @@ class MODNetModel:
     def load(filename: str):
         """Load the `MODNetModel` from 3 files with the same base
         filename:
-
         * <filename>.json contains the Keras model JSON dump.
         * <filename>.pkl contains the `MODNetModel` object, excluding the
           Keras model.
         * <filename>.h5 contains the model weights.
-
         Returns:
             The loaded `MODNetModel` object.
-
         """
 
         LOG.info("Loading model from {}(.json/.h5/.pkl)".format(filename))
