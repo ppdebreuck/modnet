@@ -1,16 +1,17 @@
 import pickle
+import logging
 from typing import List, Tuple, Dict, Optional, Callable, Any
 
 import pandas as pd
 import numpy as np
+
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import tensorflow.keras as keras
 
 from modnet.preprocessing import MODData
-from modnet.matbench.benchmark import matbench_kfold_splits
-from modnet.utils import LOG
 from modnet import __version__
 
+logging.getLogger().setLevel(logging.INFO)
 
 __all__ = ("MODNetModel",)
 
@@ -18,6 +19,7 @@ __all__ = ("MODNetModel",)
 class MODNetModel:
     """Container class for the underlying Keras `Model`, that handles
     setting up the architecture, activations, training and learning curve.
+
     Attributes:
         n_feat: The number of features used in the model.
         weights: The relative loss weights for each target.
@@ -26,6 +28,7 @@ class MODNetModel:
         model: The `keras.model.Model` of the network itself.
         target_names: The list of targets names that the model
             was trained for.
+
     """
 
     def __init__(
@@ -34,11 +37,12 @@ class MODNetModel:
         weights: Dict[str, float],
         num_neurons=([64], [32], [16], [16]),
         num_classes: Optional[Dict[str, int]] = None,
-        n_feat: Optional[int] = 64,
+        n_feat=300,
         act="relu",
     ):
         """Initialise the model on the passed targets with the desired
         architecture, feature count and loss functions and activation functions.
+
         Parameters:
             targets: A nested list of targets names that defines the hierarchy
                 of the output layers.
@@ -53,12 +57,11 @@ class MODNetModel:
             n_feat: The number of features to use as model inputs.
             act: A string defining a Keras activation function to pass to use
                 in the `keras.layers.Dense` layers.
+
         """
 
         self.__modnet_version__ = __version__
 
-        if n_feat is None:
-            n_feat = 64
         self.n_feat = n_feat
         self.weights = weights
         self.num_classes = num_classes
@@ -76,7 +79,7 @@ class MODNetModel:
             self.num_classes.update(num_classes)
         self._multi_target = len(self.targets_flatten) > 1
 
-        self.model = self.build_model(
+        self.build_model(
             targets, n_feat, num_neurons, act=act, num_classes=self.num_classes
         )
 
@@ -89,6 +92,7 @@ class MODNetModel:
         act: str = "relu",
     ):
         """Builds the Keras model and sets the `self.model` attribute.
+
         Parameters:
             targets: A nested list of targets names that defines the hierarchy
                 of the output layers.
@@ -102,6 +106,7 @@ class MODNetModel:
                 with n=0 for regression and n>=2 for classification with n the number of classes.
             act: A string defining a Keras activation function to pass to use
                 in the `keras.layers.Dense` layers.
+
         """
 
         num_layers = [len(x) for x in num_neurons]
@@ -160,7 +165,7 @@ class MODNetModel:
                         )(previous_layer)
                     final_out.append(out)
 
-        return keras.models.Model(inputs=f_input, outputs=final_out)
+        self.model = keras.models.Model(inputs=f_input, outputs=final_out)
 
     def fit(
         self,
@@ -179,6 +184,7 @@ class MODNetModel:
         **fit_params,
     ) -> None:
         """Train the model on the passed training `MODData` object.
+
         Paramters:
             training_data: A `MODData` that has been featurized and
                 feature selected. The first `self.n_feat` entries in
@@ -199,6 +205,7 @@ class MODNetModel:
             fit_params: Any additional parameters to pass to `fit(...)`,
                 these will be overwritten by the explicit keyword
                 arguments above.
+
         """
 
         if self.n_feat > len(training_data.get_optimal_descriptors()):
@@ -214,11 +221,6 @@ class MODNetModel:
         x = training_data.get_featurized_df()[
             self.optimal_descriptors[: self.n_feat]
         ].values
-
-        # For compatibility with MODNet 0.1.7; if there is only one target in the training data,
-        # use that for the name of the target too.
-        if len(self.targets_flatten) == 1 and len(training_data.df_targets.columns) == 1:
-            self.targets_flatten = list(training_data.df_targets.columns)
 
         y = []
         for targ in self.targets_flatten:
@@ -237,7 +239,7 @@ class MODNetModel:
         # Scale the input features:
         x = np.nan_to_num(x)
         if self.xscale == "minmax":
-            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+            self._scaler = MinMaxScaler(feature_range=(-0.5,0.5))
 
         elif self.xscale == "standard":
             self._scaler = StandardScaler()
@@ -250,43 +252,37 @@ class MODNetModel:
             ].values
             val_x = np.nan_to_num(val_x)
             val_x = self._scaler.transform(val_x)
-            try:
-                val_y = list(
-                    val_data.get_target_df()[self.targets_flatten].values.transpose()
-                )
-            except Exception:
-                val_y = list(
-                    val_data.get_target_df().values.transpose()
-                )
+            val_y = list(
+                val_data.get_target_df()[self.targets_flatten].values.transpose()
+            )
             validation_data = (val_x, val_y)
         else:
             validation_data = None
 
-        # Optionally set up print callback
-        if verbose:
-            if val_fraction > 0 or validation_data:
-                if self._multi_target and val_key is not None:
-                    val_metric_key = f"val_{val_key}_mae"
-                else:
-                    val_metric_key = "val_mae"
-                print_callback = keras.callbacks.LambdaCallback(
-                    on_epoch_end=lambda epoch, logs: print(
-                        f"epoch {epoch}: loss: {logs['loss']:.3f}, "
-                        f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
-                    )
-                )
-
+        if val_fraction > 0 or validation_data:
+            if self._multi_target and val_key is not None:
+                val_metric_key = f"val_{val_key}_mae"
             else:
-                print_callback = keras.callbacks.LambdaCallback(
-                    on_epoch_end=lambda epoch, logs: print(
-                        f"epoch {epoch}: loss: {logs['loss']:.3f}"
-                    )
+                val_metric_key = "val_mae"
+            print_callback = keras.callbacks.LambdaCallback(
+                on_epoch_end=lambda epoch, logs: print(
+                    f"epoch {epoch}: loss: {logs['loss']:.3f}, "
+                    f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
                 )
+            )
 
-                if callbacks is None:
-                    callbacks = [print_callback]
-                else:
-                    callbacks.append(print_callback)
+        else:
+            print_callback = keras.callbacks.LambdaCallback(
+                on_epoch_end=lambda epoch, logs: print(
+                    f"epoch {epoch}: loss: {logs['loss']:.3f}"
+                )
+            )
+
+        if verbose:
+            if callbacks is None:
+                callbacks = [print_callback]
+            else:
+                callbacks.append(print_callback)
 
         fit_params = {
             "x": x,
@@ -299,6 +295,7 @@ class MODNetModel:
             "callbacks": callbacks,
         }
 
+        logging.info("Compiling model...")
         self.model.compile(
             loss=loss,
             optimizer=keras.optimizers.Adam(lr=lr),
@@ -306,208 +303,115 @@ class MODNetModel:
             loss_weights=self.weights,
         )
 
+        logging.info("Fitting model...")
         self.history = self.model.fit(**fit_params)
 
     def fit_preset(
         self,
         data: MODData,
         presets: List[Dict[str, Any]] = None,
-        val_fraction: float = 0.15,
+        val_fraction: float = 0.1,
         verbose: int = 0,
-        classification: bool = False,
-        refit: bool = True,
-        fast: bool = False,
-        nested: int = 5,
-        callbacks: List[Any] = None,
-        ) -> Tuple[List[List[Any]],
-                   List[float],
-                   Optional[List[float]],
-                   List[List[float]],
-                   Dict[str, Any]
-        ]:
+    ) -> None:
         """Chooses an optimal hyper-parametered MODNet model from different presets.
-        This function implements the "inner loop" of a cross-validation workflow. By
-        modifying the `nested` argument, it can be run in full nested mode (i.e.
-        train n_fold * n_preset models) or just with a simple random hold-out set.
+
         The data is first fitted on several well working MODNet presets
         with a validation set (10% of the furnished data by default).
-        Sets the `self.model` attribute to the model with the lowest mean validation loss across
-        all folds.
+
+        Sets the `self.model` attribute to the model with the lowest loss.
+
         Args:
             data: MODData object contain training and validation samples.
             presets: A list of dictionaries containing custom presets.
             verbose: The verbosity level to pass to Keras
             val_fraction: The fraction of the data to use for validation.
-            classification: Whether or not we are performing classification.
-            refit: Whether or not to refit the final model for each fold with
-                the best-performing settings.
-            fast: Used for debugging. If `True`, only fit the first 2 presets and
-                reduce the number of epochs.
-            nested: integer specifying whether or not to perform a full nested CV. If 0,
-                a simple validation split is performed based on val_fraction argument.
-                If an integer, use this number of inner CV folds, ignoring the `val_fraction` argument.
-                Note: If set to 1, the value will be overwritten to a default of 5 folds.
-        Returns:
-            - A list of length num_outer_folds containing lists of MODNet models of length num_inner_folds.
-            - A list of validation losses achieved by the best model for each fold during validation (excluding refit).
-            - The learning curve of the final (refitted) model (or `None` if `refit` is `False`)
-            - A nested list of learning curves for each trained model of lengths (num_outer_folds,  num_inner folds).
-            - The settings of the best-performing preset.
+
         """
 
-        if callbacks is None:
-            es = keras.callbacks.EarlyStopping(
-                monitor="loss",
-                min_delta=0.001,
-                patience=100,
-                verbose=verbose,
-                mode="auto",
-                baseline=None,
-                restore_best_weights=True,
-            )
-            callbacks = [es]
+        rlr = keras.callbacks.ReduceLROnPlateau(
+            monitor="loss",
+            factor=0.5,
+            patience=20,
+            verbose=verbose,
+            mode="auto",
+            min_delta=0,
+        )
+        es = keras.callbacks.EarlyStopping(
+            monitor="loss",
+            min_delta=0.001,
+            patience=300,
+            verbose=verbose,
+            mode="auto",
+            baseline=None,
+            restore_best_weights=True,
+        )
+        callbacks = [rlr, es]
 
         if presets is None:
-            from modnet.model_presets import gen_presets
-            presets = gen_presets(self.n_feat, len(data.df_targets), classification=classification)
+            from modnet.model_presets import MODNET_PRESETS
 
-        if fast and len(presets) >= 2:
-            presets = presets[:2]
-            for k, _ in enumerate(presets):
-                presets[k]["epochs"] = 100
+            presets = MODNET_PRESETS
 
         val_losses = 1e20 * np.ones((len(presets),))
 
-        num_nested_folds = 5
-        if nested:
-            num_nested_folds = nested
-        if num_nested_folds <= 1:
-            num_nested_folds = 5
-
         best_model = None
         best_n_feat = None
-        best_learning_curve = None
-        models = []
-        learning_curves = []
-        best_scaler = None
 
         for i, params in enumerate(presets):
-            LOG.info("Initialising preset #{}/{}: {}".format(i + 1, len(presets), params))
+            logging.info("Training preset #{}/{}".format(i + 1, len(presets)))
             n_feat = min(len(data.get_optimal_descriptors()), params["n_feat"])
-
-            splits = matbench_kfold_splits(data, n_splits=num_nested_folds, classification=classification)
-            if not nested:
-                splits = [next(splits)]
-
-            nested_val_losses = []
-            nested_models = []
-            nested_learning_curves = []
-            for ind, (train, val) in enumerate(splits):
-                LOG.info("Initialising split #{} preset #{}/{}: {}".format(ind + 1, i + 1, len(presets), params))
-
-                val_params = {}
-                if nested:
-                    train_data, val_data = data.split((train, val))
-                    val_params["val_data"] = val_data
-                else:
-                    val_params["val_fraction"] = val_fraction
-                    train_data = data
-
-                self.model = MODNetModel(
-                    self.targets,
-                    self.weights,
-                    num_neurons=params["num_neurons"],
-                    n_feat=n_feat,
-                    act=params["act"],
-                    num_classes=self.num_classes
-                ).model
-                self.n_feat = n_feat
-                self.fit(
-                    train_data,
-                    lr=params["lr"],
-                    epochs=params["epochs"],
-                    batch_size=params["batch_size"],
-                    loss=params["loss"],
-                    callbacks=callbacks,
-                    verbose=verbose,
-                    **val_params
-                )
-
-                learning_curve = self.model.history.history["val_loss"]
-
-                if any(isinstance(cb, keras.callbacks.EarlyStopping) for cb in callbacks):
-                    val_loss = np.min(learning_curve)
-                    mean_val_loss = np.mean(learning_curve[-20:])
-                    LOG.info(f"Taking loss {val_loss:3.3f} from EarlyStopping vs mean {mean_val_loss:3.3f}")
-                else:
-                    val_loss = np.mean(learning_curve[-20:])
-                    LOG.info(f"Loss from curve {val_loss:3.3f}")
-
-                nested_val_losses.append(val_loss)
-                nested_learning_curves.append(learning_curve)
-                nested_models.append(self.model)
-
-            val_loss = np.mean(nested_val_losses)
-
-            if val_loss < min(val_losses):
-                best_model = self.model
-                best_n_feat = n_feat
-                best_scaler = self._scaler
-
-            val_losses[i] = val_loss
-
-            models.append(nested_models)
-            learning_curves.append(nested_learning_curves)
-            LOG.info("Validation loss for preset #{}, {}: {:.3f}".format(i+1, params["loss"], val_loss))
-
-        best_preset_idx = val_losses.argmin()
-        best_preset = presets[best_preset_idx]
-        LOG.info(
-            "Preset #{} resulted in lowest validation loss with params {}".format(
-                best_preset_idx + 1, params
-            )
-        )
-
-        if refit:
-            LOG.info("Refitting with all data and parameters: {}".format(best_preset))
-            n_feat = min(len(data.get_optimal_descriptors()), best_preset['n_feat'])
             self.model = MODNetModel(
                 self.targets,
                 self.weights,
-                num_neurons=best_preset['num_neurons'],
+                num_neurons=params["num_neurons"],
                 n_feat=n_feat,
-                act=best_preset['act'],
-                num_classes=self.num_classes).model
+                act=params["act"],
+            ).model
             self.n_feat = n_feat
             self.fit(
                 data,
-                val_fraction=0,
-                lr=best_preset['lr'],
-                epochs=best_preset['epochs'],
-                batch_size=best_preset['batch_size'],
-                loss=best_preset['loss'],
+                val_fraction=val_fraction,
+                lr=params["lr"],
+                epochs=params["epochs"],
+                batch_size=params["batch_size"],
+                loss=params["loss"],
                 callbacks=callbacks,
-                verbose=verbose)
-            best_learning_curve = self.model.history.history["loss"]
-        else:
-            self.n_feat = best_n_feat
-            self.model = best_model
-            self._scaler = best_scaler
+                verbose=verbose,
+            )
+            val_loss = np.array(self.model.history.history["val_loss"])[-20:].mean()
+            if val_loss < min(val_losses):
+                best_model = self.model
+                best_n_feat = n_feat
 
-        return models, val_losses, best_learning_curve, learning_curves, best_preset
+            val_losses[i] = val_loss
+
+            logging.info("Validation loss: {:.3f}".format(val_loss))
+
+        best_preset = val_losses.argmin()
+        logging.info(
+            "Preset #{} resulted in lowest validation loss.\nFitting all data...".format(
+                best_preset + 1
+            )
+        )
+        self.n_feat = best_n_feat
+        self.model = best_model
 
     def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
+
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
             return_prob: For a classification tasks only: whether to return the probability of each
                 class OR only return the most probable class.
+
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
+
+
         """
-        # prevents Nan predictions if some features are inf
-        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[
+
+        x = test_data.get_featurized_df().replace([np.inf, -np.inf, np.nan], 0)[ # prevents Nan predictions if some features are inf
             self.optimal_descriptors[:self.n_feat]
         ].values
 
@@ -539,26 +443,22 @@ class MODNetModel:
     def save(self, filename: str):
         """Save the `MODNetModel` across 3 files with the same base
         filename:
+
         * <filename>.json contains the Keras model JSON dump.
         * <filename>.pkl contains the `MODNetModel` object, excluding the
           Keras model.
         * <filename>.h5 contains the model weights.
+
         Parameters:
             filename: The base filename to save to.
+
         """
 
-        LOG.info("Saving model...")
+        logging.info("Saving model...")
         model_json = self.model.to_json()
         with open(f"{filename}.json", "w") as f:
             f.write(model_json)
         self.model.save_weights(f"{filename}.h5")
-        try:
-            with open(f"{filename}.history.pkl", "wb") as f:
-                pickle.dump(self.model.history.history, f)
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            LOG.info("Failed to save model history.")
 
         model = self.model
         self.model = None
@@ -566,21 +466,24 @@ class MODNetModel:
         with open(f"{filename}.pkl", "wb") as f:
             pickle.dump(self, f)
         self.model = model
-        LOG.info("Saved model to {}(.json/.h5/.pkl)".format(filename))
+        logging.info("Saved model to {}(.json/.h5/.pkl)".format(filename))
 
     @staticmethod
     def load(filename: str):
         """Load the `MODNetModel` from 3 files with the same base
         filename:
+
         * <filename>.json contains the Keras model JSON dump.
         * <filename>.pkl contains the `MODNetModel` object, excluding the
           Keras model.
         * <filename>.h5 contains the model weights.
+
         Returns:
             The loaded `MODNetModel` object.
+
         """
 
-        LOG.info("Loading model from {}(.json/.h5/.pkl)".format(filename))
+        logging.info("Loading model from {}(.json/.h5/.pkl)".format(filename))
 
         with open(f"{filename}.pkl", "rb") as f:
             mod = pickle.load(f)
@@ -599,7 +502,7 @@ class MODNetModel:
         if not hasattr(mod, "__modnet_version__"):
             mod.__modnet_version__ = "<=0.1.7"
 
-        LOG.info(
+        logging.info(
             "Loaded `MODNetModel` created with modnet version {}.".format(
                 mod.__modnet_version__
             )
