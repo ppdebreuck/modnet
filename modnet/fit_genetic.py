@@ -243,6 +243,13 @@ class FitGenetic:
             md: MODData
     ):
 
+        """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
+
+        Paramters:
+            ind: An individual of the population, which is a list wherein the parameters are stored.
+            md: MODData where the model is trained on.
+        """
+
         es = keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
