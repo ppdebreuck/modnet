@@ -593,6 +593,7 @@ class MODNetModel(BaseMODNetModel):
         self.model = tf.keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
 
+
 def validate_model(
     train_data=None,
     val_data=None,

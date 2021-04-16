@@ -403,17 +403,12 @@ class EnsembleMODNetModel(MODNetModel):
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
     def _make_picklable(self):
-        """
-        transforms inner keras model to jsons so that th MODNet object becomes picklable.
-        """
-
+        """Calls ``model._make_pickleable(...)`` on all underlying models in the ensemble."""
         for m in self.model:
             m._make_picklable()
 
     def _restore_model(self):
-        """
-        restore inner keras model after running make_picklable
-        """
+        """Calls ``model._restore_model(...)`` on all underlying models in the ensemble."""
 
         for m in self.model:
             m._restore_model()
