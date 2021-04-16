@@ -28,6 +28,11 @@ autodoc_mock_imports = [
     "joblib",
 ]
 
+autodoc_member_order = "bysource"
+autodoc_typehints = "description"
+autodocclass_content = "both"
+default_role = "any"
+
 # -- Project information -----------------------------------------------------
 
 project = "modnet"
@@ -35,7 +40,10 @@ copyright = "2021, Pierre-Paul De Breuck, Matthew L. Evans"
 author = "Pierre-Paul De Breuck, Matthew L. Evans"
 
 # The full version, including alpha/beta/rc tags
-release = "0.1.9"
+from modnet import __version__
+
+release = __version__
+version = __version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,7 +51,12 @@ release = "0.1.9"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx.ext.intersphinx"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -52,6 +65,26 @@ templates_path = ["_templates"]
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "../../modnet/tests"]
+
+# -- Run API doc -------------------------------------------------------------
+
+# Force regenerates the API docs on sphinx builds
+
+
+def run_apidoc(_):
+    import subprocess
+    import glob
+
+    output_path = os.path.abspath(os.path.dirname(__file__))
+    excludes = glob.glob(os.path.join(output_path, "../../modnet/tests"))
+    module = os.path.join(output_path, "../../modnet")
+    cmd_path = "sphinx-apidoc"
+    command = [cmd_path, "-e", "-o", output_path, module, " ".join(excludes), "--force"]
+    subprocess.check_call(command)
+
+
+def setup(app):
+    app.connect("builder-inited", run_apidoc)
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -68,3 +101,9 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+intersphinx_mapping = {
+    "python": ("http://docs.python.org/", None),
+    "pandas": ("http://pandas.pydata.org/pandas-docs/dev", None),
+    "pd": ("http://pandas.pydata.org/pandas-docs/dev", None),
+}

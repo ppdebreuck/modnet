@@ -21,13 +21,14 @@ See the MODNet papers and repositories below for more details:
 - *Robust model benchmarking and bias-imbalance in data-driven materials science: a case study on MODNet*, De Breuck *et al.* (2021), `arXiv:2102.02263 <https://arxiv.org/abs/2102.02263>`_.
 
 - Matbench benchmarking data repository: `ml-evs/modnet-matbench <https://github.com/ml-evs/modnet-matbench>`_.
+
 .. image:: ../../img/MODNet_schematic.PNG
   :width: 400
   :alt: MODNet_schematic
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
    install

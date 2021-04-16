@@ -1,7 +1,7 @@
 Getting started
 ===============
 
-The MODNet package is built around two classes: ``MODData`` and ``MODNetModel``. See :ref:`api`.
+The MODNet package is built around two classes: `MODData` and `MODNetModel`.
 
 Usage
 -----

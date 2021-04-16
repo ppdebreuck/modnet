@@ -75,8 +75,7 @@ class EnsembleMODNetModel(MODNetModel):
     ) -> None:
         """Train the model on the passed training `MODData` object.
 
-        Parameters:
-            same as MODNetModel fit.
+        Parameters match those of `MODNetModel.fit`.
         """
 
         if self.bootstrap:

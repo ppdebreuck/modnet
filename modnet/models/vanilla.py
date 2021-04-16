@@ -661,14 +661,15 @@ class MODNetModel:
         self.model = tf.keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
 
-    def save(self, filename: str):
+    def save(self, filename: str) -> None:
         """Save the `MODNetModel` to filename:
+
+        If the filename ends in "tgz", "bz2" or "zip", the pickle
+        will be compressed accordingly by :meth:`pandas.DataFrame.to_pickle`.
 
         Parameters:
             filename: The base filename to save to.
 
-        If the filename ends in "tgz", "bz2" or "zip", the pickle
-        will be compressed accordingly by `pandas.to_pickle(...)`.
 
         """
         self._make_picklable()
@@ -677,11 +678,11 @@ class MODNetModel:
         LOG.info(f"Model successfully saved as {filename}!")
 
     @staticmethod
-    def load(filename: str):
-        """Load `MODNetModel` object pickled by the `.save(...)` method.
+    def load(filename: str) -> "MODNetModel":
+        """Load `MODNetModel` object pickled by the :meth:`MODNetModel.save` method.
 
         If the filename ends in "tgz", "bz2" or "zip", the pickle
-        will be decompressed accordingly by `pandas.read_pickle(...)`.
+        will be decompressed accordingly by :func:`pandas.read_pickle`.
 
         Returns:
             The loaded `MODNetModel` object.

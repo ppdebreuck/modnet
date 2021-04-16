@@ -16,7 +16,7 @@ from modnet.utils import LOG
 
 
 class Usage(Enum):
-    MODData = auto()
+    _MODData = auto()
     cross_nmi = auto()
 
 
@@ -30,7 +30,7 @@ DATASETS = {
         ),
         filename="MP_2018.6.zip",
         md5="06280c4e539508bbcc5266f07698f8d1",
-        usage=Usage["MODData"],
+        usage=Usage["_MODData"],
     ),
     "MP_2018.6_CROSS_NMI": Dataset(
         url="https://ndownloader.figshare.com/files/25584803",
@@ -53,7 +53,7 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
     Parameters:
         dataset_name: The name (key) of the dataset in `DATASETS`.
         expected_type: A string representing the expected usage of the dataset,
-            e.g. `'MODData'` or `'cross_nmi'`.
+            e.g. `'_MODData'` or `'cross_nmi'`.
 
     Returns:
         The path to the downloaded or previously installed model.
@@ -69,6 +69,8 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
 
     dataset = DATASETS[dataset_name]
     if isinstance(expected_type, str):
+        if expected_type == "MODData":
+            expected_type = "_MODData"
         expected_type = Usage[expected_type]
     if dataset.usage != expected_type:
         raise ValueError(
@@ -97,7 +99,9 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
         file_md5 = get_hash_of_file(model_path, algo="md5")
         if file_md5 != dataset.md5:
             raise RuntimeError(
-                f"Precomputed {str(dataset.usage.name)} did not match expected MD5 from {dataset.url}, will not depickle."
+                f"Precomputed {str(dataset.usage.name.strip('_'))} did not match expected MD5 from {dataset.url}, will not depickle."
+                f"\nExpected: {str(dataset.md5)}"
+                f"\nReceived: {str(file_md5)}"
             )
 
     return model_path

@@ -3,21 +3,13 @@
 API
 ===
 
-MODNet is built around two main classes, `MODData`` and ``MODNetModel`` found in preprocessing and models modules.
-A ``MODData`` instance is used for representing a particular dataset. It contains a list of structures and corresponding properties:
-A `MODNetModel`` instance is used for training and predicting of one or more properties or classes.`
+MODNet is built around two main classes, `MODData` and `MODNetModel` found in preprocessing and models modules.
 
+* A `MODData` instance is used for representing a particular dataset. It contains a list of structures/compositions and the corresponding target properties, and can be used to perform feature selection.
 
-.. toctree::
-   :maxdepth: 2
+* A `MODNetModel` instance is used for training and predicting of one or more properties or classes.
 
-   moddata
-   modnetmodel
-
-The complete hierarchical Python API of modnet can be found hereunder.
-
-modnet
-------
+The complete hierarchical Python API of modnet can be found below.
 
 .. toctree::
    :maxdepth: 4
