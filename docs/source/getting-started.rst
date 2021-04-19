@@ -65,7 +65,7 @@ The following MODDatas are available for download:
     - Refractive index (upon request)
     - Vibrational thermodynamics (upon request)
 
-Download this directory localy to *path/to/moddata/*. These can then be used as follows:
+Download this directory locally to *path/to/moddata/*. These can then be used as follows:
 
 .. code-block:: python
 
@@ -74,7 +74,7 @@ Download this directory localy to *path/to/moddata/*. These can then be used as 
     data_MP = MODData.load('path/to/moddata/MP_2018.6')
 
 The MP MODData on `figshare <https://figshare.com/articles/dataset/Materials_Project_MP_2018_6_MODData/12834275>`_
-(MP_2018.6) is very usefull for predicting a learned property on all structures from the Materials Project:
+(MP_2018.6) is very useful for predicting a learned property on all structures from the Materials Project:
 
 .. code-block:: python
 

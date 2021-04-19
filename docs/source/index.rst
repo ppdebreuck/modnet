@@ -6,7 +6,7 @@
 Welcome to modnet's documentation!
 ==================================
 
-Modnet is a python package implementing the Material Optimal Descriptor Network (MODNet).
+modnet is a Python (3.8+) package implementing the Material Optimal Descriptor Network (MODNet).
 It is a supervised machine learning framework for **learning material properties** from
 either the **composition** or  **crystal structure**. The framework is well suited for **limited datasets**
 and can be used for learning *multiple* properties together by using **joint transfer learning**.

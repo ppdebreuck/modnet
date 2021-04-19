@@ -30,7 +30,7 @@ autodoc_mock_imports = [
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
-autodocclass_content = "both"
+autoclass_content = "both"
 default_role = "any"
 
 # -- Project information -----------------------------------------------------

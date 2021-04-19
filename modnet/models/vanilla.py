@@ -211,7 +211,7 @@ class MODNetModel:
     ) -> None:
         """Train the model on the passed training `MODData` object.
 
-        Paramters:
+        Parameters:
             training_data: A `MODData` that has been featurized and
                 feature selected. The first `self.n_feat` entries in
                 `training_data.get_optimal_descriptors()` will be used
