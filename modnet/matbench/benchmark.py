@@ -34,6 +34,7 @@ def matbench_benchmark(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Optional[Dict[str, Any]] = None,
+    fit_setting: Optional[Dict[str, float]] = None,
     classification: bool = False,
     model_type: Type[MODNetModel] = MODNetModel,
     save_folds: bool = False,
@@ -41,6 +42,8 @@ def matbench_benchmark(
     hp_optimization: bool = True,
     inner_feat_selection: bool = True,
     use_precomputed_cross_nmi: bool = True,
+    use_fit_preset: bool = False,
+    use_ga: bool = False,
     presets: Optional[List[dict]] = None,
     fast: bool = False,
     n_jobs: Optional[int] = None,
@@ -117,6 +120,8 @@ def matbench_benchmark(
         "classification": classification,
         "save_folds": save_folds,
         "presets": presets,
+        "use_fit_preset": use_fit_preset,
+        "use_ga": use_ga,
         "save_models": save_models,
         "nested": nested,
         "n_jobs": n_jobs,
@@ -140,9 +145,12 @@ def train_fold(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Dict[str, Any],
+    ga_settings: Dict[str, float],
     model_type: Type[MODNetModel] = MODNetModel,
     presets=None,
     hp_optimization=True,
+    use_fit_preset=False,
+    use_ga=False,
     classification=False,
     save_folds=False,
     fast=False,
@@ -191,20 +199,29 @@ def train_fold(
         **model_settings
     )
 
+    ga_settings = {
+                  'num_gen':5,
+                  'size_pop':10
+                  }
+
     if hp_optimization:
-        models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
-            train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
-        )
-        if save_models:
-            for ind, nested_model in enumerate(models):
-                score = val_losses[ind]
-                nested_model.save(f"results/nested_model_{fold_ind}_{ind}_{score:3.3f}")
+        if use_fit_preset:
+            models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
+                train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
+            )
+            if save_models:
+                for ind, nested_model in enumerate(models):
+                    score = val_losses[ind]
+                    nested_model.save(f"results/nested_model_{fold_ind}_{ind}_{score:3.3f}")
 
-            model.save(f"results/best_model_{fold_ind}_{score:3.3f}")
+                model.save(f"results/best_model_{fold_ind}_{score:3.3f}")
 
-        results["nested_losses"] = val_losses
-        results["nested_learning_curves"] = learning_curves
-        results["best_learning_curves"] = best_learning_curve
+            results["nested_losses"] = val_losses
+            results["nested_learning_curves"] = learning_curves
+            results["best_learning_curves"] = best_learning_curve
+        if use_ga:
+            ga = FitGenetic(data)
+            model = ga.get_model(size_pop=size_pop, num_generations=num_generations)
     else:
         if fit_settings["increase_bs"]:
             model.fit(
