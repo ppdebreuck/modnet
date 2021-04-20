@@ -34,7 +34,7 @@ def matbench_benchmark(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Optional[Dict[str, Any]] = None,
-    fit_setting: Optional[Dict[str, float]] = None,
+    ga_setting: Optional[Dict[str, float]] = None,
     classification: bool = False,
     model_type: Type[MODNetModel] = MODNetModel,
     save_folds: bool = False,
@@ -92,6 +92,12 @@ def matbench_benchmark(
     if not fit_settings.get("num_neurons"):
         # Pass dummy network
         fit_settings["num_neurons"] = [[4], [4], [4], [4]]
+
+    if ga_settings is None:
+	ga_settings = {
+                      'num_gen':5,
+                      'size_pop':10
+                      }
 
     fold_data = []
     results = defaultdict(list)
