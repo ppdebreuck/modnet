@@ -8,6 +8,7 @@ import numpy as np
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
 from modnet.utils import LOG
+from modnet.fit_genetic import FitGenetic
 
 MATBENCH_SEED = 18012019
 
