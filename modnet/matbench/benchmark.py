@@ -111,7 +111,7 @@ def matbench_benchmark(
     args = (target, target_weights, fit_settings)
 
     model_kwargs = {
-        "model_type":model_type,
+        "model_type": model_type,
         "hp_optimization": hp_optimization,
         "fast": fast,
         "classification": classification,
@@ -179,21 +179,28 @@ def train_fold(
             "num_neurons": fit_settings["num_neurons"],
             "num_classes": fit_settings.get("num_classes"),
             "act": fit_settings.get("act"),
-            "out_act": fit_settings.get("out_act","linear"),
-            "n_feat": fit_settings["n_feat"]
+            "out_act": fit_settings.get("out_act", "linear"),
+            "n_feat": fit_settings["n_feat"],
         }
 
     model_settings.update(model_kwargs)
 
-    model = model_type(
-        target,
-        target_weights,
-        **model_settings
-    )
+    model = model_type(target, target_weights, **model_settings)
 
     if hp_optimization:
-        models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
-            train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
+        (
+            models,
+            val_losses,
+            best_learning_curve,
+            learning_curves,
+            best_presets,
+        ) = model.fit_preset(
+            train_data,
+            presets=presets,
+            fast=fast,
+            classification=classification,
+            nested=nested,
+            n_jobs=n_jobs,
         )
         if save_models:
             for ind, nested_model in enumerate(models):
@@ -280,6 +287,6 @@ def train_fold(
     results["errors"] = errors
     results["scores"] = score
     results["best_presets"] = best_presets
-    results['model'] = model
+    results["model"] = model
 
     return results

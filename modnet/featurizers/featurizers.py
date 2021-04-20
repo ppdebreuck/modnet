@@ -10,11 +10,11 @@ from matminer.featurizers.conversions import CompositionToOxidComposition
 from modnet.utils import LOG
 
 
-__all__ = ("MODFeaturizer", )
+__all__ = ("MODFeaturizer",)
 
 
 class MODFeaturizer(abc.ABC):
-    """ Base class for multiple featurization across
+    """Base class for multiple featurization across
     structure, composition and sites.
 
     Child classes must provide iterables of matminer featurizer objects
@@ -44,7 +44,7 @@ class MODFeaturizer(abc.ABC):
     site_stats: Tuple[str] = ("mean", "std_dev")
 
     def __init__(self, n_jobs=None):
-        """ Initialise the MODFeaturizer object with a requested
+        """Initialise the MODFeaturizer object with a requested
         number of threads to use during featurization.
 
         Arguments:
@@ -55,7 +55,7 @@ class MODFeaturizer(abc.ABC):
         self.set_n_jobs(n_jobs)
 
     def set_n_jobs(self, n_jobs: Optional[int]):
-        """ Set the no. of threads to pass to matminer for featurizer
+        """Set the no. of threads to pass to matminer for featurizer
         initialisation.
 
         Arguments:
@@ -66,7 +66,7 @@ class MODFeaturizer(abc.ABC):
         self._n_jobs = n_jobs
 
     def featurize(self, df: pd.DataFrame) -> pd.DataFrame:
-        """ Run all of the preset featurizers on the input dataframe.
+        """Run all of the preset featurizers on the input dataframe.
 
         Arguments:
             df: the input dataframe with a `"structure"` column
@@ -95,9 +95,9 @@ class MODFeaturizer(abc.ABC):
         df: pd.DataFrame,
         featurizers: Iterable[BaseFeaturizer],
         column: str,
-        fit_to_df: bool = True
+        fit_to_df: bool = True,
     ) -> pd.DataFrame:
-        """ For the list of featurizers, fit each to the chosen column of
+        """For the list of featurizers, fit each to the chosen column of
         the input pd.DataFrame and then apply them as a MultipleFeaturizer.
 
         Arguments:
@@ -116,7 +116,9 @@ class MODFeaturizer(abc.ABC):
         """
         LOG.info(f"Applying featurizers {featurizers} to column {column!r}.")
         if fit_to_df:
-            _featurizers = MultipleFeaturizer([feat.fit(df[column]) for feat in featurizers])
+            _featurizers = MultipleFeaturizer(
+                [feat.fit(df[column]) for feat in featurizers]
+            )
         else:
             _featurizers = MultipleFeaturizer(featurizers)
 
@@ -128,7 +130,7 @@ class MODFeaturizer(abc.ABC):
         )
 
     def featurize_composition(self, df: pd.DataFrame) -> pd.DataFrame:
-        """ Decorate input `pandas.DataFrame` of structures with composition
+        """Decorate input `pandas.DataFrame` of structures with composition
         features from matminer, specified by the MODFeaturizer preset.
 
         Currently applies the set of all matminer composition features.
@@ -149,25 +151,33 @@ class MODFeaturizer(abc.ABC):
         if self.composition_featurizers:
 
             LOG.info("Applying composition featurizers...")
-            df['composition'] = df['structure'].apply(lambda s: s.composition)
-            df = self._fit_apply_featurizers(df, self.composition_featurizers, "composition")
-            df = df.rename(columns={'Input Data': ''})
-            df.columns = df.columns.map('|'.join).str.strip('|')
+            df["composition"] = df["structure"].apply(lambda s: s.composition)
+            df = self._fit_apply_featurizers(
+                df, self.composition_featurizers, "composition"
+            )
+            df = df.rename(columns={"Input Data": ""})
+            df.columns = df.columns.map("|".join).str.strip("|")
 
         if self.oxid_composition_featurizers:
             LOG.info("Applying oxidation state featurizers...")
             if getattr(self, "fast_oxid", False):
-                df = CompositionToOxidComposition(all_oxi_states=False, max_sites=-1).featurize_dataframe(df, "composition")
+                df = CompositionToOxidComposition(
+                    all_oxi_states=False, max_sites=-1
+                ).featurize_dataframe(df, "composition")
             else:
-                df = CompositionToOxidComposition().featurize_dataframe(df, "composition")
-            df = self._fit_apply_featurizers(df, self.oxid_composition_featurizers, "composition_oxid")
-            df = df.rename(columns={'Input Data': ''})
-            df.columns = df.columns.map('|'.join).str.strip('|')
+                df = CompositionToOxidComposition().featurize_dataframe(
+                    df, "composition"
+                )
+            df = self._fit_apply_featurizers(
+                df, self.oxid_composition_featurizers, "composition_oxid"
+            )
+            df = df.rename(columns={"Input Data": ""})
+            df.columns = df.columns.map("|".join).str.strip("|")
 
         return df
 
     def featurize_structure(self, df: pd.DataFrame) -> pd.DataFrame:
-        """ Decorate input `pandas.DataFrame` of structures with structural
+        """Decorate input `pandas.DataFrame` of structures with structural
         features from matminer, specified by the MODFeaturizer preset.
 
         Currently applies the set of all matminer structure features.
@@ -184,12 +194,14 @@ class MODFeaturizer(abc.ABC):
         LOG.info("Applying structure featurizers...")
         df = df.copy()
         df = self._fit_apply_featurizers(df, self.structure_featurizers, "structure")
-        df.columns = df.columns.map('|'.join).str.strip('|')
+        df.columns = df.columns.map("|".join).str.strip("|")
 
         return df
 
-    def featurize_site(self, df: pd.DataFrame, aliases: Optional[Dict[str, str]] = None) -> pd.DataFrame:
-        """ Decorate input `pandas.DataFrame` of structures with site
+    def featurize_site(
+        self, df: pd.DataFrame, aliases: Optional[Dict[str, str]] = None
+    ) -> pd.DataFrame:
+        """Decorate input `pandas.DataFrame` of structures with site
         features, specified by the MODFeaturizer preset.
 
         Arguments:
@@ -211,14 +223,10 @@ class MODFeaturizer(abc.ABC):
 
         for fingerprint in self.site_featurizers:
             site_stats_fingerprint = SiteStatsFingerprint(
-                fingerprint,
-                stats=self.site_stats
+                fingerprint, stats=self.site_stats
             )
             df = site_stats_fingerprint.featurize_dataframe(
-                df,
-                "Input data|structure",
-                multiindex=False,
-                ignore_errors=True
+                df, "Input data|structure", multiindex=False, ignore_errors=True
             )
 
             fingerprint_name = fingerprint.__class__.__name__
@@ -226,6 +234,8 @@ class MODFeaturizer(abc.ABC):
                 fingerprint_name = aliases.get(fingerprint_name, fingerprint_name)
             if "|" not in fingerprint_name:
                 fingerprint_name += "|"
-            df.columns = [f"{fingerprint_name}{x}" if "|" not in x else x for x in df.columns]
+            df.columns = [
+                f"{fingerprint_name}{x}" if "|" not in x else x for x in df.columns
+            ]
 
         return df
