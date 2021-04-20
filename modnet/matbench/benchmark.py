@@ -224,7 +224,7 @@ def train_fold(
             results["nested_learning_curves"] = learning_curves
             results["best_learning_curves"] = best_learning_curve
         if use_ga:
-            ga = FitGenetic(data)
+            ga = FitGenetic(train_data)
             model = ga.get_model(size_pop=size_pop, num_generations=num_generations)
     else:
         if fit_settings["increase_bs"]:
