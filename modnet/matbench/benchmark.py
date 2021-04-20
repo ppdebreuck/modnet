@@ -115,7 +115,7 @@ def matbench_benchmark(
 
         fold_data.append((train_data, test_data))
 
-    args = (target, target_weights, fit_settings)
+    args = (target, target_weights, fit_settings, ga_settings)
 
     model_kwargs = {
         "model_type":model_type,
