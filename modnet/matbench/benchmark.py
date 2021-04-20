@@ -204,8 +204,8 @@ def train_fold(
     )
 
     ga_settings = {
-                  'num_gen':5,
-                  'size_pop':10
+                  'size_pop':10,
+                  'num_gen':5
                   }
 
     if hp_optimization:
@@ -225,7 +225,7 @@ def train_fold(
             results["best_learning_curves"] = best_learning_curve
         if use_ga:
             ga = FitGenetic(train_data)
-            model = ga.get_model(size_pop=size_pop, num_generations=num_generations)
+            model = ga.get_model(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_gen"])
     else:
         if fit_settings["increase_bs"]:
             model.fit(
