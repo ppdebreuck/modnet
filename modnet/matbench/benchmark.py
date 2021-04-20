@@ -35,7 +35,7 @@ def matbench_benchmark(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Optional[Dict[str, Any]] = None,
-    ga_setting: Optional[Dict[str, float]] = None,
+    ga_settings: Optional[Dict[str, float]] = None,
     classification: bool = False,
     model_type: Type[MODNetModel] = MODNetModel,
     save_folds: bool = False,
