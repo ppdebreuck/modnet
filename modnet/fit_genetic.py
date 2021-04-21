@@ -183,7 +183,9 @@ class FitGenetic:
     def mae_of_individual(
             self,
             ind: List,
-            fold: Tuple
+            fold: Tuple,
+            individual_id: int,
+            fold_id: int
     ):
 
         """Returns the MAE of a modnet model given some parameters stored in ind and given the training and validation sets sorted in fold.
@@ -232,12 +234,13 @@ class FitGenetic:
                 verbose=0
             )
         MAE = mae(modnet_model.predict(md_val), y_val)
-        return MAE
+        return MAE, ind, individual_id, fold_id
 
     def model_of_individual(
             self,
             ind: List,
-            md: MODData
+            md: MODData,
+            individual_id: int
     ):
 
         """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
@@ -284,7 +287,7 @@ class FitGenetic:
                 callbacks=callbacks,
                 verbose=0
             )
-        return modnet_model
+        return modnet_model, individual_id
 
     def function_fitness(
             self,
@@ -295,28 +298,67 @@ class FitGenetic:
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
         Parameters:
             pop: List containing the genetic information (i.e., the parameters) of the model.
-            md_train: Input data of the training set.
-            y_train: Target values of the training set.
-            md_val: Input data of the validation set.
-            y_val: Target values of the validation set.
+            md_train: Input MODData.
+            n_jobs: Number of jobs for multiprocessing
         """
 
-        self.fitness = []
+        tasks = []
+        tasks_model = []
+        fitness = []
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         folds = self.MDKsplit(md, n_splits=5, random_state=1)
+        maes = 1e20 * np.ones((len(pop), len(folds)))
 
-        for ind in pop:  # Going through each individual of the population
-            maes = []
-            with concurrent.futures.ThreadPoolExecutor() as executor:  # Using parallelization for cross-validation
-                results = [executor.submit(self.mae_of_individual, ind, fold) for fold in folds]
-                for r in concurrent.futures.as_completed(results):
-                    maes.append(r.result())
-            maes = np.array(maes)
-            mae_avg = maes.mean()
-            print('MAE = ', mae_avg)
-            modnet_model = self.model_of_individual(ind, md)
-            self.fitness.append([mae_avg, modnet_model, ind])
-        return self.fitness
+        for i, individual in enumerate(pop):
+            for j, fold in enumerate(folds):
+                tasks += [
+                    {
+                        "individual": individual,
+                        "fold": fold,
+                        "individual_id": i,
+                        "fold_id": j,
+                        **val_params
+                    }
+                ]
+
+        for i, individual in enumerate(pop):
+            tasks_model += [
+                {
+                    "individual": individual,
+                    "fold": fold,
+                    "individual_id": i,
+                    **val_params
+                }
+            ]
+
+        for res in tqdm.tqdm(
+            pool.imap_unordered(self.mae_of_individual, tasks, chunksize=1),
+            total=len(tasks),
+        ):
+            mae, individual, individual_id, fold_id = res
+            LOG.info(f"Preset #{individual_id} fitting finished, MAE: {mae}")
+            maes[individual_id, fold_id] = mae
+
+        pool.close()
+        pool.join()
+
+        mae_per_individual = np.mean(maes, axis=1)
+        print('MAE = ', mae_per_individual)
+
+        for res in tqdm.tqdm(
+                pool.imap_unordered(self.model_of_individual, tasks, chunksize=1),
+                total=len(tasks),
+        ):
+            modnet_model, individual, individual_id = res
+            LOG.info(f"Model #{individual_id} fitted.")
+
+        pool.close()
+        pool.join()
+
+        fitness.append([mae_per_individual, modnet_model, individual])
+
+        return fitness
+
 
     def gen_alg(
             self,
@@ -388,3 +430,4 @@ class FitGenetic:
         self.best_individual = self.gen_alg(self.data, size_pop, num_generations, prob_mut=0.6)
 
         return self.best_individual
+
