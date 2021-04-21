@@ -186,7 +186,7 @@ class FitGenetic:
             fold: Tuple[MODData, MODData],
             individual_id: int,
             fold_id: int
-    ):#
+    ):
 
         """Returns the MAE of a modnet model given some parameters stored in ind and given the training and validation sets sorted in fold.
         Paramters:
@@ -241,7 +241,7 @@ class FitGenetic:
             ind: List,
             md: MODData,
             individual_id: int
-    ):
+    ):#
 
         """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
         Paramters:
