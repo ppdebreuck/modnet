@@ -337,7 +337,7 @@ class FitGenetic:
                 }
             ]
 
-        a = self._mae_of_individual(tasks)
+        a = self._mae_of_individual(tasks[0])
         print('tasks =', tasks)
         for res in tqdm.tqdm(
                 pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
