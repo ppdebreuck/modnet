@@ -338,9 +338,8 @@ class FitGenetic:
 
         print('tasks =', tasks)
         print('fold =', folds[0]
-        for res in tqdm.tqdm(
-            pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
-            total=len(tasks)):
+        for res in tqdm.tqdm(pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),total=len(tasks)):
+
             mae, individual, individual_id, fold_id = res
             LOG.info(f"Preset #{individual_id} fitting finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
