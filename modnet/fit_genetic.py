@@ -15,7 +15,7 @@ from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
 from modnet.utils import LOG
 from modnet.individual import Individual
-import multiprocessing as mp
+import multiprocessing
 import tqdm
 
 
