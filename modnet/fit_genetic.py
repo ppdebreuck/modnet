@@ -341,7 +341,7 @@ class FitGenetic:
                 total=len(tasks)
         ):
             mae, individual, individual_id, fold_id = res
-            LOG.info(f"Preset #{individual_id} fitting finished, MAE: {mae}")
+            LOG.info(f"MAE evaluationb of individual #{individual_id} fitting finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
 
         pool.close()
@@ -355,7 +355,7 @@ class FitGenetic:
                 total=len(tasks_model)
         ):
             modnet_model, individual, individual_id = res
-            LOG.info(f"Model #{individual_id} fitted.")
+            LOG.info(f"Model of individual #{individual_id} fitted.")
 
         pool.close()
         pool.join()
