@@ -441,4 +441,4 @@ class FitGenetic:
         return self.mae_of_individual(*args)
 
     def _model_of_individual(self, args):
-    return self.model_of_individual(*args)
+        return self.model_of_individual(*args)
