@@ -316,8 +316,7 @@ class FitGenetic:
                         "individual": individual,
                         "fold": fold,
                         "individual_id": i,
-                        "fold_id": j,
-                        **val_params
+                        "fold_id": j
                     }
                 ]
 
