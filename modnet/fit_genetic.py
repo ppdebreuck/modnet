@@ -337,6 +337,7 @@ class FitGenetic:
             ]
 
         print('tasks =', tasks)
+        print('fold =', folds[0]
         for res in tqdm.tqdm(
             pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
             total=len(tasks)
