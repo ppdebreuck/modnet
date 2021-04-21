@@ -16,7 +16,7 @@ from modnet.models import MODNetModel
 from modnet.utils import LOG
 from modnet.individual import Individual
 import multiprocessing as mp
-import concurrent
+import tqdm
 
 
 class FitGenetic:
@@ -344,8 +344,8 @@ class FitGenetic:
         print('MAE = ', mae_per_individual)
 
         for res in tqdm.tqdm(
-                pool.imap_unordered(self.model_of_individual, tasks, chunksize=1),
-                total=len(tasks),
+                pool.imap_unordered(self.model_of_individual, tasks_model, chunksize=1),
+                total=len(tasks_model),
         ):
             modnet_model, individual, individual_id = res
             LOG.info(f"Model #{individual_id} fitted.")
