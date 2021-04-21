@@ -205,6 +205,7 @@ class FitGenetic:
         )
         callbacks = [es]
         md_train = fold[0]
+        print('type =', type(md_train))
         y_train = md_train.df_targets
         md_val = fold[1]
         y_val = md_val.df_targets
