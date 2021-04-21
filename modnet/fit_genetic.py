@@ -336,10 +336,12 @@ class FitGenetic:
                 }
             ]
 
-        for mae, individual, individual_id, fold_id in tqdm.tqdm(
+        print('tasks =', tasks)
+        for res in tqdm.tqdm(
             pool.imap_unordered(self.mae_of_individual, tasks, chunksize=1),
             total=len(tasks)
         ):
+            mae, individual, individual_id, fold_id = res
             LOG.info(f"Preset #{individual_id} fitting finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
 
@@ -349,10 +351,11 @@ class FitGenetic:
         mae_per_individual = np.mean(maes, axis=1)
         print('MAE = ', mae_per_individual)
 
-        for modnet_model, individual, individual_id in tqdm.tqdm(
+        for res in tqdm.tqdm(
                 pool.imap_unordered(self.model_of_individual, tasks_model, chunksize=1),
                 total=len(tasks_model)
         ):
+            modnet_model, individual, individual_id = res
             LOG.info(f"Model #{individual_id} fitted.")
 
         pool.close()
