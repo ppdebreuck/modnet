@@ -235,7 +235,7 @@ class FitGenetic:
             )
         MAE = mae(modnet_model.predict(md_val), y_val)
         return MAE, ind, individual_id, fold_id
-a
+
     def model_of_individual(
             self,
             ind: List,
@@ -335,7 +335,7 @@ a
                     "individual_id": i
                 }
             ]
-
+a
         print('tasks =', tasks)
         print('fold =', folds[0]
         for res in tqdm.tqdm(
