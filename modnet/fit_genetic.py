@@ -183,7 +183,7 @@ class FitGenetic:
     def mae_of_individual(
             self,
             ind: List,
-            fold: Tuple,
+            fold: Tuple[MODData, MODData],
             individual_id: int,
             fold_id: int
     ):
@@ -204,7 +204,6 @@ class FitGenetic:
             restore_best_weights=True,
         )
         callbacks = [es]
-        print('type =', type(fold[0]))
         md_train = fold[0]
         y_train = md_train.df_targets
         md_val = fold[1]
