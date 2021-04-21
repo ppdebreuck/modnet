@@ -300,7 +300,6 @@ def train_fold(
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score
-    results["best_presets"] = best_presets
     results['model'] = model
 
     return results
