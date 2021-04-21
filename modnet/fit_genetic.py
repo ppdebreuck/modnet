@@ -336,7 +336,7 @@ class FitGenetic:
                 }
             ]
 
-        print('fold =', folds[0])
+        print('y_train =', folds[0][0].df_targets)
         print('tasks =', tasks)
         for res in tqdm.tqdm(
                 pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
