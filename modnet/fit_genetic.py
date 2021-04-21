@@ -380,6 +380,9 @@ class FitGenetic:
             num_generations: Number of generations.
         """
 
+        print('------------------------------------------------------------------------------------------')
+        print('##########################################################################################')
+        print('------------------------------------------------------------------------------------------')
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)  # initialization of the population
         fitness = self.function_fitness(pop, md)  # fitness evaluation of the population
@@ -388,6 +391,7 @@ class FitGenetic:
         best_individuals = np.zeros(num_generations)
 
         for j in range(0, num_generations):
+            print('##########################################################################################')
             LOG.info("Generation number {}".format(j + 1))
             length = len(pop_fitness_sort)
 
