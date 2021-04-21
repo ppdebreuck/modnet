@@ -337,7 +337,7 @@ class FitGenetic:
                 }
             ]
 
-        a = self.mae_of_individual(tasks[0]["individual"], tasks[0]["fold"], tasks[0]["individual_id"], tasks[0]["fold_id"])
+        a = self._mae_of_individual(tasks)
         print('tasks =', tasks)
         for res in tqdm.tqdm(
                 pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
@@ -439,8 +439,8 @@ class FitGenetic:
 
         return self.best_individual
 
-    def _mae_of_individual(self, args):
-        return self.mae_of_individual(*args)
+    def _mae_of_individual(self, kwargs):
+        return self.mae_of_individual(**kwargs)
 
-    def _model_of_individual(self, args):
-        return self.model_of_individual(*args)
+    def _model_of_individual(self, kwargs):
+        return self.model_of_individual(**kwargs)
