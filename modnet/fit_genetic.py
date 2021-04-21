@@ -235,13 +235,13 @@ class FitGenetic:
             )
         MAE = mae(modnet_model.predict(md_val), y_val)
         return MAE, ind, individual_id, fold_id
-
+a
     def model_of_individual(
             self,
             ind: List,
             md: MODData,
             individual_id: int
-    ):#
+    ):
 
         """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
         Paramters:
