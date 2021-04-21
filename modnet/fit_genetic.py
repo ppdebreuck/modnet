@@ -331,14 +331,14 @@ class FitGenetic:
             tasks_model += [
                 {
                     "individual": individual,
-                    "fold": fold,
+                    "md": md,
                     "individual_id": i
                 }
             ]
 
         print('tasks =', tasks)
         for res in tqdm.tqdm(
-            pool.imap_unordered(self.mae_of_individual, tasks, chunksize=1),
+            pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
             total=len(tasks)
         ):
             mae, individual, individual_id, fold_id = res
@@ -352,7 +352,7 @@ class FitGenetic:
         print('MAE = ', mae_per_individual)
 
         for res in tqdm.tqdm(
-                pool.imap_unordered(self.model_of_individual, tasks_model, chunksize=1),
+                pool.imap_unordered(self._model_of_individual, tasks_model, chunksize=1),
                 total=len(tasks_model)
         ):
             modnet_model, individual, individual_id = res
@@ -437,3 +437,8 @@ class FitGenetic:
 
         return self.best_individual
 
+    def _mae_of_individual(self, args):
+        return self.mae_of_individual(*args)
+
+    def _model_of_individual(self, args):
+    return self.model_of_individual(*args)
