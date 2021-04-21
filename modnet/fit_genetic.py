@@ -292,7 +292,8 @@ class FitGenetic:
     def function_fitness(
             self,
             pop: List,
-            md: MODData
+            md: MODData,
+            n_jobs=None
     ) -> None:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
@@ -308,6 +309,12 @@ class FitGenetic:
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         folds = self.MDKsplit(md, n_splits=5, random_state=1)
         maes = 1e20 * np.ones((len(pop), len(folds)))
+
+        ctx = multiprocessing.get_context("spawn")
+        pool = ctx.Pool(processes=n_jobs)
+        LOG.info(
+            f"Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available."
+        )
 
         for i, individual in enumerate(pop):
             for j, fold in enumerate(folds):
