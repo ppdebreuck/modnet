@@ -182,7 +182,7 @@ class FitGenetic:
 
     def mae_of_individual(
             self,
-            ind: List,
+            individual: List,
             fold: Tuple[MODData, MODData],
             individual_id: int,
             fold_id: int
@@ -190,7 +190,7 @@ class FitGenetic:
 
         """Returns the MAE of a modnet model given some parameters stored in ind and given the training and validation sets sorted in fold.
         Paramters:
-            ind: An individual of the population, which is a list wherein the parameters are stored.
+            individual: An individual of the population, which is a list wherein the parameters are stored.
             fold: Tuple giving the training and validation MODData.
         """
 
@@ -212,12 +212,12 @@ class FitGenetic:
         modnet_model = MODNetModel(
             [[[y_train.columns[0]]]],
             {y_train.columns[0]: 1},
-            n_feat=ind['n_feat'],
+            n_feat=individual['n_feat'],
             num_neurons=[
-                [int(ind['n_neurons_first_layer'])],
-                [int(ind['n_neurons_first_layer'] * ind['fraction1'])],
-                [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'])],
-                [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'] * ind['fraction3'])]
+                [int(individual['n_neurons_first_layer'])],
+                [int(individual['n_neurons_first_layer'] * individual['fraction1'])],
+                [int(individual['n_neurons_first_layer'] * individual['fraction1'] * individual['fraction2'])],
+                [int(individual['n_neurons_first_layer'] * individual['fraction1'] * individual['fraction2'] * individual['fraction3'])]
             ],
             act=ind['act']
         )
@@ -226,16 +226,16 @@ class FitGenetic:
                 md_train,
                 val_fraction=0,
                 val_key=y_train.columns[0],
-                loss=ind['loss'],
-                lr=ind['lr'],
+                loss=individual['loss'],
+                lr=individual['lr'],
                 epochs=250,
-                batch_size=(2 ** i) * ind['initial_batch_size'],
-                xscale=ind['xscale'],
+                batch_size=(2 ** i) * individual['initial_batch_size'],
+                xscale=individual['xscale'],
                 callbacks=callbacks,
                 verbose=0
             )
         MAE = mae(modnet_model.predict(md_val), y_val)
-        return MAE, ind, individual_id, fold_id
+        return MAE, individual, individual_id, fold_id
 
     def model_of_individual(
             self,
