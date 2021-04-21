@@ -203,11 +203,6 @@ def train_fold(
         **model_settings
     )
 
-    ga_settings = {
-                  'size_pop':10,
-                  'num_gen':5
-                  }
-
     if hp_optimization:
         if use_fit_preset:
             models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
