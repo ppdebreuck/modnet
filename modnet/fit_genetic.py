@@ -204,6 +204,7 @@ class FitGenetic:
             restore_best_weights=True,
         )
         callbacks = [es]
+        print('md_train =', fold[0])
         md_train = fold[0]
         y_train = md_train.df_targets
         md_val = fold[1]
@@ -336,7 +337,7 @@ class FitGenetic:
                 }
             ]
 
-        print('y_train =', folds[0][0].df_targets)
+        a = self._mae_of_individual(tasks)
         print('tasks =', tasks)
         for res in tqdm.tqdm(
                 pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
