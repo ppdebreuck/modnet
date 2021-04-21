@@ -219,7 +219,7 @@ class FitGenetic:
                 [int(individual['n_neurons_first_layer'] * individual['fraction1'] * individual['fraction2'])],
                 [int(individual['n_neurons_first_layer'] * individual['fraction1'] * individual['fraction2'] * individual['fraction3'])]
             ],
-            act=ind['act']
+            act=individual['act']
         )
         for i in range(4):
             modnet_model.fit(
