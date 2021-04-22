@@ -346,8 +346,13 @@ class FitGenetic:
             LOG.info(f"MAE evaluation of individual #{individual_id} finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
 
+        pool.close()
+        pool.join()
+
         mae_per_individual = np.mean(maes, axis=1)
         print('MAE = ', mae_per_individual)
+
+        pool = ctx.Pool(processes=n_jobs)
 
         for res in tqdm.tqdm(
                 pool.imap_unordered(self._model_of_individual, tasks_model, chunksize=1),
