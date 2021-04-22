@@ -238,7 +238,7 @@ class FitGenetic:
 
     def model_of_individual(
             self,
-            ind: List,
+            individual: List,
             md: MODData,
             individual_id: int
     ):
@@ -267,23 +267,23 @@ class FitGenetic:
             {y.columns[0]: 1},
             n_feat=ind['n_feat'],
             num_neurons=[
-                [int(ind['n_neurons_first_layer'])],
-                [int(ind['n_neurons_first_layer'] * ind['fraction1'])],
-                [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'])],
-                [int(ind['n_neurons_first_layer'] * ind['fraction1'] * ind['fraction2'] * ind['fraction3'])]
+                [int(individual['n_neurons_first_layer'])],
+                [int(individual['n_neurons_first_layer'] * individual['fraction1'])],
+                [int(individual['n_neurons_first_layer'] * individual['fraction1'] * individual['fraction2'])],
+                [int(individual['n_neurons_first_layer'] * individual['fraction1'] * individual['fraction2'] * individual['fraction3'])]
             ],
-            act=ind['act']
+            act=individual['act']
         )
         for i in range(4):
             modnet_model.fit(
                 md,
                 val_fraction=0,
                 val_key=y.columns[0],
-                loss=ind['loss'],
-                lr=ind['lr'],
+                loss=individual['loss'],
+                lr=individual['lr'],
                 epochs=250,
-                batch_size=(2 ** i) * ind['initial_batch_size'],
-                xscale=ind['xscale'],
+                batch_size=(2 ** i) * individual['initial_batch_size'],
+                xscale=individual['xscale'],
                 callbacks=callbacks,
                 verbose=0
             )
@@ -309,6 +309,8 @@ class FitGenetic:
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         folds = self.MDKsplit(md, n_splits=5, random_state=1)
         maes = 1e20 * np.ones((len(pop), len(folds)))
+        models = [] * len(pop)
+        individuals = [] * len(pop)
 
         ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(processes=n_jobs)
@@ -356,11 +358,15 @@ class FitGenetic:
         ):
             modnet_model, individual, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
+            models[individual_id] = modnet_model
+            individuals[individual_id] = individual
 
         pool.close()
         pool.join()
 
-        fitness.append([mae_per_individual, modnet_model, individual])
+        for n in range(len(pop)):
+            fitness.append([mae_per_individual[individual_id], models[individual_id], individuals[individual_id]])
+        print('fitness =', fitness)
 
         return fitness
 
@@ -380,9 +386,7 @@ class FitGenetic:
             num_generations: Number of generations.
         """
 
-        print('------------------------------------------------------------------------------------------')
         print('##########################################################################################')
-        print('------------------------------------------------------------------------------------------')
         LOG.info('Generation number 0')
         pop = self.initialization_population(size_pop)  # initialization of the population
         fitness = self.function_fitness(pop, md)  # fitness evaluation of the population
@@ -391,7 +395,7 @@ class FitGenetic:
         best_individuals = np.zeros(num_generations)
 
         for j in range(0, num_generations):
-            print('##########################################################################################')
+            print('------------------------------------------------------------------------------------------')
             LOG.info("Generation number {}".format(j + 1))
             length = len(pop_fitness_sort)
 
