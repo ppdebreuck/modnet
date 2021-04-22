@@ -339,6 +339,15 @@ class FitGenetic:
             ]
 
         for res in tqdm.tqdm(
+                pool.imap_unordered(self._model_of_individual, tasks_model, chunksize=1),
+                total=len(tasks_model)
+        ):
+            modnet_model, individual, individual_id = res
+            LOG.info(f"Model of individual #{individual_id} fitted.")
+            models[individual_id] = modnet_model
+            individuals[individual_id] = individual
+
+        for res in tqdm.tqdm(
                 pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
                 total=len(tasks)
         ):
@@ -352,19 +361,14 @@ class FitGenetic:
         mae_per_individual = np.mean(maes, axis=1)
         print('MAE = ', mae_per_individual)
 
-        pool = ctx.Pool(processes=n_jobs)
-
-        for res in tqdm.tqdm(
-                pool.imap_unordered(self._model_of_individual, tasks_model, chunksize=1),
-                total=len(tasks_model)
-        ):
-            modnet_model, individual, individual_id = res
-            LOG.info(f"Model of individual #{individual_id} fitted.")
-            models[individual_id] = modnet_model
-            individuals[individual_id] = individual
-
-        pool.close()
-        pool.join()
+        #for res in tqdm.tqdm(
+        #        pool.imap_unordered(self._model_of_individual, tasks_model, chunksize=1),
+        #        total=len(tasks_model)
+        #):
+        #    modnet_model, individual, individual_id = res
+        #    LOG.info(f"Model of individual #{individual_id} fitted.")
+        #    models[individual_id] = modnet_model
+        #    individuals[individual_id] = individual
 
         for n in range(len(pop)):
             fitness.append([mae_per_individual[individual_id], models[individual_id], individuals[individual_id]])
