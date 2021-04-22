@@ -346,9 +346,6 @@ class FitGenetic:
             LOG.info(f"MAE evaluation of individual #{individual_id} finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
 
-        pool.close()
-        pool.join()
-
         mae_per_individual = np.mean(maes, axis=1)
         print('MAE = ', mae_per_individual)
 
