@@ -345,11 +345,10 @@ class FitGenetic:
                 pool.imap_unordered(self._model_of_individual, tasks_model, chunksize=1),
                 total=len(tasks_model)
         ):
-            modnet_model, individual, individual_id = res
+            modnet_model, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
             modnet_model = modnet_model._restore_model()
             models[individual_id] = modnet_model
-            individuals[individual_id] = individual
 
         for res in tqdm.tqdm(
                 pool.imap_unordered(self._mae_of_individual, tasks, chunksize=1),
@@ -358,6 +357,7 @@ class FitGenetic:
             mae, individual, individual_id, fold_id = res
             LOG.info(f"MAE evaluation of individual #{individual_id} finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
+            individuals[individual_id] = individual
 
         pool.close()
         pool.join()
