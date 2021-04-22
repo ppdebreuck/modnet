@@ -287,6 +287,9 @@ class FitGenetic:
                 callbacks=callbacks,
                 verbose=0
             )
+        
+        modnet_model._make_picklable(modnet_model)
+        
         return modnet_model, individual_id
 
     def function_fitness(
@@ -344,6 +347,7 @@ class FitGenetic:
         ):
             modnet_model, individual, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
+            modnet_model._restore_model(modnet_model)
             models[individual_id] = modnet_model
             individuals[individual_id] = individual
 
@@ -449,6 +453,26 @@ class FitGenetic:
         self.best_individual = self.gen_alg(self.data, size_pop, num_generations, prob_mut=0.6)
 
         return self.best_individual
+
+    def _make_picklable(self, modnet_model):
+        """
+        transforms inner keras model to jsons so that th MODNet object becomes picklable.
+        """
+
+        model_json = modnet_model.to_json()
+        model_weights = modnet_model.get_weights()
+
+        modnet_model = (model_json, model_weights)
+
+
+    def _restore_model(self, modnet_model):
+        """
+        restore inner keras model after running make_picklable
+        """
+
+        model_json, model_weights = modnet_model
+        modnet_model = tf.keras.models.model_from_json(model_json)
+        modnet_model.set_weights(model_weights)
 
     def _mae_of_individual(self, kwargs):
         return self.mae_of_individual(**kwargs)
