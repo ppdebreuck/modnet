@@ -347,7 +347,7 @@ class FitGenetic:
         ):
             modnet_model, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
-            modnet_model = modnet_model._restore_model()
+            modnet_model._restore_model()
             models[individual_id] = modnet_model
 
         for res in tqdm.tqdm(
