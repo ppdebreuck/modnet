@@ -265,7 +265,7 @@ class FitGenetic:
         modnet_model = MODNetModel(
             [[[y.columns[0]]]],
             {y.columns[0]: 1},
-            n_feat=ind['n_feat'],
+            n_feat=individual['n_feat'],
             num_neurons=[
                 [int(individual['n_neurons_first_layer'])],
                 [int(individual['n_neurons_first_layer'] * individual['fraction1'])],
