@@ -288,7 +288,7 @@ class FitGenetic:
                 verbose=0
             )
         
-        modnet_model.self._make_picklable(modnet_model)
+        modnet_model = self._make_picklable(modnet_model)
         
         return modnet_model, individual_id
 
@@ -347,7 +347,7 @@ class FitGenetic:
         ):
             modnet_model, individual, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
-            modnet_model.self._restore_model(modnet_model)
+            modnet_model = self._restore_model(modnet_model)
             models[individual_id] = modnet_model
             individuals[individual_id] = individual
 
@@ -379,7 +379,6 @@ class FitGenetic:
         print('fitness =', fitness)
 
         return fitness
-
 
     def gen_alg(
             self,
@@ -463,7 +462,7 @@ class FitGenetic:
         model_weights = modnet_model.get_weights()
 
         modnet_model = (model_json, model_weights)
-
+        return modnet_model
 
     def _restore_model(self, modnet_model):
         """
@@ -472,7 +471,8 @@ class FitGenetic:
 
         model_json, model_weights = modnet_model
         modnet_model = tf.keras.models.model_from_json(model_json)
-        modnet_model.set_weights(model_weights)
+        modnet_model = modnet_model.set_weights(model_weights)
+        return modnet_model
 
     def _mae_of_individual(self, kwargs):
         return self.mae_of_individual(**kwargs)
