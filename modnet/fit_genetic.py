@@ -288,7 +288,7 @@ class FitGenetic:
                 verbose=0
             )
         
-        modnet_model._make_picklable(modnet_model)
+        modnet_model.self._make_picklable(modnet_model)
         
         return modnet_model, individual_id
 
@@ -347,7 +347,7 @@ class FitGenetic:
         ):
             modnet_model, individual, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
-            modnet_model._restore_model(modnet_model)
+            modnet_model.self._restore_model(modnet_model)
             models[individual_id] = modnet_model
             individuals[individual_id] = individual
 
