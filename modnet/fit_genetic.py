@@ -348,7 +348,8 @@ class FitGenetic:
             mae, individual, individual_id, fold_id = res
             LOG.info(f"MAE evaluation of individual #{individual_id} finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
-            individuals[individual_id] = individual
+            if individual_id is None:
+                individuals[individual_id] = individual
 
         mae_per_individual = np.mean(maes, axis=1)
         print('MAE = ', mae_per_individual)
