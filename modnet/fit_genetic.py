@@ -343,7 +343,7 @@ class FitGenetic:
                 total=len(tasks)
         ):
             mae, individual, individual_id, fold_id = res
-            LOG.info(f"MAE evaluationb of individual #{individual_id} fitting finished, MAE: {mae}")
+            LOG.info(f"MAE evaluation of individual #{individual_id} finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
 
         pool.close()
