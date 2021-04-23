@@ -287,9 +287,9 @@ class FitGenetic:
                 callbacks=callbacks,
                 verbose=0
             )
-        print('modnet_model1 =', modnet_model)
+
         modnet_model._make_picklable()
-        print('modnet_model2 =', modnet_model)
+
         return modnet_model, individual_id
 
     def function_fitness(
@@ -365,10 +365,6 @@ class FitGenetic:
 
         pool.close()
         pool.join()
-
-        print('mae_per_individual =', mae_per_individual)
-        print('models =', models)
-        print('individual_id =', individual_id)
 
         for individual_id in range(len(pop)):
             fitness.append([mae_per_individual[individual_id], models[individual_id], individuals[individual_id]])
