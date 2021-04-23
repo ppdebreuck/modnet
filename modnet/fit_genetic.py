@@ -348,8 +348,7 @@ class FitGenetic:
             mae, individual, individual_id, fold_id = res
             LOG.info(f"MAE evaluation of individual #{individual_id} finished, MAE: {mae}")
             maes[individual_id, fold_id] = mae
-            if individual_id is None:
-                individuals[individual_id] = individual
+            individuals[individual_id] = individual
 
         mae_per_individual = np.mean(maes, axis=1)
         print('MAE = ', mae_per_individual)
@@ -362,7 +361,7 @@ class FitGenetic:
             LOG.info(f"Model of individual #{individual_id} fitted.")
             if modnet_model is not None:
                 modnet_model = modnet_model._restore_model()
-                models[individual_id] = modnet_model
+            models[individual_id] = modnet_model
 
         pool.close()
         pool.join()
