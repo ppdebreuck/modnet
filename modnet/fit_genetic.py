@@ -287,9 +287,9 @@ class FitGenetic:
                 callbacks=callbacks,
                 verbose=0
             )
-        
+        print('modnet_model1 =', modnet_model)
         modnet_model = modnet_model._make_picklable()
-        
+        print('modnet_model2 =', modnet_model)
         return modnet_model, individual_id
 
     def function_fitness(
@@ -359,6 +359,7 @@ class FitGenetic:
         ):
             modnet_model, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
+            print('modnet_model3 =', modnet_model)
             if modnet_model is not None:
                 modnet_model = modnet_model._restore_model()
             models[individual_id] = modnet_model
