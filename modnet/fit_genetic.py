@@ -359,7 +359,6 @@ class FitGenetic:
         ):
             modnet_model, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
-            print('modnet_model3 =', modnet_model)
             modnet_model._restore_model()
             models[individual_id] = modnet_model
 
@@ -368,7 +367,6 @@ class FitGenetic:
 
         for individual_id in range(len(pop)):
             fitness.append([mae_per_individual[individual_id], models[individual_id], individuals[individual_id]])
-        print('fitness =', fitness)
 
         return fitness
 
