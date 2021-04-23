@@ -367,6 +367,10 @@ class FitGenetic:
         pool.close()
         pool.join()
 
+        print('mae_per_individual =', mae_per_individual)
+        print('models =', models)
+        print('individual_id =', individual_id)
+
         for individual_id in range(len(pop)):
             fitness.append([mae_per_individual[individual_id], models[individual_id], individuals[individual_id]])
         print('fitness =', fitness)
