@@ -312,8 +312,8 @@ class FitGenetic:
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         folds = self.MDKsplit(md, n_splits=5, random_state=1)
         maes = 1e20 * np.ones((len(pop), len(folds)))
-        models = np.zeros(len(pop))
-        individuals = np.zeros(len(pop))
+        models = [None] * len(pop)
+        individuals = [None] * len(pop)
 
         ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(processes=n_jobs)
@@ -361,7 +361,7 @@ class FitGenetic:
             LOG.info(f"Model of individual #{individual_id} fitted.")
             if modnet_model is not None:
                 modnet_model = modnet_model._restore_model()
-            models[individual_id] = modnet_model
+            	models[individual_id] = modnet_model
 
         pool.close()
         pool.join()
