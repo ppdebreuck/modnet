@@ -12,7 +12,7 @@ from sklearn.metrics import mean_absolute_error as mae
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.model_selection import train_test_split
 from modnet.preprocessing import MODData
-from modnet.models import MODNetModel
+from modnet.models.vanilla import MODNetModel
 from modnet.utils import LOG
 from modnet.individual import Individual
 import multiprocessing
@@ -288,7 +288,7 @@ class FitGenetic:
                 verbose=0
             )
         print('modnet_model1 =', modnet_model)
-        modnet_model = modnet_model._make_picklable()
+        modnet_model._make_picklable()
         print('modnet_model2 =', modnet_model)
         return modnet_model, individual_id
 
@@ -360,8 +360,7 @@ class FitGenetic:
             modnet_model, individual_id = res
             LOG.info(f"Model of individual #{individual_id} fitted.")
             print('modnet_model3 =', modnet_model)
-            if modnet_model is not None:
-                modnet_model = modnet_model._restore_model()
+            modnet_model._restore_model()
             models[individual_id] = modnet_model
 
         pool.close()
