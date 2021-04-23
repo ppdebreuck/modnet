@@ -361,7 +361,7 @@ class FitGenetic:
             LOG.info(f"Model of individual #{individual_id} fitted.")
             if modnet_model is not None:
                 modnet_model = modnet_model._restore_model()
-            	models[individual_id] = modnet_model
+            models[individual_id] = modnet_model
 
         pool.close()
         pool.join()
