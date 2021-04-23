@@ -312,8 +312,8 @@ class FitGenetic:
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         folds = self.MDKsplit(md, n_splits=5, random_state=1)
         maes = 1e20 * np.ones((len(pop), len(folds)))
-        models = [] * len(pop)
-        individuals = [] * len(pop)
+        models = np.zeros(len(pop))
+        individuals = np.zeros(len(pop))
 
         ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(processes=n_jobs)
