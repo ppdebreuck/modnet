@@ -36,6 +36,8 @@ class MODNetModel(BaseMODNetModel):
 
     """
 
+    can_return_uncertainty = False
+
     def build_model(
         self,
         targets: List,
@@ -536,15 +538,15 @@ class MODNetModel(BaseMODNetModel):
         return predictions
 
     def evaluate(self, test_data: MODData) -> pd.DataFrame:
-        """Evaluates the target values for the passed MODData by returning the corresponding loss.
+        """Evaluates the target values for the passed `MODData` and returns the corresponding loss.
 
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
 
-
         Returns:
-            Loss score
+            An array containing the defined losses for the model on the passed test data.
+
         """
         # prevents Nan predictions if some features are inf
         x = (

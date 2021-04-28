@@ -169,15 +169,15 @@ class EnsembleMODNetModel(MODNetModel):
             return df_mean
 
     def evaluate(self, test_data: MODData) -> pd.DataFrame:
-        """Evaluates the target values for the passed MODData by returning the corresponding loss.
+        """Evaluates the target values for the passed `MODData` and returns the corresponding loss.
 
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
 
-
         Returns:
-            Loss score
+            An array containing the defined losses for the model on the passed test data.
+
         """
         all_losses = np.zeros(self.n_models)
         for i, m in enumerate(self.model):

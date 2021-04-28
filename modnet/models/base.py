@@ -37,7 +37,10 @@ class BaseMODNetModel(ABC):
 
     """
 
-    can_return_uncertainty = False
+    can_return_uncertainty: bool = False
+    """Whether or not this model supports the ``return_unc`` parameter
+    in its `predict` method, which will enable returning uncertainties.
+    """
 
     def __init__(
         self,
@@ -211,8 +214,17 @@ class BaseMODNetModel(ABC):
         """
 
     @abstractmethod
-    def evaluate(self, test_data):
-        pass
+    def evaluate(self, test_data: MODData) -> pd.DataFrame:
+        """Evaluates the target values for the passed `MODData` and returns the corresponding loss.
+
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+
+        Returns:
+            An array containing the defined losses for the model on the passed test data.
+
+        """
 
     def save(self, filename: str):
         """Save the `MODNetModel` to filename:
