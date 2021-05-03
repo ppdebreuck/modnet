@@ -3,13 +3,12 @@ import random
 from typing import List
 import numpy as np
 import tensorflow as tf
-from modnet.matbench.benchmark import matbench_kfold_splits
+from sklearn.model_selection import train_test_split
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel, EnsembleMODNetModel
 from modnet.utils import LOG
 import multiprocessing
 import tqdm
-
 
 
 class Individual:
@@ -26,7 +25,7 @@ class Individual:
         self.initial_batch_size_list = [8, 16, 32, 64, 128]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
 
-        self.genes = {"activation": 'elu',
+        self.genes = {"act": 'elu',
                       "loss": 'mae',
                       "n_neurons_first_layer": 32 * random.randint(1, 10),
                       "fraction1": random.choice(self.fraction_list),
@@ -35,18 +34,18 @@ class Individual:
                       "xscale": random.choice(self.xscale_list),
                       "lr": random.choice(self.lr_list),
                       "initial_batch_size": random.choice(self.initial_batch_size_list),
-                      "n_features": 0,
+                      "n_feat": 0,
                       }
 
         if len(data.get_optimal_descriptors()) <= 100:
             b = int(len(data.get_optimal_descriptors())/2)
-            self.genes["n_features"] = random.randint(1, b) + b
+            self.genes["n_feat"] = random.randint(1, b) + b
         elif len(data.get_optimal_descriptors()) > 100 and len(data.get_optimal_descriptors()) < 2000:
             max = len(data.get_optimal_descriptors())
-            self.genes["n_features"] = 10*random.randint(1,int(max/10))
+            self.genes["n_feat"] = 10*random.randint(1,int(max/10))
         else:
             max = np.sqrt(len(data.get_optimal_descriptors()))
-            self.genes["n_features"]= random.randint(1,max)**2
+            self.genes["n_feat"]= random.randint(1,max)**2
 
 
     def crossover(
@@ -119,16 +118,15 @@ class Individual:
         """
 
         es = tf.keras.callbacks.EarlyStopping(
-            monitor="loss",
+            monitor="val_loss",
             min_delta=0.001,
-            patience=300,
+            patience=100,
             verbose=0,
             mode="auto",
             baseline=None,
             restore_best_weights=True,
         )
         callbacks = [es]
-
         model = MODNetModel(targets = [[train_data.target_names]],
             weights = {n: 1 for n in train_data.target_names},
             n_feat=self.genes['n_feat'],
@@ -139,18 +137,18 @@ class Individual:
                 [int(self.genes['n_neurons_first_layer'] * self.genes['fraction1'] * self.genes['fraction2'] * self.genes['fraction3'])]],
             act=self.genes['act'],
         )
-        for i in range(4):
-            model.fit(
-                train_data,
-                val_data = val_data,
-                loss=self.genes['loss'],
-                lr=self.genes['lr'],
-                epochs=250,
-                batch_size=(2 ** i) * self.genes['initial_batch_size'],
-                xscale=self.genes['xscale'],
-                callbacks=callbacks,
-                verbose=0
-            )
+
+        model.fit(
+            train_data,
+            val_data = val_data,
+            loss=self.genes['loss'],
+            lr=self.genes['lr'],
+            epochs=1000,
+            batch_size=self.genes['initial_batch_size'],
+            xscale=self.genes['xscale'],
+            callbacks=callbacks,
+            verbose=0
+        )
 
         self.val_loss = model.evaluate(val_data)
         self.model = model
@@ -168,7 +166,6 @@ class FitGenetic:
         Parameters:
             data: A 'MODData' that has been featurized and feature selected.
         """
-
         self.data = data
 
     def initialization_population(
@@ -181,13 +178,14 @@ class FitGenetic:
             size_pop: Size of the population.
         """
 
-        self.pop = [Individual(self.data) for _ in size_pop]
+        self.pop = [Individual(self.data) for _ in range(size_pop)]
 
     def function_fitness(
             self,
             pop: List,
-            data: MODData,
-            n_jobs=None
+            n_jobs=None,
+            nested = 5,
+            val_fraction=0.1,
     ) -> None:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
@@ -196,24 +194,29 @@ class FitGenetic:
             md_train: Input MODData.
             n_jobs: Number of jobs for multiprocessing
         """
+        from modnet.matbench.benchmark import matbench_kfold_splits
+
+        num_nested_folds = 5
+        if nested:
+            num_nested_folds = nested
+        if num_nested_folds <= 1:
+            num_nested_folds = 5
+
+        # create tasks
+        splits = matbench_kfold_splits(self.data, n_splits=num_nested_folds)
+        if not nested:
+            splits = [train_test_split(range(len(self.data.df_featurized)), test_size=val_fraction)]
+            n_splits = 1
+        else:
+            n_splits = num_nested_folds
+        train_val_datas = []
+        for train, val in splits:
+            train_val_datas.append(self.data.split((train, val)))
 
         tasks = []
-        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-        fold_idxs = matbench_kfold_splits(data, n_splits=5)
-
-        val_losses = 1e20 * np.ones((len(pop), len(fold_idxs)))
-        models = [None for _ in range(len(fold_idxs))] * len(pop)
-        individuals = [None] * len(pop)
-
-        ctx = multiprocessing.get_context("spawn")
-        pool = ctx.Pool(processes=n_jobs)
-        LOG.info(
-            f"Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available."
-        )
-
         for i, individual in enumerate(pop):
-            for j, (train, val) in enumerate(fold_idxs):
-                train_data, val_data = data.split((train, val))
+            for j in range(n_splits):
+                train_data, val_data = train_val_datas[j]
                 tasks += [
                     {
                         "individual": individual,
@@ -224,20 +227,34 @@ class FitGenetic:
                     }
                 ]
 
+        val_losses = 1e20 * np.ones((len(pop), n_splits))
+        models = [[None for _ in range(n_splits)] for _ in range(len(pop))]
+        individuals = [None for _ in range(len(pop))]
+
+        if n_jobs == None:
+            n_jobs = 4
+        ctx = multiprocessing.get_context("spawn")
+        pool = ctx.Pool(processes=n_jobs)
+        LOG.info(
+            f"Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available."
+        )
+
         for res in tqdm.tqdm(
-                pool.imap_unordered(_evaluate_individual, tasks, chunksize=1),
+                pool.imap_unordered(_map_evaluate_individual, tasks, chunksize=1),
                 total=len(tasks)
         ):
             individual, individual_id, fold_id = res
             individual.model._restore_model()
-            LOG.info(f"MAE evaluation of individual #{individual_id} finished, val_loss: {individual.val_loss}")
             val_losses[individual_id, fold_id] = individual.val_loss
             individuals[individual_id] = individual
             models[individual_id][fold_id] = individual.model
 
         models = [EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models]
         val_loss_per_individual = np.mean(val_losses, axis=1)
-        print('MAE = ', val_loss_per_individual)
+        res_str = "Loss per individual: "
+        for ind,vl in enumerate(val_loss_per_individual):
+            res_str += "ind {}: {:.3f} \t".format(ind,vl)
+        LOG.info(res_str)
 
         pool.close()
         pool.join()
@@ -246,10 +263,9 @@ class FitGenetic:
 
     def run(
             self,
-            md: MODData,
-            size_pop: int,
-            num_generations: int,
-            prob_mut: int
+            size_pop: int = 10,
+            num_generations: int = 20,
+            prob_mut: int = 0.5,
     ) -> None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
@@ -259,16 +275,17 @@ class FitGenetic:
             num_generations: Number of generations.
         """
 
-        print('##########################################################################################')
+
         LOG.info('Generation number 0')
         self.initialization_population(size_pop)  # initialization of the population
-        val_loss, models, individuals = self.function_fitness(self.pop, md)
+        val_loss, models, individuals = self.function_fitness(self.pop)
         ranking = val_loss.argsort()
-        best_model_per_gen = [None]*size_pop
+        best_model_per_gen = [None for _ in range(num_generations)]
+        self.best_model = models[ranking[0]]
+        best_model_per_gen[0] = self.best_model
 
-        for j in range(0, num_generations):
-            print('------------------------------------------------------------------------------------------')
-            LOG.info("Generation number {}".format(j + 1))
+        for j in range(1, num_generations):
+            LOG.info("Generation number {}".format(j))
 
             # select parents
             weights = [1 / l ** 10 for l in
@@ -280,10 +297,11 @@ class FitGenetic:
 
             # crossover
             children = [parents_1[i].crossover(parents_2[i]) for i in range(size_pop)]
-            children = [c.mutation(prob_mut) for c in children]
+            for c in children:
+                c.mutation(prob_mut)
 
             # calculates children's fitness to choose who will pass to the next generation
-            val_loss_children, models_children, individuals_children = self.function_fitness(children, md)
+            val_loss_children, models_children, individuals_children = self.function_fitness(children)
             val_loss = np.concatenate([val_loss,val_loss_children])
             models = np.concatenate([models,models_children])
             individuals = np.concatenate([individuals,individuals_children])
@@ -301,12 +319,11 @@ class FitGenetic:
         return self.best_model
 
 
-def _evaluate_individual(self, kwargs):
+def _map_evaluate_individual(kwargs):
     return _evaluate_individual(**kwargs)
 
 
 def _evaluate_individual(
-        self,
         individual: Individual,
         train_data: MODData,
         val_data: MODData,
@@ -318,7 +335,6 @@ def _evaluate_individual(
         individual: An individual of the population, which is a list wherein the parameters are stored.
         fold: Tuple giving the training and validation MODData.
     """
-
     individual.evaluate(train_data,val_data)
     individual.model._make_picklable()
     return individual, individual_id, fold_id

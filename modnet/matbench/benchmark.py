@@ -8,7 +8,7 @@ import numpy as np
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
 from modnet.utils import LOG
-from modnet.fit_genetic import FitGenetic
+from modnet.hyper_opt import FitGenetic
 
 MATBENCH_SEED = 18012019
 
@@ -83,6 +83,9 @@ def matbench_benchmark(
             down by model and by fold.
 
     """
+
+    if use_fit_preset and use_ga:
+        raise RuntimeError("Both use_fit_preset and use_ga are set to True. Please choose one.")
 
     if fit_settings is None:
         fit_settings = {}
@@ -208,19 +211,21 @@ def train_fold(
             models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
                 train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
             )
-            if save_models:
-                for ind, nested_model in enumerate(models):
-                    score = val_losses[ind]
-                    nested_model.save(f"results/nested_model_{fold_ind}_{ind}_{score:3.3f}")
-
-                model.save(f"results/best_model_{fold_ind}_{score:3.3f}")
-
             results["nested_losses"] = val_losses
             results["nested_learning_curves"] = learning_curves
             results["best_learning_curves"] = best_learning_curve
-        if use_ga:
+            results["best_presets"] = best_presets
+        elif use_ga:
             ga = FitGenetic(train_data)
-            model = ga.get_model(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_gen"])
+            model = ga.run(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_gen"])
+
+        if save_models:
+            for ind, nested_model in enumerate(models):
+                score = val_losses[ind]
+                nested_model.save(f"results/nested_model_{fold_ind}_{ind}_{score:3.3f}")
+
+            model.save(f"results/best_model_{fold_ind}_{score:3.3f}")
+
     else:
         if fit_settings["increase_bs"]:
             model.fit(
