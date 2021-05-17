@@ -98,7 +98,7 @@ def matbench_benchmark(
         fit_settings["num_neurons"] = [[4], [4], [4], [4]]
 
     if ga_settings is None:
-        ga_settings = {'num_gen':10, 'size_pop':20}
+        ga_settings = {'size_pop':20, 'num_gen':10}
 
     fold_data = []
     results = defaultdict(list)
