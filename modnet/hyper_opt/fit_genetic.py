@@ -12,10 +12,10 @@ import tqdm
 
 
 class Individual:
-    
+
     """Class containing each of the tuned hyperparameters for the genetic algorithm.
     """
-    
+
     def __init__(self, data:MODData):
 
         self.data = data
@@ -65,7 +65,7 @@ class Individual:
         child_genes = {
             list(self.genes.keys())[i]: list(self.genes.values())[i] if i in genes_from_mother else list(partner.genes.values())[i] for
             i in range(10)}
-        
+
         child = Individual(self.data)
         child.genes = child_genes
         return child
@@ -80,12 +80,37 @@ class Individual:
             children: List containing the genetic information of the 'children'.
         """
 
-        if np.random.rand() > prob_mut:
+        genes_from_mother = random.sample(range(10),
+                                          k=5)  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
+
+        child_genes = {
+            list(self.genes.keys())[i]: list(self.genes.values())[i] if i in genes_from_mother else list(partner.genes.values())[i] for
+            i in range(10)}
+
+        child = Individual(self.data)
+        child.genes = child_genes
+        return child
+
+    def mutation(
+            self,
+            prob_mut: int
+    ) -> None:
+
+        """Performs mutation in the genetic information in order to maintain diversity in the population.
+        Paramters:
+            children: List containing the genetic information of the 'children'.
+        """
+
+        if np.random.rand() < prob_mut:
             individual = Individual(self.data)
             # modification of the number of features in a [-10%, +10%] range
             self.genes['n_feat'] = np.absolute(int(
                 self.genes['n_feat'] + random.randint(-int(0.1 * len(self.data.get_optimal_descriptors())),
                                                 int(0.1 * len(self.data.get_optimal_descriptors())))))
+            if self.genes['n_feat'] <= 0:
+                self.genes['n_feat'] = 1
+            elif self.genes['n_feat'] > len(self.data.get_optimal_descriptors()):
+                self.genes['n_feat'] = len(self.data.get_optimal_descriptors())
             # modification of the number of neurons in the first layer of [-64, -32, 0, 32, 64]
             self.genes['n_neurons_first_layer'] = np.absolute(
                 self.genes['n_neurons_first_layer'] + 32 * random.randint(-2, 2))
@@ -183,7 +208,7 @@ class FitGenetic:
     def function_fitness(
             self,
             pop: List,
-            n_jobs=None,
+            n_jobs: Optional[int] = None,
             nested = 5,
             val_fraction=0.1,
     ) -> None:
@@ -191,7 +216,7 @@ class FitGenetic:
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
         Parameters:
             pop: List containing the genetic information (i.e., the parameters) of the model.
-            md_train: Input MODData.
+            md_telf.data.get_optimal_descriptors()ain: Input MODData.
             n_jobs: Number of jobs for multiprocessing
         """
         from modnet.matbench.benchmark import matbench_kfold_splits
@@ -263,9 +288,10 @@ class FitGenetic:
 
     def run(
             self,
-            size_pop: int = 10,
-            num_generations: int = 20,
-            prob_mut: int = 0.5,
+            size_pop: int = 20,
+            num_generations: int = 10,
+            prob_mut: Optiuonal[int] = None,
+            n_jobs: Optional[int] = None
     ) -> None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
@@ -278,7 +304,7 @@ class FitGenetic:
 
         LOG.info('Generation number 0')
         self.initialization_population(size_pop)  # initialization of the population
-        val_loss, models, individuals = self.function_fitness(self.pop)
+        val_loss, models, individuals = self.function_fitness(self.pop, n_jobs)
         ranking = val_loss.argsort()
         best_model_per_gen = [None for _ in range(num_generations)]
         self.best_model = models[ranking[0]]
@@ -288,8 +314,8 @@ class FitGenetic:
             LOG.info("Generation number {}".format(j))
 
             # select parents
-            weights = [1 / l ** 10 for l in
-                     val_loss[ranking]]  # **10 in order to give relatively more importance to the best individuals
+            weights = [1 / l ** 5 for l in
+                     val_loss[ranking]]  # **5 in order to give relatively more importance to the best individuals
             weights = [w / sum(weights) for w in weights]
             # selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
             parents_1 = random.choices(individuals[ranking], weights=weights, k=size_pop)
@@ -297,11 +323,13 @@ class FitGenetic:
 
             # crossover
             children = [parents_1[i].crossover(parents_2[i]) for i in range(size_pop)]
+            if prob_mut == None:
+                prob_mut = 1 / size_pop
             for c in children:
                 c.mutation(prob_mut)
 
             # calculates children's fitness to choose who will pass to the next generation
-            val_loss_children, models_children, individuals_children = self.function_fitness(children)
+            val_loss_children, models_children, individuals_children = self.function_fitness(children, n_jobs)
             val_loss = np.concatenate([val_loss,val_loss_children])
             models = np.concatenate([models,models_children])
             individuals = np.concatenate([individuals,individuals_children])
@@ -312,7 +340,7 @@ class FitGenetic:
             best_model_per_gen[j] = self.best_model
 
             # early stopping if we have the same best_individual for 3 generations
-            if j >= 2 and best_model_per_gen[j - 2] == best_model_per_gen[j]:
+            if j >= 3 and best_model_per_gen[j - 3] == best_model_per_gen[j]:
                 LOG.info("Early stopping: same best model for 3 consecutive generations")
                 break
 
@@ -338,3 +366,4 @@ def _evaluate_individual(
     individual.evaluate(train_data,val_data)
     individual.model._make_picklable()
     return individual, individual_id, fold_id
+
