@@ -339,9 +339,9 @@ class FitGenetic:
             self.best_model = models[ranking[0]]
             best_model_per_gen[j] = self.best_model
 
-            # early stopping if we have the same best_individual for 3 generations
+            # early stopping if we have the same best_individual for 4 generations
             if j >= 3 and best_model_per_gen[j - 3] == best_model_per_gen[j]:
-                LOG.info("Early stopping: same best model for 3 consecutive generations")
+                LOG.info("Early stopping: same best model for 4 consecutive generations")
                 break
 
         return self.best_model
