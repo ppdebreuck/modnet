@@ -101,7 +101,6 @@ class Individual:
             children: List containing the genetic information of the 'children'.
         """
 
-<<<<<<< HEAD
         genes_from_mother = random.sample(range(10),
                                           k=5)  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
 
@@ -123,8 +122,6 @@ class Individual:
             children: List containing the genetic information of the 'children'.
         """
 
-=======
->>>>>>> 15e30ea071c74f8bb4b1c43213c38c632c1264e9
         if np.random.rand() < prob_mut:
             individual = Individual(self.data)
             # modification of the number of features in a [-10%, +10%] range
@@ -390,7 +387,4 @@ def _evaluate_individual(
     individual.evaluate(train_data,val_data)
     individual.model._make_picklable()
     return individual, individual_id, fold_id
-<<<<<<< HEAD
-=======
 
->>>>>>> 15e30ea071c74f8bb4b1c43213c38c632c1264e9
