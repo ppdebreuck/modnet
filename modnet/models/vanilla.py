@@ -286,18 +286,20 @@ class MODNetModel:
             ].values
             val_x = self._scaler.transform(val_x)
             val_x = np.nan_to_num(val_x, nan=-1)
-            try:
-                val_y = list(
-                    val_data.get_target_df()[self.targets_flatten]
-                    .values.astype(np.float, copy=False)
-                    .transpose()
-                )
-            except Exception:
-                val_y = list(
-                    val_data.get_target_df()
-                    .values.astype(np.float, copy=False)
-                    .transpose()
-                )
+
+            val_y = []
+            for targ in self.targets_flatten:
+                if self.num_classes[targ] >= 2:  # Classification
+                    y_inner = tf.keras.utils.to_categorical(
+                        val_data.df_targets[targ].values,
+                        num_classes=self.num_classes[targ],
+                    )
+                    loss = "categorical_crossentropy"
+                else:
+                    y_inner = val_data.df_targets[targ].values.astype(
+                        np.float, copy=False
+                    )
+                val_y.append(y_inner)
             validation_data = (val_x, val_y)
         else:
             validation_data = None
