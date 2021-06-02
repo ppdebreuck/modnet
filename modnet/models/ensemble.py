@@ -365,21 +365,20 @@ class EnsembleMODNetModel(MODNetModel):
         )
 
         if refit:
-            LOG.info("Refitting with all data and parameters: {}".format(best_preset))
+            LOG.info("Refitting with all data and parameters: {} models, {}".format(100,best_preset))
             # Building final model
 
             n_feat = min(len(data.get_optimal_descriptors()), best_preset["n_feat"])
-            self.model = EnsembleMODNetModel(
+            self.__init__(
                 self.targets,
                 self.weights,
-                n_models=self.n_models,
+                n_models=100,
                 num_neurons=best_preset["num_neurons"],
                 n_feat=n_feat,
                 act=best_preset["act"],
                 out_act=self.out_act,
                 num_classes=self.num_classes,
-            ).model
-            self.n_feat = n_feat
+            )
             self.fit(
                 data,
                 val_fraction=0,
