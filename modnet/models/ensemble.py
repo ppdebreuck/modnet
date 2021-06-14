@@ -365,7 +365,11 @@ class EnsembleMODNetModel(MODNetModel):
         )
 
         if refit:
-            LOG.info("Refitting with all data and parameters: {} models, {}".format(100,best_preset))
+            LOG.info(
+                "Refitting with all data and parameters: {} models, {}".format(
+                    100, best_preset
+                )
+            )
             # Building final model
 
             n_feat = min(len(data.get_optimal_descriptors()), best_preset["n_feat"])
