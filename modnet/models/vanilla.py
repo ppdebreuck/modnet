@@ -589,7 +589,7 @@ class MODNetModel:
             x = self._scaler.transform(x)
             x = np.nan_to_num(x, nan=-1)
 
-        p = np.array(self.model(x))
+        p = np.array(self.model.predict(x))
 
         if len(p.shape) == 2:
             p = np.array([p])
