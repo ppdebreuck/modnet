@@ -80,48 +80,6 @@ class Individual:
             children: List containing the genetic information of the 'children'.
         """
 
-        genes_from_mother = random.sample(range(10),
-                                          k=5)  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
-
-        child_genes = {
-            list(self.genes.keys())[i]: list(self.genes.values())[i] if i in genes_from_mother else list(partner.genes.values())[i] for
-            i in range(10)}
-
-        child = Individual(self.data)
-        child.genes = child_genes
-        return child
-
-    def mutation(
-            self,
-            prob_mut: int
-    ) -> None:
-
-        """Performs mutation in the genetic information in order to maintain diversity in the population.
-        Paramters:
-            children: List containing the genetic information of the 'children'.
-        """
-
-        genes_from_mother = random.sample(range(10),
-                                          k=5)  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
-
-        child_genes = {
-            list(self.genes.keys())[i]: list(self.genes.values())[i] if i in genes_from_mother else list(partner.genes.values())[i] for
-            i in range(10)}
-
-        child = Individual(self.data)
-        child.genes = child_genes
-        return child
-
-    def mutation(
-            self,
-            prob_mut: int
-    ) -> None:
-
-        """Performs mutation in the genetic information in order to maintain diversity in the population.
-        Paramters:
-            children: List containing the genetic information of the 'children'.
-        """
-
         if np.random.rand() < prob_mut:
             individual = Individual(self.data)
             # modification of the number of features in a [-10%, +10%] range
@@ -154,13 +112,13 @@ class Individual:
     def evaluate(
             self,
             train_data,
-            val_data,
+            val_data
     ):
 
         """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
         Paramters:
-            ind: An individual of the population, which is a list wherein the parameters are stored.
-            md: MODData where the model is trained on.
+            train_data: MODData training set.
+            val_data: MODData validation set.
         """
 
         es = tf.keras.callbacks.EarlyStopping(
@@ -199,13 +157,60 @@ class Individual:
         self.val_loss = model.evaluate(val_data)
         self.model = model
 
+    def refit_model(
+            self,
+            data
+    ):
+
+        """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
+        Paramters:
+            data: MODData to refit the model on the training and validation sets.
+        """
+
+        es = tf.keras.callbacks.EarlyStopping(
+            monitor="val_loss",
+            min_delta=0.001,
+            patience=100,
+            verbose=0,
+            mode="auto",
+            baseline=None,
+            restore_best_weights=True,
+        )
+        callbacks = [es]
+        model = MODNetModel(targets = [[data.target_names]],
+            weights = {n: 1 for n in data.target_names},
+            n_feat=self.genes['n_feat'],
+            num_neurons=[
+                [int(self.genes['n_neurons_first_layer'])],
+                [int(self.genes['n_neurons_first_layer'] * self.genes['fraction1'])],
+                [int(self.genes['n_neurons_first_layer'] * self.genes['fraction1'] * self.genes['fraction2'])],
+                [int(self.genes['n_neurons_first_layer'] * self.genes['fraction1'] * self.genes['fraction2'] * self.genes['fraction3'])]],
+            act=self.genes['act'],
+        )
+
+        model.fit(
+            data,
+            val_fraction=0.1,
+            loss=self.genes['loss'],
+            lr=self.genes['lr'],
+            epochs=1000,
+            batch_size=self.genes['initial_batch_size'],
+            xscale=self.genes['xscale'],
+            callbacks=callbacks,
+            verbose=0
+        )
+
+        self.model = model
+        return self.model
+
+
 class FitGenetic:
     """Class optimizing the model parameters using a genitic algorithm.
     """
 
     def __init__(
             self,
-            data: MODData,
+            data: MODData
     ):
 
         """Initializes the MODData used in this class.
@@ -229,16 +234,17 @@ class FitGenetic:
     def function_fitness(
             self,
             pop: List,
-            n_jobs: Optional[int] = None,
+            n_jobs: int,
+            refit: bool,
             nested = 5,
-            val_fraction=0.1,
+            val_fraction = 0.1
     ) -> None:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
         Parameters:
             pop: List containing the genetic information (i.e., the parameters) of the model.
             md_telf.data.get_optimal_descriptors()ain: Input MODData.
-            n_jobs: Number of jobs for multiprocessing
+            n_jobs: Number of jobs for multiprocessing.
         """
         from modnet.matbench.benchmark import matbench_kfold_splits
 
@@ -274,16 +280,17 @@ class FitGenetic:
                 ]
 
         val_losses = 1e20 * np.ones((len(pop), n_splits))
-        models = [[None for _ in range(n_splits)] for _ in range(len(pop))]
+        if refit:
+            models = [None for _ in range(len(pop))]
+        else:
+            models = [[None for _ in range(n_splits)] for _ in range(len(pop))]
         individuals = [None for _ in range(len(pop))]
 
         if n_jobs == None:
             n_jobs = 4
         ctx = multiprocessing.get_context("spawn")
         pool = ctx.Pool(processes=n_jobs)
-        LOG.info(
-            f"Multiprocessing on {n_jobs} cores. Total of {multiprocessing.cpu_count()} cores available."
-        )
+        LOG.info("Multiprocessing on {} cores. Total of {} cores available.".format(n_jobs, multiprocessing.cpu_count()))
 
         for res in tqdm.tqdm(
                 pool.imap_unordered(_map_evaluate_individual, tasks, chunksize=1),
@@ -293,9 +300,12 @@ class FitGenetic:
             individual.model._restore_model()
             val_losses[individual_id, fold_id] = individual.val_loss
             individuals[individual_id] = individual
-            models[individual_id][fold_id] = individual.model
-
-        models = [EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models]
+            if refit:
+                models[individual_id] = individual.refit_model(self.data)
+            else:
+                models[individual_id][fold_id] = individual.model
+        if not refit:
+            models = [EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models]
         val_loss_per_individual = np.mean(val_losses, axis=1)
         res_str = "Loss per individual: "
         for ind,vl in enumerate(val_loss_per_individual):
@@ -311,21 +321,25 @@ class FitGenetic:
             self,
             size_pop: int = 20,
             num_generations: int = 10,
-            prob_mut: Optiuonal[int] = None,
-            n_jobs: Optional[int] = None
+            prob_mut: Optional[int] = None,
+            n_jobs: Optional[int] = None,
+            early_stopping: Optional[int] = 4,
+            refit: Optional[bool] = False
     ) -> None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
         Parameters:
-            md: A 'MODData' that has been featurized and feature selected.
             size_pop: Size of the population per generation.
             num_generations: Number of generations.
+            prob_mut: Probability of mutation.
+            n_jobs: Number of jobs for parallelization.
+            early_stopping: Number of successive same best MAE score to activate early_stopping
         """
 
 
         LOG.info('Generation number 0')
         self.initialization_population(size_pop)  # initialization of the population
-        val_loss, models, individuals = self.function_fitness(self.pop, n_jobs)
+        val_loss, models, individuals = self.function_fitness(pop=self.pop, n_jobs=n_jobs, refit=refit)
         ranking = val_loss.argsort()
         best_model_per_gen = [None for _ in range(num_generations)]
         self.best_model = models[ranking[0]]
@@ -350,7 +364,7 @@ class FitGenetic:
                 c.mutation(prob_mut)
 
             # calculates children's fitness to choose who will pass to the next generation
-            val_loss_children, models_children, individuals_children = self.function_fitness(children, n_jobs)
+            val_loss_children, models_children, individuals_children = self.function_fitness(pop=children, n_jobs=n_jobs, refit=refit)
             val_loss = np.concatenate([val_loss,val_loss_children])
             models = np.concatenate([models,models_children])
             individuals = np.concatenate([individuals,individuals_children])
@@ -360,9 +374,9 @@ class FitGenetic:
             self.best_model = models[ranking[0]]
             best_model_per_gen[j] = self.best_model
 
-            # early stopping if we have the same best_individual for 4 generations
-            if j >= 3 and best_model_per_gen[j - 3] == best_model_per_gen[j]:
-                LOG.info("Early stopping: same best model for 4 consecutive generations")
+            # early stopping if we have the same best_individual for early_stopping generations
+            if j >= early_stopping-1 and best_model_per_gen[j - (early_stopping-1)] == best_model_per_gen[j]:
+                LOG.info("Early stopping: same best model for {} consecutive generations".format(early_stopping))
                 break
 
         return self.best_model
