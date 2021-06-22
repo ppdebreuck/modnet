@@ -54,13 +54,11 @@ class Individual:
     ) -> Individual:
 
         """Does the crossover of two parents and returns a 'child' which have the combined genetic information of both parents.
-        Parameters:
-            mother: List containing the gentic information of the first parent.
-            father: List containing the gentic information of the second parent.
+        Parameter:
+            partner: Individual object containing the gentic information.
         """
 
-        genes_from_mother = random.sample(range(10),
-                                          k=5)  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
+        genes_from_mother = random.sample(range(10), k=5)  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
 
         child_genes = {
             list(self.genes.keys())[i]: list(self.genes.values())[i] if i in genes_from_mother else list(partner.genes.values())[i] for
@@ -76,8 +74,8 @@ class Individual:
     ) -> None:
 
         """Performs mutation in the genetic information in order to maintain diversity in the population.
-        Paramters:
-            children: List containing the genetic information of the 'children'.
+        Paramter:
+            prob_mut: Probability of mutation.
         """
 
         if np.random.rand() < prob_mut:
@@ -115,7 +113,7 @@ class Individual:
             val_data
     ):
 
-        """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
+        """Evaluate the MODNet model performance.
         Paramters:
             train_data: MODData training set.
             val_data: MODData validation set.
@@ -162,8 +160,8 @@ class Individual:
             data
     ):
 
-        """Returns the MODNet model given some parameters stored in ind and given the dataset to train the model on.
-        Paramters:
+        """Refit the MODNet model on the training+validation set.
+        Paramter:
             data: MODData to refit the model on the training and validation sets.
         """
 
@@ -242,9 +240,9 @@ class FitGenetic:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
         Parameters:
-            pop: List containing the genetic information (i.e., the parameters) of the model.
-            md_telf.data.get_optimal_descriptors()ain: Input MODData.
+            pop: Object containing the genetic information (i.e., the parameters) of the model.
             n_jobs: Number of jobs for multiprocessing.
+            refit: If true, it refits the model on the training+validation set. If false, it ensembles the models.
         """
         from modnet.matbench.benchmark import matbench_kfold_splits
 
@@ -334,6 +332,7 @@ class FitGenetic:
             prob_mut: Probability of mutation.
             n_jobs: Number of jobs for parallelization.
             early_stopping: Number of successive same best MAE score to activate early_stopping
+            refit: If true, it refits the model on the training+validation set. If false, it ensembles the models.
         """
 
 
@@ -401,4 +400,3 @@ def _evaluate_individual(
     individual.evaluate(train_data,val_data)
     individual.model._make_picklable()
     return individual, individual_id, fold_id
-
