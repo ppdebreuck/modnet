@@ -376,6 +376,7 @@ class FitGenetic:
             # early stopping if we have the same best_individual for early_stopping generations
             if j >= early_stopping-1 and best_model_per_gen[j - (early_stopping-1)] == best_model_per_gen[j]:
                 LOG.info("Early stopping: same best model for {} consecutive generations".format(early_stopping))
+                LOG.info("Early stopping at generation number {}".format(j))
                 break
 
         return self.best_model
