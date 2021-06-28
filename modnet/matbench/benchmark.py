@@ -182,9 +182,6 @@ def train_fold(
     fold_ind, (train_data, test_data) = fold
 
     results = {}
-    if classification:
-        fit_settings["num_classes"] = {t: 2 for t in target_weights}
-
     multi_target = bool(len(target) - 1)
 
     # If not performing hp_optimization, load model init settings from fit_settings
@@ -199,6 +196,9 @@ def train_fold(
         }
 
     model_settings.update(model_kwargs)
+
+    if classification:
+        model_settings["num_classes"] = {t: 2 for t in target_weights}
 
     model = model_type(
         target,
@@ -217,7 +217,7 @@ def train_fold(
             results["best_presets"] = best_presets
         elif use_ga:
             ga = FitGenetic(train_data)
-            model = ga.run(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_gen"])
+            model = ga.run(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_gen"], n_jobs=n_jobs)
 
         if save_models:
             for ind, nested_model in enumerate(models):
