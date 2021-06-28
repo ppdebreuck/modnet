@@ -98,7 +98,7 @@ def matbench_benchmark(
         fit_settings["num_neurons"] = [[4], [4], [4], [4]]
 
     if ga_settings is None:
-        ga_settings = {'size_pop':20, 'num_gen':10}
+        ga_settings = {'size_pop':20, 'num_generations':10}
 
     fold_data = []
     results = defaultdict(list)
@@ -217,7 +217,7 @@ def train_fold(
             results["best_presets"] = best_presets
         elif use_ga:
             ga = FitGenetic(train_data)
-            model = ga.run(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_gen"], n_jobs=n_jobs)
+            model = ga.run(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_generations"], n_jobs=n_jobs)
 
         if save_models:
             for ind, nested_model in enumerate(models):
