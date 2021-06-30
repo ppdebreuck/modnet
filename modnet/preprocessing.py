@@ -723,6 +723,7 @@ class MODData:
         n: int = 1500,
         cross_nmi: Optional[pd.DataFrame] = None,
         use_precomputed_cross_nmi: bool = False,
+        max_samples=4000,
         n_jobs: int = None,
     ):
         """Compute the mutual information between features and targets,
@@ -776,6 +777,8 @@ class MODData:
 
         if self.cross_nmi is None:
             df = self.df_featurized.copy()
+            if len(df) > max_samples:
+                df = df.sample(n=max_samples)
             self.cross_nmi, self.feature_entropy = get_cross_nmi(
                 df, return_entropy=True, n_jobs=n_jobs
             )
