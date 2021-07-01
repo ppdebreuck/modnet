@@ -29,12 +29,14 @@ from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin
 from sklearn.base import TransformerMixin
 from typing import Union, Dict
-from modnet.preprocessing import get_features_relevance_redundancy, get_cross_nmi, nmi_target
-
+from modnet.preprocessing import (
+    get_features_relevance_redundancy,
+    get_cross_nmi,
+    nmi_target,
+)
 
 
 class MODNetFeaturizer(TransformerMixin, BaseEstimator):
-
     def __init__(self, matminer_featurizers):
         """Constructor for MODNetFeaturizer"""
         self.matminer_featurizers = matminer_featurizers
@@ -75,7 +77,9 @@ class RR(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, n_feat: Union[None, int] = None, rr_parameters: Union[None, Dict]=None):
+    def __init__(
+        self, n_feat: Union[None, int] = None, rr_parameters: Union[None, Dict] = None
+    ):
         """Constructor for RR transformer.
 
         Args:
@@ -108,10 +112,15 @@ class RR(TransformerMixin, BaseEstimator):
         if cross_nmi_feats is None:
             cross_nmi_feats = get_cross_nmi(X)
         if nmi_feats_target is None:
-            nmi_feats_target = nmi_target(X,y)
+            nmi_feats_target = nmi_target(X, y)
 
-        rr_results = get_features_relevance_redundancy(nmi_feats_target, cross_nmi_feats, n_feat=self.n_feat, rr_parameters=self.rr_parameters)
-        self.optimal_descriptors = [x['feature'] for x in rr_results]
+        rr_results = get_features_relevance_redundancy(
+            nmi_feats_target,
+            cross_nmi_feats,
+            n_feat=self.n_feat,
+            rr_parameters=self.rr_parameters,
+        )
+        self.optimal_descriptors = [x["feature"] for x in rr_results]
 
     def transform(self, X, y=None):
         """Transform the inputs X based on a fitted RR analysis. The best n_feat features are kept and returned.

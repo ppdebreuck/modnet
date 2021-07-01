@@ -121,7 +121,7 @@ def matbench_benchmark(
     args = (target, target_weights, fit_settings, ga_settings)
 
     model_kwargs = {
-        "model_type":model_type,
+        "model_type": model_type,
         "hp_optimization": hp_optimization,
         "fast": fast,
         "classification": classification,
@@ -191,8 +191,8 @@ def train_fold(
             "num_neurons": fit_settings["num_neurons"],
             "num_classes": fit_settings.get("num_classes"),
             "act": fit_settings.get("act"),
-            "out_act": fit_settings.get("out_act","linear"),
-            "n_feat": fit_settings["n_feat"]
+            "out_act": fit_settings.get("out_act", "linear"),
+            "n_feat": fit_settings["n_feat"],
         }
 
     model_settings.update(model_kwargs)
@@ -200,24 +200,29 @@ def train_fold(
     if classification:
         model_settings["num_classes"] = {t: 2 for t in target_weights}
 
-    model = model_type(
-        target,
-        target_weights,
-        **model_settings
-    )
+    model = model_type(target, target_weights, **model_settings)
 
     if hp_optimization:
         if use_fit_preset:
-            models, val_losses, best_learning_curve, learning_curves, best_presets = model.fit_preset(
-                train_data, presets=presets, fast=fast, classification=classification, nested=nested, n_jobs=n_jobs
+            (
+                models,
+                val_losses,
+                best_learning_curve,
+                learning_curves,
+                best_presets,
+            ) = model.fit_preset(
+                train_data,
+                presets=presets,
+                fast=fast,
+                classification=classification,
+                nested=nested,
+                n_jobs=n_jobs,
             )
-            results["nested_losses"] = val_losses
-            results["nested_learning_curves"] = learning_curves
-            results["best_learning_curves"] = best_learning_curve
-            results["best_presets"] = best_presets
         elif use_ga:
             ga = FitGenetic(train_data)
-            model = ga.run(size_pop=ga_settings["size_pop"], num_generations=ga_settings["num_generations"], n_jobs=n_jobs)
+            model = ga.run(size_pop=ga_settings["size_pop"],
+            num_generations=ga_settings["num_generations"],
+            n_jobs=n_jobs)
 
         if save_models:
             for ind, nested_model in enumerate(models):
@@ -300,6 +305,7 @@ def train_fold(
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score
-    results['model'] = model
+    results["best_presets"] = best_presets
+    results["model"] = model
 
     return results

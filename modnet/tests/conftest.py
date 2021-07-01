@@ -53,6 +53,7 @@ def small_moddata():
     """
     return _load_moddata("MP_2018.6_small.zip")
 
+
 @pytest.fixture(scope="function")
 def small_moddata_composition():
     """Loads the small 5-structure featurized subset of MP.2018.6 composition only for use
