@@ -19,6 +19,7 @@ class Individual:
     def __init__(self, data:MODData):
 
         self.data = data
+        self.num_classes = data.num_classes
 
         self.xscale_list = ['minmax', 'standard']
         self.lr_list = [0.01, 0.005, 0.001]
@@ -138,6 +139,7 @@ class Individual:
                 [int(self.genes['n_neurons_first_layer'] * self.genes['fraction1'] * self.genes['fraction2'])],
                 [int(self.genes['n_neurons_first_layer'] * self.genes['fraction1'] * self.genes['fraction2'] * self.genes['fraction3'])]],
             act=self.genes['act'],
+            num_classes=self.num_classes,
         )
 
         model.fit(
@@ -216,6 +218,14 @@ class FitGenetic:
             data: A 'MODData' that has been featurized and feature selected.
         """
         self.data = data
+
+        LOG.info("Targets:")
+        for i, (k,v) in enumerate(data.num_classes.items()):
+            if v >= 2:
+                type = "classification"
+            else:
+                type = "regression"
+            LOG.info(f"{i+1}){k}: {type}")
 
     def initialization_population(
             self,
