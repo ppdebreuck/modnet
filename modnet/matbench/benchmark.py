@@ -218,6 +218,10 @@ def train_fold(
                 nested=nested,
                 n_jobs=n_jobs,
             )
+            results["nested_losses"] = val_losses
+            results["nested_learning_curves"] = learning_curves
+            results["best_learning_curves"] = best_learning_curve
+            results["best_presets"] = best_presets
         elif use_ga:
             ga = FitGenetic(train_data)
             model = ga.run(size_pop=ga_settings["size_pop"],
@@ -305,7 +309,6 @@ def train_fold(
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score
-    results["best_presets"] = best_presets
     results["model"] = model
 
     return results
