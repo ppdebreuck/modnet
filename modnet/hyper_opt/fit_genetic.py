@@ -288,10 +288,7 @@ class FitGenetic:
                 ]
 
         val_losses = 1e20 * np.ones((len(pop), n_splits))
-        if refit:
-            models = [None for _ in range(len(pop))]
-        else:
-            models = [[None for _ in range(n_splits)] for _ in range(len(pop))]
+        models = [[None for _ in range(n_splits)] for _ in range(len(pop))]
         individuals = [None for _ in range(len(pop))]
 
         if n_jobs == None:
@@ -309,11 +306,11 @@ class FitGenetic:
             val_losses[individual_id, fold_id] = individual.val_loss
             individuals[individual_id] = individual
             if refit:
-                models[individual_id] = individual.refit_model(self.data)
+                models[individual_id][fold_id] = individual.refit_model(self.data)
             else:
                 models[individual_id][fold_id] = individual.model
-        if not refit:
-            models = [EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models]
+
+        models = [EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models]
         val_loss_per_individual = np.mean(val_losses, axis=1)
         res_str = "Loss per individual: "
         for ind,vl in enumerate(val_loss_per_individual):
