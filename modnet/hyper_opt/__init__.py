@@ -1,3 +1,3 @@
-from .fit_genetic import FitGenetic
+# from .fit_genetic import FitGenetic
 
-__all__ = ("FitGenetic")
+__all__ = "FitGenetic"
