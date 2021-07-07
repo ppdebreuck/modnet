@@ -791,7 +791,10 @@ class MODData:
                 )
 
         if self.cross_nmi is None:
-            df = self.df_featurized.sample(n=n_samples, random_state=12).copy()
+            if len(self.df_featurized) > n_samples:
+                df = self.df_featurized.sample(n=n_samples, random_state=12)
+            else:
+                df = self.df_featurized.copy()
             self.cross_nmi, self.feature_entropy = get_cross_nmi(
                 df, return_entropy=True, n_jobs=n_jobs
             )
@@ -810,8 +813,13 @@ class MODData:
                 task_type = "classification"
             else:
                 task_type = "regression"
+
+            if len(self.df_featurized) > n_samples:
+                df = self.df_featurized.sample(n=n_samples, random_state=12)
+            else:
+                df = self.df_featurized.copy()
             self.target_nmi = nmi_target(
-                self.df_featurized.sample(n=n_samples, random_state=12),
+                df,
                 self.df_targets[[name]],
                 task_type,
             )[name]
