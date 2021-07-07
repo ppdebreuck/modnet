@@ -15,9 +15,11 @@ MATBENCH_SEED = 18012019
 
 def matbench_kfold_splits(data: MODData, n_splits=5, classification=False):
     """Return the pre-defined k-fold splits to use when reporting matbench results.
+
     Arguments:
         data: The featurized MODData.
     """
+
     if classification:
         from sklearn.model_selection import StratifiedKFold as KFold
     else:
@@ -51,6 +53,7 @@ def matbench_benchmark(
 ) -> dict:
     """Train and cross-validate a model against Matbench data splits, optionally
     performing hyperparameter optimisation.
+
     Arguments:
         data: The entire dataset as a `MODData`.
         target: The list of target names to train on.
@@ -74,9 +77,11 @@ def matbench_benchmark(
             processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
         **model_init_kwargs: Additional arguments to pass to the model on creation.
+
     Returns:
         A dictionary containing all the results from the training, broken
             down by model and by fold.
+
     """
 
     if use_fit_preset and use_ga:
@@ -159,16 +164,18 @@ def train_fold(
     save_models=False,
     nested=False,
     n_jobs=None,
-
     **model_kwargs,
 ) -> dict:
     """Train one fold of a CV.
     Unless stated, all arguments have the same meaning as in `matbench_benchmark(...)`.
+
     Arguments:
         fold: A tuple containing the fold index, and another tuple of the
             training MODData and test MODData.
+
     Returns:
         A dictionary summarising the fold results.
+
     """
 
     fold_ind, (train_data, test_data) = fold
@@ -244,6 +251,7 @@ def train_fold(
                 lr=fit_settings["lr"] / 7,
                 epochs=fit_settings["epochs"] // 2,
                 batch_size=fit_settings["batch_size"] * 2,
+                loss=fit_settings["loss"]
             )
         else:
             model.fit(train_data, **fit_settings)
