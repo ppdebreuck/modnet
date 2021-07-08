@@ -266,7 +266,7 @@ class FitGenetic:
         self.pop = [Individual(self.data) for _ in range(size_pop)]
 
     def function_fitness(
-        self, pop: List, n_jobs: int, refit: bool, nested=5, val_fraction=0.1
+        self, pop: List, n_jobs: int, nested=5, val_fraction=0.1
     ) -> None:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
@@ -334,10 +334,7 @@ class FitGenetic:
             individual.model._restore_model()
             val_losses[individual_id, fold_id] = individual.val_loss
             individuals[individual_id] = individual
-            if refit:
-                models[individual_id][fold_id] = individual.refit_model(self.data)
-            else:
-                models[individual_id][fold_id] = individual.model
+            models[individual_id][fold_id] = individual.model
 
         models = [
             EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models
@@ -376,7 +373,8 @@ class FitGenetic:
         LOG.info("Generation number 0")
         self.initialization_population(size_pop)  # initialization of the population
         val_loss, models, individuals = self.function_fitness(
-            pop=self.pop, n_jobs=n_jobs, refit=refit
+            pop=self.pop,
+            n_jobs=n_jobs,
         )
         ranking = val_loss.argsort()
         best_model_per_gen = [None for _ in range(num_generations)]
@@ -411,7 +409,7 @@ class FitGenetic:
                 val_loss_children,
                 models_children,
                 individuals_children,
-            ) = self.function_fitness(pop=children, n_jobs=n_jobs, refit=refit)
+            ) = self.function_fitness(pop=children, n_jobs=n_jobs)
             val_loss = np.concatenate([val_loss, val_loss_children])
             models = np.concatenate([models, models_children])
             individuals = np.concatenate([individuals, individuals_children])
@@ -419,6 +417,7 @@ class FitGenetic:
             ranking = val_loss.argsort()
 
             self.best_model = models[ranking[0]]
+            self.best_individual = individuals[ranking[0]]
             best_model_per_gen[j] = self.best_model
 
             # early stopping if we have the same best_individual for early_stopping generations
@@ -434,6 +433,12 @@ class FitGenetic:
                 )
                 LOG.info("Early stopping at generation number {}".format(j))
                 break
+
+        if refit:
+            ensemble = []
+            for i in range(5):
+                ensemble.append(self.best_individual.refit_model(self.data))
+            self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
 
         return self.best_model
 
