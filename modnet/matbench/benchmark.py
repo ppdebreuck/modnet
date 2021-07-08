@@ -18,8 +18,8 @@ def matbench_kfold_splits(data: MODData, n_splits=5, classification=False):
 
     Arguments:
         data: The featurized MODData.
-
     """
+
     if classification:
         from sklearn.model_selection import StratifiedKFold as KFold
     else:
@@ -100,7 +100,7 @@ def matbench_benchmark(
         fit_settings["num_neurons"] = [[4], [4], [4], [4]]
 
     if ga_settings is None:
-        ga_settings = {"size_pop": 20, "num_generations": 10}
+        ga_settings = {'size_pop':20, 'num_generations':10, 'early_stopping':4, 'refit':False}
 
     fold_data = []
     results = defaultdict(list)
@@ -169,7 +169,6 @@ def train_fold(
     **model_kwargs,
 ) -> dict:
     """Train one fold of a CV.
-
     Unless stated, all arguments have the same meaning as in `matbench_benchmark(...)`.
 
     Arguments:
@@ -230,7 +229,8 @@ def train_fold(
                 size_pop=ga_settings["size_pop"],
                 num_generations=ga_settings["num_generations"],
                 n_jobs=n_jobs,
-            )
+                early_stopping=ga_settings["early_stopping"],
+                refit=ga_settings["refit"])
 
         if save_models:
             for ind, nested_model in enumerate(models):
@@ -253,7 +253,7 @@ def train_fold(
                 lr=fit_settings["lr"] / 7,
                 epochs=fit_settings["epochs"] // 2,
                 batch_size=fit_settings["batch_size"] * 2,
-                loss=fit_settings["loss"],
+                loss=fit_settings["loss"]
             )
         else:
             model.fit(train_data, **fit_settings)
