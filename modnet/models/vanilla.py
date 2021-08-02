@@ -286,21 +286,26 @@ class MODNetModel:
             ].values
             val_x = self._scaler.transform(val_x)
             val_x = np.nan_to_num(val_x, nan=-1)
-            try:
-                val_y = list(
-                    val_data.get_target_df()[self.targets_flatten]
-                    .values.astype(np.float, copy=False)
-                    .transpose()
-                )
-            except Exception:
-                val_y = list(
-                    val_data.get_target_df()
-                    .values.astype(np.float, copy=False)
-                    .transpose()
-                )
+            val_y = []
+            for targ in self.targets_flatten:
+                if self.num_classes[targ] >= 2:  # Classification
+                    y_inner = tf.keras.utils.to_categorical(
+                        val_data.df_targets[targ].values,
+                        num_classes=self.num_classes[targ],
+                    )
+                    loss = "categorical_crossentropy"
+                else:
+                    y_inner = val_data.df_targets[targ].values.astype(
+                        np.float, copy=False
+                    )
+                val_y.append(y_inner)
             validation_data = (val_x, val_y)
         else:
             validation_data = None
+
+        # set up bounds for postprocessing
+        self.min_y = training_data.df_targets.values.min(axis=0)
+        self.max_y = training_data.df_targets.values.max(axis=0)
 
         # Optionally set up print callback
         if verbose:
@@ -585,8 +590,24 @@ class MODNetModel:
             x = np.nan_to_num(x, nan=-1)
 
         p = np.array(self.model.predict(x))
+
         if len(p.shape) == 2:
             p = np.array([p])
+
+        # post-process based on training data
+        yrange = self.max_y - self.min_y
+        upper_bound = self.max_y + 0.25 * yrange
+        lower_bound = self.min_y - 0.25 * yrange
+        for i, vals in enumerate(p):
+            out_of_range_idxs = np.where(
+                (vals < lower_bound[i]) | (vals > upper_bound[i])
+            )
+            vals[out_of_range_idxs] = (
+                np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
+                * (self.max_y[i] - self.min_y[i])
+                + self.min_y[i]
+            )
+
         p_dic = {}
         for i, name in enumerate(self.targets_flatten):
             if self.num_classes[name] >= 2:

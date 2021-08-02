@@ -169,8 +169,6 @@ def train_fold(
     fold_ind, (train_data, test_data) = fold
 
     results = {}
-    if classification:
-        fit_settings["num_classes"] = {t: 2 for t in target_weights}
 
     multi_target = bool(len(target) - 1)
 
@@ -186,6 +184,9 @@ def train_fold(
         }
 
     model_settings.update(model_kwargs)
+
+    if classification:
+        model_settings["num_classes"] = {t: 2 for t in target_weights}
 
     model = model_type(target, target_weights, **model_settings)
 
