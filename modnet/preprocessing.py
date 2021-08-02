@@ -826,12 +826,15 @@ class MODData:
                 task_type = "regression"
 
             if len(self.df_featurized) > n_samples:
-                df = self.df_featurized.sample(n=n_samples, random_state=12)
+                subset_ids = np.random.permutation(len(self.df_featurized))[:n_samples]
+                df = self.df_featurized.iloc[subset_ids]
+                df_target = self.df_targets.iloc[subset_ids][[name]]
             else:
                 df = self.df_featurized.copy()
+                df_target = self.df_targets[[name]]
             self.target_nmi = nmi_target(
                 df,
-                self.df_targets[[name]],
+                df_target,
                 task_type,
             )[name]
 
@@ -1036,11 +1039,11 @@ class MODData:
             setattr(split_data, attr, getattr(self, attr).iloc[indices])
 
         for attr in [_ for _ in dir(self) if _ not in extensive_dataframes]:
-            if not callable(getattr(self, attr)) and not attr.startswith("__"):
-                try:
+            try:
+                if not callable(getattr(self, attr)) and not attr.startswith("__"):
                     setattr(split_data, attr, getattr(self, attr))
-                except AttributeError:
-                    pass
+            except AttributeError:
+                pass
 
         split_data.__modnet_version__ = __version__
 
