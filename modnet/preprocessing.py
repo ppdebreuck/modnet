@@ -108,11 +108,14 @@ def nmi_target(
         df_feat = df_feat.drop(to_drop, axis=1)
 
     # preprocess the input matrix
-    scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
-    x = df_feat.values
-    x = scaler.fit_transform(x)
-    x = np.nan_to_num(x, nan=-1)
-    df_feat = pd.DataFrame(x, index=df_feat.index, columns=df_feat.columns)
+    if (
+        df_feat.isna().any().any()
+    ):  # only preprocess if nans are present to preserve past behaviour
+        scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+        x = df_feat.values
+        x = scaler.fit_transform(x)
+        x = np.nan_to_num(x, nan=-1)
+        df_feat = pd.DataFrame(x, index=df_feat.index, columns=df_feat.columns)
 
     # Take right MI fun depending on regression / classification
     if task_type == "regression":
@@ -185,11 +188,14 @@ def get_cross_nmi(
         n_neighbors = 3
 
     # preprocess the input matrix
-    scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
-    x = df_feat.values
-    x = scaler.fit_transform(x)
-    x = np.nan_to_num(x, nan=-1)
-    df_feat = pd.DataFrame(x, index=df_feat.index, columns=df_feat.columns)
+    if (
+        df_feat.isna().any().any()
+    ):  # only preprocess if nans are present to preserve past behaviour
+        scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+        x = df_feat.values
+        x = scaler.fit_transform(x)
+        x = np.nan_to_num(x, nan=-1)
+        df_feat = pd.DataFrame(x, index=df_feat.index, columns=df_feat.columns)
 
     # Prepare the output DataFrame and compute the mutual information
     mutual_info = pd.DataFrame([], columns=df_feat.columns, index=df_feat.columns)
