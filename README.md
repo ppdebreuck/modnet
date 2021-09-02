@@ -30,9 +30,9 @@ the refractive index and vibrational thermodynamics from any crystal structure.
 
 See the MODNet papers and repositories below for more details:
 
-- _Machine learning materials properties for small datasets_, De Breuck *et al.* (2020), [arXiv:2004.14766](https://arxiv.org/abs/2004.14766).
+- De Breuck *et al.*, "Materials property prediction for limited datasets enabled by feature selection and joint learning with MODNet." *npj Comput Mater* **7**, 83 (2021). [10.1038/s41524-021-00552-2](https://doi.org/10.1038/s41524-021-00552-2) (preprint: [arXiv:2004.14766](https://arxiv.org/abs/2004.14766)).
 
-- _Robust model benchmarking and bias-imbalance in data-driven materials science: a case study on MODNet_, De Breuck *et al.* (2021), [arXiv:2102.02263](https://arxiv.org/abs/2102.02263).
+- De Breuck *et al.*, "Robust model benchmarking and bias-imbalance in data-driven materials science: a case study on MODNet." *J. Phys.: Condens. Matter* **33** 404002,  (2021), [10.1088/1361-648X/ac1280](https://doi.org/10.1088/1361-648X/ac1280) (preprint: [arXiv:2102.02263](https://arxiv.org/abs/2102.02263)).
 
 - MatBench benchmarking data repository: [ml-evs/modnet-matbench](https://github.com/ml-evs/modnet-matbench).
 
@@ -61,7 +61,7 @@ The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
 
 <a name="author"></a>
 ## Author
-The first versions of this software were written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be), with contributions from Matthew Evans (v0.1.7+).
+The first versions of this software were written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be), with contributions from [Matthew Evans](https://www.github.com/ml-evs) (v0.1.7+).
 
 <a name="License"></a>
 ## License
