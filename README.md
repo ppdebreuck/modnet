@@ -59,7 +59,7 @@ The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
 
 <a name="author"></a>
 ## Author
-The first versions of this software were written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be), with contributions from [Matthew Evans](https://www.github.com/ml-evs) (v0.1.7+).
+This software were written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be) and [Matthew Evans](https://www.github.com/ml-evs).
 
 <a name="License"></a>
 ## License
