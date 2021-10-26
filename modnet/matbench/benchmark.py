@@ -110,7 +110,9 @@ def matbench_benchmark(
     fold_data = []
     results = defaultdict(list)
 
-    for ind, (train, test) in enumerate(matbench_kfold_splits(data)):
+    for ind, (train, test) in enumerate(
+        matbench_kfold_splits(data, classification=classification)
+    ):
         train_data, test_data = data.split((train, test))
         if inner_feat_selection:
             path = "folds/train_moddata_f{}".format(ind + 1)

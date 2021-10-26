@@ -15,10 +15,10 @@ class Individual:
 
     """Class containing each of the tuned hyperparameters for the genetic algorithm."""
 
-    def __init__(self, data: MODData):
+    def __init__(self, max_feat: int, num_classes: dict):
 
-        self.data = data
-        self.num_classes = data.num_classes
+        self.max_feat = max_feat
+        self.num_classes = num_classes
 
         self.xscale_list = ["minmax", "standard"]
         self.lr_list = [0.01, 0.005, 0.001]
@@ -38,17 +38,14 @@ class Individual:
             "n_feat": 0,
         }
 
-        if len(data.get_optimal_descriptors()) <= 100:
-            b = int(len(data.get_optimal_descriptors()) / 2)
+        if max_feat <= 100:
+            b = int(max_feat / 2)
             self.genes["n_feat"] = random.randint(1, b) + b
-        elif (
-            len(data.get_optimal_descriptors()) > 100
-            and len(data.get_optimal_descriptors()) < 2000
-        ):
-            max = len(data.get_optimal_descriptors())
+        elif max_feat > 100 and max_feat < 2000:
+            max = max_feat
             self.genes["n_feat"] = 10 * random.randint(1, int(max / 10))
         else:
-            max = np.sqrt(len(data.get_optimal_descriptors()))
+            max = np.sqrt(max_feat)
             self.genes["n_feat"] = random.randint(1, max) ** 2
 
     def crossover(self, partner: Individual) -> Individual:
@@ -69,7 +66,7 @@ class Individual:
             for i in range(10)
         }
 
-        child = Individual(self.data)
+        child = Individual(max_feat=self.max_feat, num_classes=self.num_classes)
         child.genes = child_genes
         return child
 
@@ -81,21 +78,23 @@ class Individual:
         """
 
         if np.random.rand() < prob_mut:
-            individual = Individual(self.data)
+            individual = Individual(
+                max_feat=self.max_feat, num_classes=self.num_classes
+            )
             # modification of the number of features in a [-10%, +10%] range
             self.genes["n_feat"] = np.absolute(
                 int(
                     self.genes["n_feat"]
                     + random.randint(
-                        -int(0.1 * len(self.data.get_optimal_descriptors())),
-                        int(0.1 * len(self.data.get_optimal_descriptors())),
+                        -int(0.1 * self.max_feat),
+                        int(0.1 * self.max_feat),
                     )
                 )
             )
             if self.genes["n_feat"] <= 0:
                 self.genes["n_feat"] = 1
-            elif self.genes["n_feat"] > len(self.data.get_optimal_descriptors()):
-                self.genes["n_feat"] = len(self.data.get_optimal_descriptors())
+            elif self.genes["n_feat"] > self.max_feat:
+                self.genes["n_feat"] = self.max_feat
             # modification of the number of neurons in the first layer of [-64, -32, 0, 32, 64]
             self.genes["n_neurons_first_layer"] = np.absolute(
                 self.genes["n_neurons_first_layer"] + 32 * random.randint(-2, 2)
@@ -127,13 +126,13 @@ class Individual:
         """
 
         es = tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss",
+            monitor="loss",
             min_delta=0.001,
             patience=100,
             verbose=0,
             mode="auto",
             baseline=None,
-            restore_best_weights=True,
+            restore_best_weights=False,
         )
         callbacks = [es]
         model = MODNetModel(
@@ -186,13 +185,13 @@ class Individual:
         """
 
         es = tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss",
+            monitor="loss",
             min_delta=0.001,
             patience=100,
             verbose=0,
             mode="auto",
             baseline=None,
-            restore_best_weights=True,
+            restore_best_weights=False,
         )
         callbacks = [es]
         model = MODNetModel(
@@ -219,11 +218,12 @@ class Individual:
                 ],
             ],
             act=self.genes["act"],
+            num_classes=self.num_classes,
         )
 
         model.fit(
             data,
-            val_fraction=0.1,
+            val_fraction=0,
             loss=self.genes["loss"],
             lr=self.genes["lr"],
             epochs=1000,
@@ -240,13 +240,15 @@ class Individual:
 class FitGenetic:
     """Class optimizing the model parameters using a genitic algorithm."""
 
-    def __init__(self, data: MODData):
+    def __init__(self, data: MODData, sample_threshold=5000):
 
         """Initializes the MODData used in this class.
         Parameters:
             data: A 'MODData' that has been featurized and feature selected.
         """
         self.data = data
+        subset_ids = np.random.permutation(len(data.df_featurized))[:sample_threshold]
+        self.train_data, _ = data.split((subset_ids, []))
 
         LOG.info("Targets:")
         for i, (k, v) in enumerate(data.num_classes.items()):
@@ -263,7 +265,13 @@ class FitGenetic:
             size_pop: Size of the population.
         """
 
-        self.pop = [Individual(self.data) for _ in range(size_pop)]
+        self.pop = [
+            Individual(
+                max_feat=len(self.train_data.get_optimal_descriptors()),
+                num_classes=self.train_data.num_classes,
+            )
+            for _ in range(size_pop)
+        ]
 
     def function_fitness(
         self, pop: List, n_jobs: int, nested=5, val_fraction=0.1
@@ -284,11 +292,11 @@ class FitGenetic:
             num_nested_folds = 5
 
         # create tasks
-        splits = matbench_kfold_splits(self.data, n_splits=num_nested_folds)
+        splits = matbench_kfold_splits(self.train_data, n_splits=num_nested_folds)
         if not nested:
             splits = [
                 train_test_split(
-                    range(len(self.data.df_featurized)), test_size=val_fraction
+                    range(len(self.train_data.df_featurized)), test_size=val_fraction
                 )
             ]
             n_splits = 1
@@ -296,7 +304,7 @@ class FitGenetic:
             n_splits = num_nested_folds
         train_val_datas = []
         for train, val in splits:
-            train_val_datas.append(self.data.split((train, val)))
+            train_val_datas.append(self.train_data.split((train, val)))
 
         tasks = []
         for i, individual in enumerate(pop):
@@ -435,6 +443,7 @@ class FitGenetic:
                 break
 
         if refit:
+            LOG.info("Refit...")
             ensemble = []
             for i in range(5):
                 ensemble.append(self.best_individual.refit_model(self.data))
