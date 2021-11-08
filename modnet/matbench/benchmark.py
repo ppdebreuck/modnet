@@ -254,7 +254,7 @@ def train_fold(
                 lr=fit_settings["lr"],
                 epochs=fit_settings["epochs"],
                 batch_size=fit_settings["batch_size"],
-                loss="mse",
+                loss=fit_settings["loss"],
             )
             model.fit(
                 train_data,
