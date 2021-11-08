@@ -365,7 +365,7 @@ class FitGenetic:
         prob_mut: Optional[int] = None,
         n_jobs: Optional[int] = None,
         early_stopping: Optional[int] = 4,
-        refit: Optional[bool] = False,
+        refit: Optional[int] = 0,
     ) -> None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
@@ -445,7 +445,7 @@ class FitGenetic:
         if refit:
             LOG.info("Refit...")
             ensemble = []
-            for i in range(5):
+            for i in range(refit):
                 ensemble.append(self.best_individual.refit_model(self.data))
             self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
 
