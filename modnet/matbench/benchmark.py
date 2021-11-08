@@ -41,10 +41,9 @@ def matbench_benchmark(
     save_folds: bool = False,
     save_models: bool = False,
     hp_optimization: bool = True,
+    hp_strategy: str = "fit_preset",
     inner_feat_selection: bool = True,
     use_precomputed_cross_nmi: bool = True,
-    use_fit_preset: bool = False,
-    use_ga: bool = False,
     presets: Optional[List[dict]] = None,
     fast: bool = False,
     n_jobs: Optional[int] = None,
@@ -67,6 +66,7 @@ def matbench_benchmark(
         save_models: Whether to pickle all trained models according to
             their fold index and performance.
         hp_optimization: Whether to perform hyperparameter optimisation.
+        hp_strategy: Which optimization strategy to choose. Use either \"fit_preset\" or \"ga\".
         inner_feat_selection: Whether to perform split-level feature
             selection or try to use pre-computed values.
         use_precomputed_cross_nmi: Whether to use the precmputed cross NMI
@@ -84,10 +84,11 @@ def matbench_benchmark(
 
     """
 
-    if use_fit_preset and use_ga:
-        raise RuntimeError(
-            "Both use_fit_preset and use_ga are set to True. Please choose one."
-        )
+    if hp_optimization:
+        if hp_strategy not in ["fit_preset" or "ga"]:
+            raise RuntimeError(
+                f'{hp_strategy} not supported. Choose from "fit_genetic" or "ga".'
+            )
 
     if fit_settings is None:
         fit_settings = {}
@@ -136,8 +137,7 @@ def matbench_benchmark(
         "classification": classification,
         "save_folds": save_folds,
         "presets": presets,
-        "use_fit_preset": use_fit_preset,
-        "use_ga": use_ga,
+        "hp_strategy": hp_strategy,
         "save_models": save_models,
         "nested": nested,
         "n_jobs": n_jobs,
@@ -165,8 +165,7 @@ def train_fold(
     model_type: Type[MODNetModel] = MODNetModel,
     presets=None,
     hp_optimization=True,
-    use_fit_preset=False,
-    use_ga=False,
+    hp_strategy="fit_preset",
     classification=False,
     save_folds=False,
     fast=False,
@@ -211,7 +210,7 @@ def train_fold(
     model = model_type(target, target_weights, **model_settings)
 
     if hp_optimization:
-        if use_fit_preset:
+        if hp_strategy == "fit_preset":
             (
                 models,
                 val_losses,
@@ -230,7 +229,7 @@ def train_fold(
             results["nested_learning_curves"] = learning_curves
             results["best_learning_curves"] = best_learning_curve
             results["best_presets"] = best_presets
-        elif use_ga:
+        elif hp_strategy == "ga":
             ga = FitGenetic(train_data)
             model = ga.run(
                 size_pop=ga_settings["size_pop"],
