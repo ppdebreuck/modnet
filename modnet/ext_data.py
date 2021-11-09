@@ -18,6 +18,7 @@ from modnet.utils import LOG
 class Usage(Enum):
     _MODData = auto()
     cross_nmi = auto()
+    feature_db = auto()
 
 
 Dataset = namedtuple("Dataset", ("url", "description", "filename", "md5", "usage"))
@@ -38,9 +39,18 @@ DATASETS = {
             "Pickled dataframe containing the Normalized Mutual Information (NMI) between matminer features "
             "computed on the Materials Project."
         ),
-        filename="Features_cross",
+        filename="features_cross",
         md5="b83e0bd43f71ec53c4d69ee0764acfbe",
         usage=Usage["cross_nmi"],
+    ),
+    "MP_210321": Dataset(
+        url="https://figshare.com/ndownloader/files/31368412",
+        description=(
+            "A pickled dataframe containing featurized materials from the Materials as of 21 March 2021."
+        ),
+        filename="feature_database",
+        md5="2456d5ed5a215d54bf071725f0507428",
+        usage=Usage["feature_db"],
     ),
 }
 
@@ -53,7 +63,7 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
     Parameters:
         dataset_name: The name (key) of the dataset in `DATASETS`.
         expected_type: A string representing the expected usage of the dataset,
-            e.g. `'_MODData'` or `'cross_nmi'`.
+            e.g. `'_MODData'` or `'cross_nmi'` or `'feature_db'`.
 
     Returns:
         The path to the downloaded or previously installed model.
@@ -81,7 +91,7 @@ def load_ext_dataset(dataset_name: str, expected_type: Union[Usage, str]):
     model_path = data_dir.joinpath(dataset.filename)
     if not model_path.is_file():
         LOG.info(
-            f"Downloading featurized dataset {dataset_name} from {dataset.url} into {model_path}"
+            f"Downloading featurized dataset {dataset_name} from {dataset.url} into {model_path} \n This may take some time..."
         )
         if not data_dir.is_dir():
             os.makedirs(data_dir)
