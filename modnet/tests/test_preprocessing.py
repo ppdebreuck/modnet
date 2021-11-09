@@ -464,3 +464,19 @@ def test_precomputed_cross_nmi(small_moddata):
         df_featurized=small_moddata.df_featurized,
     )
     new.feature_selection(5, use_precomputed_cross_nmi=True)
+
+
+def test_moddata_balancing():
+    d = MODData(
+        materials=[1, 2, 3, 4, 5, 6],
+        targets=np.array([[0, 0, 0, 0, 1, 1]]).T,
+        target_names=["C"],
+        num_classes={"C": 2},
+    )
+
+    d.df_featurized = pd.DataFrame({"f": [1, 2, 3, 4, 5, 6]})
+    d.rebalance()
+    assert len(d.df_featurized) == 8
+    assert len(d.df_targets) == 8
+    assert len(d.df_structure) == 8
+    assert d.df_targets["C"].values.sum() == 4

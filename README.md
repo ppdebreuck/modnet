@@ -47,7 +47,22 @@ See the MODNet papers and repositories below for more details:
 <a name="install"></a>
 ## How to install
 
-MODNet can be installed via pip:
+First, create a separate environment (e.g. named modnet) with python 3.8:
+
+```python
+conda create -n modnet python=3.8
+```
+activate the environment:
+```python
+conda activate modnet
+```
+
+Then, install pymatgen v2020.8.13 with conda:
+```python
+conda install -c conda-forge pymatgen=2020.8.13
+```
+
+Finally, install MODNet  via pip:
 
 ```bash
 pip install modnet
