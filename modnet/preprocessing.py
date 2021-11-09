@@ -51,7 +51,10 @@ def compute_mi(
 ):
 
     mi = mutual_info_regression(
-        x.reshape(-1, 1), y, random_state=random_state, n_neighbors=n_neighbors,
+        x.reshape(-1, 1),
+        y,
+        random_state=random_state,
+        n_neighbors=n_neighbors,
     )[0]
 
     return mi, x_name, y_name
