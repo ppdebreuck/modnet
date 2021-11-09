@@ -345,7 +345,6 @@ class MODNetModel:
         }
 
         self.model.compile(
-            run_eagerly=True,
             loss=loss,
             optimizer=tf.keras.optimizers.Adam(lr=lr),
             metrics=metrics,
