@@ -16,6 +16,7 @@ from functools import partial
 from pymatgen import Structure, Composition
 
 from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
+from sklearn.utils import resample
 import pandas as pd
 import numpy as np
 import tqdm
@@ -828,6 +829,30 @@ class MODData:
         raise NotImplementedError("shuffle function not yet finished.")
         self.df_featurized = self.df_featurized.sample(frac=1)
         self.df_targets = self.df_targets.loc[self.df_featurized.index]
+
+    def rebalance(self):
+        """
+        Rebalancing classification data by oversampling.
+        """
+        if self.df_featurized is None:
+            raise ValueError("Please featurize the MODData first.")
+        for targ in self.df_targets.columns:
+            if self.num_classes[targ] >= 2:
+                support = np.zeros(self.num_classes[targ])
+                for i in range(self.num_classes[targ]):
+                    support[i] = (self.df_targets[targ].values == i).sum()
+                max_support = support.max()
+                for i in range(self.num_classes[targ]):
+                    idxs = np.where(self.df_targets[targ].values == i)[0]
+                    sampled_x, sampled_y, sampled_struct = resample(
+                        self.df_featurized.iloc[idxs],
+                        self.df_targets.iloc[idxs],
+                        self.df_structure.iloc[idxs],
+                        n_samples=int(max_support - support[i]),
+                    )
+                    self.df_featurized = self.df_featurized.append(sampled_x)
+                    self.df_targets = self.df_targets.append(sampled_y)
+                    self.df_structure = self.df_structure.append(sampled_struct)
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
