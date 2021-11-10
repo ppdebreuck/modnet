@@ -2,7 +2,7 @@
 
 
 def test_ga(small_moddata, tf_session):
-    """Tests the `matbench_benchmark()` method with optional arguments."""
+    """Tests the modnet.hyper_opt.FitGenetic algorithm."""
     from modnet.hyper_opt import FitGenetic
 
     data = small_moddata
