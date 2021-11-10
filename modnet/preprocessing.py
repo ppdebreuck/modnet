@@ -16,7 +16,9 @@ from functools import partial
 from pymatgen import Structure, Composition
 
 from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
+from sklearn.utils import resample
 from sklearn.preprocessing import MinMaxScaler
+
 import pandas as pd
 import numpy as np
 import tqdm
@@ -675,9 +677,7 @@ class MODData:
         self.df_structure = pd.DataFrame({"id": structure_ids, "structure": materials})
         self.df_structure.set_index("id", inplace=True)
 
-    def featurize(
-        self, fast: bool = False, db_file: str = "feature_database.pkl", n_jobs=None
-    ):
+    def featurize(self, fast: bool = False, db_file=None, n_jobs=None):
         """For the input structures, construct many matminer features
         and save a featurized dataframe. If `db_file` is specified, this
         method will try to load previous feature calculations for each
@@ -686,11 +686,19 @@ class MODData:
         Sets the `self.df_featurized` attribute.
 
         Args:
-            fast (bool): whether or not to try to load from a backup.
-            db_file (str): filename of a pickled dataframe containing
-                with the same ID index as this `MODData` object.
+            fast (bool): whether or not to load from the Materials Project Database.
+            Please be sure to have provided the mp-ids in the MODData structure_ids keyword.
+            Note : The database will be downloaded in this case, and takes around 2GB of space on your drive !
+
+            db_file: Deprecated. Do Not use this anymore.
+
 
         """
+
+        if db_file is not None:
+            LOG.warning(
+                "Please remove the db_file argument, no longer supported. A default MP DB is downloaded instead."
+            )
 
         LOG.info("Computing features, this can take time...")
 
@@ -708,7 +716,13 @@ class MODData:
 
             global DATABASE
             if DATABASE.empty:
-                DATABASE = pd.read_pickle(db_file)
+                from modnet.ext_data import load_ext_dataset
+
+                db_path = load_ext_dataset("MP_210321", "feature_db")
+                try:
+                    DATABASE = pd.read_pickle(db_path)
+                except AttributeError:
+                    raise AttributeError("Please update pandas to >=1.3")
 
             ids_done = [x for x in self.structure_ids if x in DATABASE.index]
 
@@ -851,6 +865,30 @@ class MODData:
         raise NotImplementedError("shuffle function not yet finished.")
         self.df_featurized = self.df_featurized.sample(frac=1)
         self.df_targets = self.df_targets.loc[self.df_featurized.index]
+
+    def rebalance(self):
+        """
+        Rebalancing classification data by oversampling.
+        """
+        if self.df_featurized is None:
+            raise ValueError("Please featurize the MODData first.")
+        for targ in self.df_targets.columns:
+            if self.num_classes[targ] >= 2:
+                support = np.zeros(self.num_classes[targ])
+                for i in range(self.num_classes[targ]):
+                    support[i] = (self.df_targets[targ].values == i).sum()
+                max_support = support.max()
+                for i in range(self.num_classes[targ]):
+                    idxs = np.where(self.df_targets[targ].values == i)[0]
+                    sampled_x, sampled_y, sampled_struct = resample(
+                        self.df_featurized.iloc[idxs],
+                        self.df_targets.iloc[idxs],
+                        self.df_structure.iloc[idxs],
+                        n_samples=int(max_support - support[i]),
+                    )
+                    self.df_featurized = self.df_featurized.append(sampled_x)
+                    self.df_targets = self.df_targets.append(sampled_y)
+                    self.df_structure = self.df_structure.append(sampled_struct)
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
