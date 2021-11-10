@@ -13,9 +13,14 @@ import tqdm
 
 class Individual:
 
-    """Class containing each of the tuned hyperparameters for the genetic algorithm."""
+    """Class representing a set of hyperparameters for the genetic algorithm."""
 
-    def __init__(self, max_feat: int, num_classes: dict):
+    def __init__(self, max_feat: int, num_classes: dict) -> Individual:
+        """
+        Args:
+            max_feat (int): Maximum number of features
+            num_classes (dict): MODData num_classes parameter.Used for distinguishing between regression and classification.
+        """
 
         self.max_feat = max_feat
         self.num_classes = num_classes
@@ -49,10 +54,12 @@ class Individual:
             self.genes["n_feat"] = random.randint(1, max) ** 2
 
     def crossover(self, partner: Individual) -> Individual:
+        """Does the crossover of two parents and returns a 'child' which has a mix of the parents hyperparams.
 
-        """Does the crossover of two parents and returns a 'child' which have the combined genetic information of both parents.
-        Parameter:
-            partner: Individual object containing the gentic information.
+        Args:
+            partner (Individual): Partner individual.
+        Returns:
+            Individual: Child.
         """
 
         genes_from_mother = random.sample(
@@ -70,11 +77,13 @@ class Individual:
         child.genes = child_genes
         return child
 
-    def mutation(self, prob_mut: int) -> None:
+    def mutation(self, prob_mut: float) -> None:
+        """Performs mutation in the hyper parameters in order to maintain diversity in the population.
 
-        """Performs mutation in the genetic information in order to maintain diversity in the population.
-        Paramter:
-            prob_mut: Probability of mutation.
+        Args:
+            prob_mut (float): Probability [0,1] of mutation.
+
+        Returns: None (inplace operator).
         """
 
         if np.random.rand() < prob_mut:
@@ -117,12 +126,13 @@ class Individual:
             pass
         return None
 
-    def evaluate(self, train_data, val_data, fast=False):
+    def evaluate(self, train_data: MODData, val_data: MODData, fast: bool = False):
+        """Internally evaluates the validation loss by setting self.val_loss
 
-        """Evaluate the MODNet model performance.
-        Paramters:
-            train_data: MODData training set.
-            val_data: MODData validation set.
+        Args:
+            train_data (MODData): Training MODData
+            val_data (MODData): Validation MODData
+            fast (bool, optional): Limited epoch for testing or debugging only. Defaults to False.
         """
 
         es = tf.keras.callbacks.EarlyStopping(
@@ -177,11 +187,11 @@ class Individual:
         self.val_loss = model.evaluate(val_data)
         self.model = model
 
-    def refit_model(self, data, fast=False):
-
-        """Refit the MODNet model on the training+validation set.
-        Paramter:
-            data: MODData to refit the model on the training and validation sets.
+    def refit_model(self, data: MODData, fast: bool = False):
+        """Refit inner model on specified data.
+        Args:
+            data (MODData): Training data
+            fast (bool, optional): Limited epoch for testing or debugging only. Defaults to False.
         """
 
         es = tf.keras.callbacks.EarlyStopping(
@@ -238,13 +248,15 @@ class Individual:
 
 
 class FitGenetic:
-    """Class optimizing the model parameters using a genitic algorithm."""
+    """Class optimizing the model parameters using a genetic algorithm."""
 
-    def __init__(self, data: MODData, sample_threshold=5000):
+    def __init__(self, data: MODData, sample_threshold: int = 5000):
+        """Genetic algorithm hyperparameter optimization for MODNet.
 
-        """Initializes the MODData used in this class.
-        Parameters:
-            data: A 'MODData' that has been featurized and feature selected.
+        Args:
+            data (MODData): Training MODData
+            sample_threshold (int, optional): If the dataset size exceeds this threshold, individuals are
+                trained on sampled subsets of this size. Defaults to 5000.
         """
         self.data = data
         subset_ids = np.random.permutation(len(data.df_featurized))[:sample_threshold]
@@ -259,10 +271,10 @@ class FitGenetic:
             LOG.info(f"{i+1}){k}: {type}")
 
     def initialization_population(self, size_pop: int) -> None:
+        """Initializes the initial population (Generation 0).
 
-        """Inintializes the initial population (Generation 0).
-        Paramter:
-            size_pop: Size of the population.
+        Args:
+            size_pop (int): Size of population.
         """
 
         self.pop = [
@@ -275,23 +287,26 @@ class FitGenetic:
 
     def function_fitness(
         self,
-        pop: List,
+        pop: List[Individual],
         n_jobs: int,
         nested=5,
         val_fraction=0.1,
         fast=False,
     ) -> None:
+        """Calculates the fitness of each model, which has the parameters contained in the pop argument.
+        The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
 
-        """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
-        Parameters:
-            pop: Object containing the genetic information (i.e., the parameters) of the model.
-            n_jobs: Number of jobs for multiprocessing.
-            nested: number of folds for the validation loss
-            refit: If true, it refits the model on the training+validation set. If false, it ensembles the models.
+        Args:
+            pop (List[Individual]): List of individuals
+            n_jobs (int): number of jobs to parallelize on.
+            nested (int, optional): CV fold size. Defaults to 5. Use <=0 for hold-out validation.
+            val_fraction (float, optional): Validation fraction if no CV is used. Defaults to 0.1.
+            fast (bool, optional): Limited epochs for testing and debugging only. Defaults to False.
 
-        Returns: (mean k-fold validation loss, models, individuals)
-
+        Returns:
+            val_losses, models, individuals
         """
+
         from modnet.matbench.benchmark import matbench_kfold_splits
 
         num_nested_folds = 5
@@ -376,21 +391,27 @@ class FitGenetic:
         nested: Optional[int] = 5,
         n_jobs: Optional[int] = None,
         early_stopping: Optional[int] = 4,
-        refit: Optional[int] = 0,
+        refit: Optional[int] = 5,
         fast=False,
-    ) -> None:
+    ) -> EnsembleMODNetModel:
+        """Run the GA and return best model.
 
-        """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
-        Parameters:
-            size_pop: Size of the population per generation.
-            num_generations: Number of generations.
-            prob_mut: Probability of mutation.
-            n_jobs: Number of jobs for parallelization.
-            early_stopping: Number of successive same best MAE score to activate early_stopping
-            refit: If true, it refits the model on the training+validation set. If false, it ensembles the models.
-            fast: Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
-                Overrides the size_pop, num_generation and nested arguments.
+        Args:
+            size_pop (int, optional): Size of the population per generation.. Defaults to 20.
+            num_generations (int, optional): Size of the population per generation. Defaults to 10.
+            prob_mut (Optional[int], optional): Probability of mutation. Defaults to None.
+            nested (Optional[int], optional): CV fold size. Use <=0 for hold-out validation. Defaults to 5.
+            n_jobs (Optional[int], optional): Number of jobs to parallelize on. Defaults to None.
+            early_stopping (Optional[int], optional): Number of successive generations without improvement before stopping. Defaults to 4.
+            refit (Optional[int], optional): Wether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
+                The amount corresponds the the number of models used in the ensemble. Defaults to 0.
+            fast (bool, optional): Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
+                Overrides the size_pop, num_generation and nested arguments.. Defaults to False.
+
+        Returns:
+            EnsembleMODNetModel: Fitted model with best hyperparameters
         """
+
         if fast:
             size_pop, num_generations, nested = 2, 2, 2
 
@@ -484,10 +505,19 @@ def _evaluate_individual(
     fold_id: int,
     fast: bool = False,
 ):
-    """Returns the MAE of a modnet model given some parameters stored in ind and given the training and validation sets sorted in fold.
-    Paramters:
-        individual: An individual of the population, which is a list wherein the parameters are stored.
-        fold: Tuple giving the training and validation MODData.
+    """Evaluate individual
+
+    Args:
+        individual (Individual): Individual to be evaluated
+        train_data (MODData): Training MODData
+        val_data (MODData): Validation MODData
+        individual_id (int): Individual ID
+        fold_id (int): Fold ID
+        fast (bool, optional): Limited number of epochs for debugging and testing purposes only. Defaults to False.
+
+    Returns:
+        individual, individual_id, fold_id
+        individual.val_loss contains the corresponding validation score.
     """
     individual.evaluate(train_data, val_data, fast=fast)
     individual.model._make_picklable()
