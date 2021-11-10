@@ -72,7 +72,7 @@ def matbench_benchmark(
         use_precomputed_cross_nmi: Whether to use the precmputed cross NMI
             from the Materials Project dataset, or recompute per fold.
         presets: Override the built-in hyperparameter grid with these presets.
-        fast: Whether to perform debug training, i.e. reduced presets and epochs.
+        fast: Whether to perform debug training, i.e. reduced presets and epochs, for the fit_preset strategy.
         n_jobs: Try to parallelize the inner fit_preset over this number of
             processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
@@ -85,7 +85,7 @@ def matbench_benchmark(
     """
 
     if hp_optimization:
-        if hp_strategy not in ["fit_preset" or "ga"]:
+        if hp_strategy not in ["fit_preset", "ga"]:
             raise RuntimeError(
                 f'{hp_strategy} not supported. Choose from "fit_genetic" or "ga".'
             )
@@ -229,14 +229,17 @@ def train_fold(
             results["nested_learning_curves"] = learning_curves
             results["best_learning_curves"] = best_learning_curve
             results["best_presets"] = best_presets
+
         elif hp_strategy == "ga":
             ga = FitGenetic(train_data)
             model = ga.run(
                 size_pop=ga_settings["size_pop"],
                 num_generations=ga_settings["num_generations"],
+                nested=nested,
                 n_jobs=n_jobs,
                 early_stopping=ga_settings["early_stopping"],
                 refit=ga_settings["refit"],
+                fast=fast,
             )
 
         if save_models:

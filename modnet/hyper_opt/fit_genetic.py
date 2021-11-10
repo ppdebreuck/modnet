@@ -117,7 +117,7 @@ class Individual:
             pass
         return None
 
-    def evaluate(self, train_data, val_data):
+    def evaluate(self, train_data, val_data, fast=False):
 
         """Evaluate the MODNet model performance.
         Paramters:
@@ -167,7 +167,7 @@ class Individual:
             val_data=val_data,
             loss=self.genes["loss"],
             lr=self.genes["lr"],
-            epochs=1000,
+            epochs=1000 if not fast else 1,
             batch_size=self.genes["initial_batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
@@ -177,7 +177,7 @@ class Individual:
         self.val_loss = model.evaluate(val_data)
         self.model = model
 
-    def refit_model(self, data):
+    def refit_model(self, data, fast=False):
 
         """Refit the MODNet model on the training+validation set.
         Paramter:
@@ -226,7 +226,7 @@ class Individual:
             val_fraction=0,
             loss=self.genes["loss"],
             lr=self.genes["lr"],
-            epochs=1000,
+            epochs=1000 if not fast else 1,
             batch_size=self.genes["initial_batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
@@ -274,14 +274,23 @@ class FitGenetic:
         ]
 
     def function_fitness(
-        self, pop: List, n_jobs: int, nested=5, val_fraction=0.1
+        self,
+        pop: List,
+        n_jobs: int,
+        nested=5,
+        val_fraction=0.1,
+        fast=False,
     ) -> None:
 
         """Calculates the fitness of each model, which has the parameters contained in the pop argument. The function returns a list containing respectively the MAE calculated on the validation set, the model, and the parameters of that model.
         Parameters:
             pop: Object containing the genetic information (i.e., the parameters) of the model.
             n_jobs: Number of jobs for multiprocessing.
+            nested: number of folds for the validation loss
             refit: If true, it refits the model on the training+validation set. If false, it ensembles the models.
+
+        Returns: (mean k-fold validation loss, models, individuals)
+
         """
         from modnet.matbench.benchmark import matbench_kfold_splits
 
@@ -317,6 +326,7 @@ class FitGenetic:
                         "val_data": val_data,
                         "individual_id": i,
                         "fold_id": j,
+                        "fast": fast,
                     }
                 ]
 
@@ -363,9 +373,11 @@ class FitGenetic:
         size_pop: int = 20,
         num_generations: int = 10,
         prob_mut: Optional[int] = None,
+        nested: Optional[int] = 5,
         n_jobs: Optional[int] = None,
         early_stopping: Optional[int] = 4,
         refit: Optional[int] = 0,
+        fast=False,
     ) -> None:
 
         """Selects the best individual (the model with the best parameters) for the next generation. The selection is based on a minimisation of the MAE on the validation set.
@@ -376,13 +388,19 @@ class FitGenetic:
             n_jobs: Number of jobs for parallelization.
             early_stopping: Number of successive same best MAE score to activate early_stopping
             refit: If true, it refits the model on the training+validation set. If false, it ensembles the models.
+            fast: Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
+                Overrides the size_pop, num_generation and nested arguments.
         """
+        if fast:
+            size_pop, num_generations, nested = 2, 2, 2
 
         LOG.info("Generation number 0")
         self.initialization_population(size_pop)  # initialization of the population
         val_loss, models, individuals = self.function_fitness(
             pop=self.pop,
+            nested=nested,
             n_jobs=n_jobs,
+            fast=fast,
         )
         ranking = val_loss.argsort()
         best_model_per_gen = [None for _ in range(num_generations)]
@@ -417,7 +435,9 @@ class FitGenetic:
                 val_loss_children,
                 models_children,
                 individuals_children,
-            ) = self.function_fitness(pop=children, n_jobs=n_jobs)
+            ) = self.function_fitness(
+                pop=children, nested=nested, n_jobs=n_jobs, fast=fast
+            )
             val_loss = np.concatenate([val_loss, val_loss_children])
             models = np.concatenate([models, models_children])
             individuals = np.concatenate([individuals, individuals_children])
@@ -446,7 +466,7 @@ class FitGenetic:
             LOG.info("Refit...")
             ensemble = []
             for i in range(refit):
-                ensemble.append(self.best_individual.refit_model(self.data))
+                ensemble.append(self.best_individual.refit_model(self.data, fast=fast))
             self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
 
         return self.best_model
@@ -462,12 +482,13 @@ def _evaluate_individual(
     val_data: MODData,
     individual_id: int,
     fold_id: int,
+    fast: bool = False,
 ):
     """Returns the MAE of a modnet model given some parameters stored in ind and given the training and validation sets sorted in fold.
     Paramters:
         individual: An individual of the population, which is a list wherein the parameters are stored.
         fold: Tuple giving the training and validation MODData.
     """
-    individual.evaluate(train_data, val_data)
+    individual.evaluate(train_data, val_data, fast=fast)
     individual.model._make_picklable()
     return individual, individual_id, fold_id

@@ -128,3 +128,46 @@ def test_train_small_model_benchmark_with_extra_args(small_moddata):
     for key in expected_keys:
         assert key in results
     assert all(len(results[key]) == 5 for key in expected_keys)
+
+
+def test_ga_benchmark(small_moddata, tf_session):
+    """Tests the `matbench_benchmark()` method with the GA strategy."""
+    from modnet.matbench.benchmark import matbench_benchmark
+
+    data = small_moddata
+    # set regression problem
+    data.num_classes = {"eform": 0}
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    results = matbench_benchmark(
+        data,
+        [[["eform"]]],
+        {"eform": 1},
+        inner_feat_selection=False,
+        hp_optimization=True,
+        hp_strategy="ga",
+        ga_settings={
+            "size_pop": 2,
+            "num_generations": 2,
+            "early_stopping": 2,
+            "refit": False,
+        },
+        fast=True,
+        n_jobs=2,
+    )
+
+    expected_keys = (
+        "predictions",
+        "targets",
+        "errors",
+        "scores",
+        "model",
+    )
+
+    for key in expected_keys:
+        assert key in results
+
+    assert all(len(results[key]) == 5 for key in expected_keys)
