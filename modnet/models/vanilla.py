@@ -344,14 +344,40 @@ class MODNetModel:
             "callbacks": callbacks,
         }
 
-        self.model.compile(
-            loss=loss,
-            optimizer=tf.keras.optimizers.Adam(lr=lr),
-            metrics=metrics,
-            loss_weights=self.weights,
-        )
-        history = self.model.fit(**fit_params)
-        self.history = history.history
+        if len(y) > 10:
+            optimizer = tf.keras.optimizers.Adam(lr)
+            train_dataset = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
+            y = tf.transpose(y)
+            train_y_dataset = tf.data.Dataset.from_tensor_slices(y).batch(batch_size)
+            loss_fn = tf.keras.losses.MeanAbsoluteError()
+            for epoch in range(1, epochs + 1):
+                print(f"Epoch {epoch}")
+                for train_x, train_y in zip(train_dataset, train_y_dataset):
+                    train_y = tf.expand_dims(tf.transpose(train_y), -1)
+                    # predictions_1, predictions_2 = self.model(train_x)
+                    # loss = tf.reduce_mean(loss_fn(target_1, predictions_1)) + tf.reduce_mean(loss_fn(target_2, predictions_2))
+                    with tf.GradientTape() as tape:
+                        preds = self.model(train_x)
+                        loss = loss_fn(
+                            preds,
+                            train_y,
+                            sample_weight=[
+                                self.weights[t] for t in self.targets_flatten
+                            ],
+                        )
+                        grads = tape.gradient(loss, self.model.trainable_variables)
+                        optimizer.apply_gradients(
+                            zip(grads, self.model.trainable_variables)
+                        )
+        else:
+            self.model.compile(
+                loss=loss,
+                optimizer=tf.keras.optimizers.Adam(lr=lr),
+                metrics=metrics,
+                loss_weights=self.weights,
+            )
+            history = self.model.fit(**fit_params)
+            self.history = history.history
 
     def fit_preset(
         self,

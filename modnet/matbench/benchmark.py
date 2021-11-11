@@ -213,6 +213,7 @@ def train_fold(
         results["nested_losses"] = val_losses
         results["nested_learning_curves"] = learning_curves
         results["best_learning_curves"] = best_learning_curve
+        results["best_presets"] = best_presets
     else:
         if fit_settings["increase_bs"]:
             model.fit(
@@ -287,7 +288,6 @@ def train_fold(
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score
-    results["best_presets"] = best_presets
     results["model"] = model
 
     return results
