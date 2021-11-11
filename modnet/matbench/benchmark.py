@@ -8,6 +8,7 @@ import numpy as np
 from modnet.preprocessing import MODData
 from modnet.models import MODNetModel
 from modnet.utils import LOG
+from modnet.hyper_opt import FitGenetic
 
 MATBENCH_SEED = 18012019
 
@@ -17,8 +18,8 @@ def matbench_kfold_splits(data: MODData, n_splits=5, classification=False):
 
     Arguments:
         data: The featurized MODData.
-
     """
+
     if classification:
         from sklearn.model_selection import StratifiedKFold as KFold
     else:
@@ -34,11 +35,13 @@ def matbench_benchmark(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Optional[Dict[str, Any]] = None,
+    ga_settings: Optional[Dict[str, float]] = None,
     classification: bool = False,
     model_type: Type[MODNetModel] = MODNetModel,
     save_folds: bool = False,
     save_models: bool = False,
     hp_optimization: bool = True,
+    hp_strategy: str = "fit_preset",
     inner_feat_selection: bool = True,
     use_precomputed_cross_nmi: bool = True,
     presets: Optional[List[dict]] = None,
@@ -63,12 +66,13 @@ def matbench_benchmark(
         save_models: Whether to pickle all trained models according to
             their fold index and performance.
         hp_optimization: Whether to perform hyperparameter optimisation.
+        hp_strategy: Which optimization strategy to choose. Use either \"fit_preset\" or \"ga\".
         inner_feat_selection: Whether to perform split-level feature
             selection or try to use pre-computed values.
         use_precomputed_cross_nmi: Whether to use the precmputed cross NMI
             from the Materials Project dataset, or recompute per fold.
         presets: Override the built-in hyperparameter grid with these presets.
-        fast: Whether to perform debug training, i.e. reduced presets and epochs.
+        fast: Whether to perform debug training, i.e. reduced presets and epochs, for the fit_preset strategy.
         n_jobs: Try to parallelize the inner fit_preset over this number of
             processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
@@ -80,6 +84,12 @@ def matbench_benchmark(
 
     """
 
+    if hp_optimization:
+        if hp_strategy not in ["fit_preset", "ga"]:
+            raise RuntimeError(
+                f'{hp_strategy} not supported. Choose from "fit_genetic" or "ga".'
+            )
+
     if fit_settings is None:
         fit_settings = {}
 
@@ -89,6 +99,14 @@ def matbench_benchmark(
     if not fit_settings.get("num_neurons"):
         # Pass dummy network
         fit_settings["num_neurons"] = [[4], [4], [4], [4]]
+
+    if ga_settings is None:
+        ga_settings = {
+            "size_pop": 20,
+            "num_generations": 10,
+            "early_stopping": 4,
+            "refit": False,
+        }
 
     fold_data = []
     results = defaultdict(list)
@@ -110,7 +128,7 @@ def matbench_benchmark(
 
         fold_data.append((train_data, test_data))
 
-    args = (target, target_weights, fit_settings)
+    args = (target, target_weights, fit_settings, ga_settings)
 
     model_kwargs = {
         "model_type": model_type,
@@ -119,6 +137,7 @@ def matbench_benchmark(
         "classification": classification,
         "save_folds": save_folds,
         "presets": presets,
+        "hp_strategy": hp_strategy,
         "save_models": save_models,
         "nested": nested,
         "n_jobs": n_jobs,
@@ -142,9 +161,11 @@ def train_fold(
     target: List[str],
     target_weights: Dict[str, float],
     fit_settings: Dict[str, Any],
+    ga_settings: Dict[str, float],
     model_type: Type[MODNetModel] = MODNetModel,
     presets=None,
     hp_optimization=True,
+    hp_strategy="fit_preset",
     classification=False,
     save_folds=False,
     fast=False,
@@ -154,7 +175,6 @@ def train_fold(
     **model_kwargs,
 ) -> dict:
     """Train one fold of a CV.
-
     Unless stated, all arguments have the same meaning as in `matbench_benchmark(...)`.
 
     Arguments:
@@ -169,7 +189,6 @@ def train_fold(
     fold_ind, (train_data, test_data) = fold
 
     results = {}
-
     multi_target = bool(len(target) - 1)
 
     # If not performing hp_optimization, load model init settings from fit_settings
@@ -191,20 +210,38 @@ def train_fold(
     model = model_type(target, target_weights, **model_settings)
 
     if hp_optimization:
-        (
-            models,
-            val_losses,
-            best_learning_curve,
-            learning_curves,
-            best_presets,
-        ) = model.fit_preset(
-            train_data,
-            presets=presets,
-            fast=fast,
-            classification=classification,
-            nested=nested,
-            n_jobs=n_jobs,
-        )
+        if hp_strategy == "fit_preset":
+            (
+                models,
+                val_losses,
+                best_learning_curve,
+                learning_curves,
+                best_presets,
+            ) = model.fit_preset(
+                train_data,
+                presets=presets,
+                fast=fast,
+                classification=classification,
+                nested=nested,
+                n_jobs=n_jobs,
+            )
+            results["nested_losses"] = val_losses
+            results["nested_learning_curves"] = learning_curves
+            results["best_learning_curves"] = best_learning_curve
+            results["best_presets"] = best_presets
+
+        elif hp_strategy == "ga":
+            ga = FitGenetic(train_data)
+            model = ga.run(
+                size_pop=ga_settings["size_pop"],
+                num_generations=ga_settings["num_generations"],
+                nested=nested,
+                n_jobs=n_jobs,
+                early_stopping=ga_settings["early_stopping"],
+                refit=ga_settings["refit"],
+                fast=fast,
+            )
+
         if save_models:
             for ind, nested_model in enumerate(models):
                 score = val_losses[ind]
@@ -212,9 +249,6 @@ def train_fold(
 
             model.save(f"results/best_model_{fold_ind}_{score:3.3f}")
 
-        results["nested_losses"] = val_losses
-        results["nested_learning_curves"] = learning_curves
-        results["best_learning_curves"] = best_learning_curve
     else:
         if fit_settings["increase_bs"]:
             model.fit(
@@ -289,7 +323,6 @@ def train_fold(
     results["targets"] = targets
     results["errors"] = errors
     results["scores"] = score
-    results["best_presets"] = best_presets
     results["model"] = model
 
     return results
