@@ -1,22 +1,6 @@
 # MODNet: Material Optimal Descriptor Network
 
-[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/workflow/status/ppdebreuck/modnet/Run%20tests?logo=github)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+) ![Read the Docs](https://img.shields.io/readthedocs/modnet)
-
-## Table of contents
-- [Introduction](#introduction)
-- [How to install](#install)
-- [Usage](#usage)
-- [Pretrained models](#pretrained)
-- [Stored MODData](#stored-moddata)
-- [Documentation](#documentation)
-- [Getting started](#getting-started)
-  - [MODData](#moddata)
-  - [MODNetModel](#modnetmodel)
-- [Author](#author)
-- [License](#license)
-
-
-
+[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/workflow/status/ppdebreuck/modnet/Run%20tests?logo=github)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+) [![Read the Docs](https://img.shields.io/readthedocs/modnet)](https://modnet.readthedocs.io/en/latest/)
 
 <a name="introduction"></a>
 ## Introduction
@@ -24,6 +8,8 @@ This repository contains the Python (3.8) package implementing the Material Opti
 It is a supervised machine learning framework for **learning material properties** from
 either the **composition** or  **crystal structure**. The framework is well suited for **limited datasets**
 and can be used for learning *multiple* properties together by using **joint learning**.
+
+MODNet appears on the [MatBench leaderboard](https://matbench.materialsproject.org/). As of 11/11/2021, MODNet provides the best performance of all submitted models on 7 out of 13 tasks.
 
 This repository also contains two [pretrained models](#pretrained) that can be used for predicting
 the refractive index and vibrational thermodynamics from any crystal structure.
@@ -47,22 +33,25 @@ See the MODNet papers and repositories below for more details:
 <a name="install"></a>
 ## How to install
 
-First, create a separate environment (e.g. named modnet) with python 3.8:
+First, create a virtual environment (e.g., named modnet) with Python 3.8:
 
-```python
+```shell
 conda create -n modnet python=3.8
 ```
+
 activate the environment:
-```python
+
+```shell
 conda activate modnet
 ```
 
-Then, install pymatgen v2020.8.13 with conda:
-```python
+Then, install pymatgen v2020.8.13 with conda, which will bundle several pre-built dependencies (e.g., numpy, scipy):
+
+```shell
 conda install -c conda-forge pymatgen=2020.8.13
 ```
 
-Finally, install MODNet  via pip:
+Finally, install MODNet from PyPI with pip:
 
 ```bash
 pip install modnet
@@ -74,7 +63,8 @@ The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
 
 <a name="author"></a>
 ## Author
-This software were written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be) and [Matthew Evans](https://www.github.com/ml-evs).
+This software was written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be) and [Matthew Evans](https://www.github.com/ml-evs) with contributions from David Waroquiers and  Gregoire Heymans.
+For an up-to-date list, see the [Contributors on GitHub](https://github.com/ppdebreuck/modnet/graphs/contributors).
 
 <a name="License"></a>
 ## License
