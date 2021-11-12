@@ -225,6 +225,7 @@ def get_cross_nmi(
             }
         ]
 
+    to_drop = []
     for res in tqdm.tqdm(
         pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)
     ):
@@ -234,10 +235,12 @@ def get_cross_nmi(
             diag[feat_name] < drop_thr
             or abs(df_feat[feat_name].max() - df_feat[feat_name].min()) < EPS
         ):
-            mutual_info.drop(feat_name, axis=0, inplace=True)
-            mutual_info.drop(feat_name, axis=1, inplace=True)
+            to_drop.append(feat_name)
         else:
             mutual_info.loc[feat_name, feat_name] = 1.0
+
+    mutual_info.drop(to_drop, axis=0, inplace=True)
+    mutual_info.drop(to_drop, axis=1, inplace=True)
 
     tasks = []
     LOG.info("Computing cross NMI between all features...")
@@ -892,32 +895,32 @@ class MODData:
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
-        """Returns the list of `pymatgen.Structure` objects. """
+        """Returns the list of `pymatgen.Structure` objects."""
         return list(self.df_structure["structure"])
 
     @property
     def compositions(self) -> List[Union[Structure, CompositionContainer]]:
-        """Returns the list of materials as`pymatgen.Composition` objects. """
+        """Returns the list of materials as`pymatgen.Composition` objects."""
         return [s.composition for s in self.df_structure["structure"]]
 
     @property
     def targets(self) -> np.ndarray:
-        """ Returns a ndarray of prediction targets. """
+        """Returns a ndarray of prediction targets."""
         return self.df_targets.values
 
     @property
     def names(self) -> List[str]:
-        """ Returns the list of prediction target field names. """
+        """Returns the list of prediction target field names."""
         return list(self.df_targets)
 
     @property
     def target_names(self) -> List[str]:
-        """ Returns the list of prediction target field names. """
+        """Returns the list of prediction target field names."""
         return list(self.df_targets)
 
     @property
     def structure_ids(self) -> List[str]:
-        """ Returns the list of prediction target field names. """
+        """Returns the list of prediction target field names."""
         return list(self.df_structure.index)
 
     def save(self, filename: str):

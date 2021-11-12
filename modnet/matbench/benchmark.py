@@ -121,7 +121,9 @@ def matbench_benchmark(
                 train_data = MODData.load(path)
             else:
                 train_data.feature_selection(
-                    n=-1, use_precomputed_cross_nmi=use_precomputed_cross_nmi
+                    n=-1,
+                    use_precomputed_cross_nmi=use_precomputed_cross_nmi,
+                    n_jobs=n_jobs,
                 )
             os.makedirs("folds", exist_ok=True)
             train_data.save(path)
