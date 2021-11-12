@@ -26,8 +26,8 @@ class Individual:
         self.num_classes = num_classes
 
         self.xscale_list = ["minmax", "standard"]
-        self.lr_list = [0.01, 0.005, 0.001]
-        self.initial_batch_size_list = [8, 16, 32, 64, 128]
+        self.lr_list = [0.1, 0.01, 0.005, 0.001]
+        self.initial_batch_size_list = [32, 64, 128, 256]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
 
         self.genes = {
@@ -198,7 +198,7 @@ class Individual:
             monitor="loss",
             min_delta=0.001,
             patience=100,
-            verbose=0,
+            verbose=1,
             mode="auto",
             baseline=None,
             restore_best_weights=False,
@@ -240,7 +240,7 @@ class Individual:
             batch_size=self.genes["initial_batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
-            verbose=0,
+            verbose=1,
         )
 
         self.model = model
