@@ -270,6 +270,16 @@ class MODNetModel:
                 )
             y.append(y_inner)
 
+        # The last metric is used for subsequent evaluation: MAE / AUC
+        if loss == "categorical_crossentropy":  # classification
+            if "AUC" in metrics:
+                metrics.remove("AUC")
+            metrics.append("AUC")
+        else:  # regression
+            if "mae" in metrics:
+                metrics.remove("mae")
+            metrics.append("mae")
+
         # Scale the input features:
         if self.xscale == "minmax":
             self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
@@ -661,7 +671,7 @@ class MODNetModel:
                 y_inner = test_data.df_targets[targ].values.astype(np.float, copy=False)
             y.append(y_inner)
 
-        return self.model.evaluate(x, y)[0]
+        return self.model.evaluate(x, y)[-1]
 
     def _make_picklable(self):
         """
