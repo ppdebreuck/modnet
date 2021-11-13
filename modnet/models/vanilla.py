@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, roc_auc_score
 import tensorflow as tf
 
 from modnet.preprocessing import MODData
@@ -269,16 +270,6 @@ class MODNetModel:
                     np.float, copy=False
                 )
             y.append(y_inner)
-
-        # The last metric is used for subsequent evaluation: MAE / AUC
-        if loss == "categorical_crossentropy":  # classification
-            if "AUC" in metrics:
-                metrics.remove("AUC")
-            metrics.append("AUC")
-        else:  # regression
-            if "mae" in metrics:
-                metrics.remove("mae")
-            metrics.append("mae")
 
         # Scale the input features:
         if self.xscale == "minmax":
@@ -635,7 +626,10 @@ class MODNetModel:
         return predictions
 
     def evaluate(self, test_data: MODData) -> pd.DataFrame:
-        """Evaluates the target values for the passed MODData by returning the corresponding loss.
+        """Evaluates predictions on the passed MODData by returning the corresponding score:
+            - for regression: MAE
+            - for classification: negative ROC AUC.
+            averaged over the targets when multi-target.
 
         Parameters:
             test_data: A featurized and feature-selected `MODData`
@@ -643,7 +637,7 @@ class MODNetModel:
 
 
         Returns:
-            Loss score
+            Score defined hereabove.
         """
         # prevents Nan predictions if some features are inf
         x = (
@@ -660,18 +654,22 @@ class MODNetModel:
             x = self._scaler.transform(x)
             x = np.nan_to_num(x, nan=-1)
 
-        y = []
-        for targ in self.targets_flatten:
+        y_pred = self.model.predict(x)
+        if len(y_pred.shape) == 2:
+            y_pred = np.array([y_pred])
+        score = []
+        for i, targ in enumerate(self.targets_flatten):
             if self.num_classes[targ] >= 2:  # Classification
-                y_inner = tf.keras.utils.to_categorical(
+                y_true = tf.keras.utils.to_categorical(
                     test_data.df_targets[targ].values,
                     num_classes=self.num_classes[targ],
                 )
+                score.append(-roc_auc_score(y_true, y_pred[i], multi_class="ovo"))
             else:
-                y_inner = test_data.df_targets[targ].values.astype(np.float, copy=False)
-            y.append(y_inner)
+                y_true = test_data.df_targets[targ].values.astype(np.float, copy=False)
+                score.append(mean_absolute_error(y_true, y_pred[i]))
 
-        return self.model.evaluate(x, y)[-1]
+        return np.mean(score)
 
     def _make_picklable(self):
         """
