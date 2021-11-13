@@ -308,6 +308,11 @@ class FitGenetic:
         """
 
         from modnet.matbench.benchmark import matbench_kfold_splits
+        import os
+
+        os.environ[
+            "TF_CPP_MIN_LOG_LEVEL"
+        ] = "2"  # many models will be fitted => reduce output
 
         num_nested_folds = 5
         if nested:
@@ -380,6 +385,8 @@ class FitGenetic:
 
         pool.close()
         pool.join()
+
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
 
         return val_loss_per_individual, np.array(models), np.array(individuals)
 

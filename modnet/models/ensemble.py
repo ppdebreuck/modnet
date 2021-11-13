@@ -244,6 +244,11 @@ class EnsembleMODNetModel(MODNetModel):
         """
 
         from modnet.matbench.benchmark import matbench_kfold_splits
+        import os
+
+        os.environ[
+            "TF_CPP_MIN_LOG_LEVEL"
+        ] = "2"  # many models will be fitted => reduce output
 
         if callbacks is None:
             es = tf.keras.callbacks.EarlyStopping(
@@ -402,6 +407,8 @@ class EnsembleMODNetModel(MODNetModel):
                 for idx in best_5_idx:
                     final_models += models[idx][i].model
             self.__init__(modnet_models=final_models)
+
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
