@@ -654,7 +654,7 @@ class MODNetModel:
             x = self._scaler.transform(x)
             x = np.nan_to_num(x, nan=-1)
 
-        y_pred = self.model.predict(x)
+        y_pred = np.array(self.model.predict(x))
         if len(y_pred.shape) == 2:
             y_pred = np.array([y_pred])
         score = []
