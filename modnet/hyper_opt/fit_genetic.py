@@ -138,7 +138,7 @@ class Individual:
         es = tf.keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
-            patience=100,
+            patience=30,
             verbose=0,
             mode="auto",
             baseline=None,
@@ -177,7 +177,7 @@ class Individual:
             val_data=val_data,
             loss=self.genes["loss"],
             lr=self.genes["lr"],
-            epochs=1000 if not fast else 1,
+            epochs=800 if not fast else 1,
             batch_size=self.genes["initial_batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
@@ -187,7 +187,7 @@ class Individual:
         self.val_loss = model.evaluate(val_data)
         self.model = model
 
-    def refit_model(self, data: MODData, fast: bool = False):
+    def refit_model(self, data: MODData, n_models=10, n_jobs=1, fast: bool = False):
         """Refit inner model on specified data.
         Args:
             data (MODData): Training data
@@ -197,16 +197,17 @@ class Individual:
         es = tf.keras.callbacks.EarlyStopping(
             monitor="loss",
             min_delta=0.001,
-            patience=100,
-            verbose=1,
+            patience=30,
+            verbose=0,
             mode="auto",
             baseline=None,
             restore_best_weights=False,
         )
         callbacks = [es]
-        model = MODNetModel(
+        model = EnsembleMODNetModel(
             targets=[[data.target_names]],
             weights={n: 1 for n in data.target_names},
+            n_models=n_models,
             n_feat=self.genes["n_feat"],
             num_neurons=[
                 [int(self.genes["n_neurons_first_layer"])],
@@ -233,14 +234,15 @@ class Individual:
 
         model.fit(
             data,
+            n_jobs=n_jobs,
             val_fraction=0,
             loss=self.genes["loss"],
             lr=self.genes["lr"],
-            epochs=1000 if not fast else 1,
+            epochs=800 if not fast else 1,
             batch_size=self.genes["initial_batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
-            verbose=1,
+            verbose=0,
         )
 
         self.model = model
@@ -261,14 +263,30 @@ class FitGenetic:
         self.data = data
         subset_ids = np.random.permutation(len(data.df_featurized))[:sample_threshold]
         self.train_data, _ = data.split((subset_ids, []))
+        self.num_classes = data.num_classes
 
         LOG.info("Targets:")
-        for i, (k, v) in enumerate(data.num_classes.items()):
+        for i, (k, v) in enumerate(self.num_classes.items()):
             if v >= 2:
                 type = "classification"
             else:
                 type = "regression"
             LOG.info(f"{i+1}){k}: {type}")
+
+    def _init_run(self, n_jobs: Optional[int] = None):
+        if n_jobs is None:
+            n_jobs = 4
+        ctx = multiprocessing.get_context("spawn")
+        self.pool = ctx.Pool(processes=n_jobs)
+        LOG.info(
+            "Multiprocessing on {} cores. Total of {} cores available.".format(
+                n_jobs, multiprocessing.cpu_count()
+            )
+        )
+
+    def _end_run(self):
+        self.pool.close()
+        self.pool.join()
 
     def initialization_population(self, size_pop: int) -> None:
         """Initializes the initial population (Generation 0).
@@ -321,7 +339,11 @@ class FitGenetic:
             num_nested_folds = 5
 
         # create tasks
-        splits = matbench_kfold_splits(self.train_data, n_splits=num_nested_folds)
+        splits = matbench_kfold_splits(
+            self.train_data,
+            n_splits=num_nested_folds,
+            classification=max(self.num_classes.values()) >= 2,
+        )
         if not nested:
             splits = [
                 train_test_split(
@@ -354,18 +376,8 @@ class FitGenetic:
         models = [[None for _ in range(n_splits)] for _ in range(len(pop))]
         individuals = [None for _ in range(len(pop))]
 
-        if n_jobs is None:
-            n_jobs = 4
-        ctx = multiprocessing.get_context("spawn")
-        pool = ctx.Pool(processes=n_jobs)
-        LOG.info(
-            "Multiprocessing on {} cores. Total of {} cores available.".format(
-                n_jobs, multiprocessing.cpu_count()
-            )
-        )
-
         for res in tqdm.tqdm(
-            pool.imap_unordered(_map_evaluate_individual, tasks, chunksize=1),
+            self.pool.imap_unordered(_map_evaluate_individual, tasks, chunksize=1),
             total=len(tasks),
         ):
             individual, individual_id, fold_id = res
@@ -382,9 +394,6 @@ class FitGenetic:
         for ind, vl in enumerate(val_loss_per_individual):
             res_str += "ind {}: {:.3f} \t".format(ind, vl)
         LOG.info(res_str)
-
-        pool.close()
-        pool.join()
 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
 
@@ -418,6 +427,7 @@ class FitGenetic:
         Returns:
             EnsembleMODNetModel: Fitted model with best hyperparameters
         """
+        self._init_run(n_jobs=n_jobs)
 
         if fast:
             size_pop, num_generations, nested = 2, 2, 2
@@ -490,11 +500,40 @@ class FitGenetic:
                 LOG.info("Early stopping at generation number {}".format(j))
                 break
 
+        self._end_run()
         if refit:
             LOG.info("Refit...")
+            """
+            self.best_individual.model = None
             ensemble = []
+            tasks = []
             for i in range(refit):
-                ensemble.append(self.best_individual.refit_model(self.data, fast=fast))
+                tasks += [
+                    {
+                        "individual": copy.deepcopy(self.best_individual),
+                        "data": self.data,
+                        "fast": fast,
+                    }
+                ]
+
+            for res in tqdm.tqdm(
+                self.pool.imap_unordered(_map_refit_individual, tasks, chunksize=1),
+                total=len(tasks),
+            ):
+                model = res
+                model._restore_model()
+                ensemble.append(model)
+
+            self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
+            """
+            self.best_model = self.best_individual.refit_model(
+                self.data, n_models=refit, n_jobs=n_jobs, fast=fast
+            )
+
+        else:
+            ensemble = []
+            for m in models[ranking[:10]]:
+                ensemble += m.model
             self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
 
         return self.best_model
@@ -529,3 +568,31 @@ def _evaluate_individual(
     individual.evaluate(train_data, val_data, fast=fast)
     individual.model._make_picklable()
     return individual, individual_id, fold_id
+
+
+def _map_refit_individual(kwargs):
+    return _refit_individual(**kwargs)
+
+
+def _refit_individual(
+    individual: Individual,
+    data: MODData,
+    fast: bool = False,
+):
+    """Evaluate individual
+
+    Args:
+        individual (Individual): Individual to be evaluated
+        train_data (MODData): Training MODData
+        val_data (MODData): Validation MODData
+        individual_id (int): Individual ID
+        fold_id (int): Fold ID
+        fast (bool, optional): Limited number of epochs for debugging and testing purposes only. Defaults to False.
+
+    Returns:
+        individual, individual_id, fold_id
+        individual.val_loss contains the corresponding validation score.
+    """
+    model = individual.refit_model(data, fast=fast)
+    model._make_picklable()
+    return model

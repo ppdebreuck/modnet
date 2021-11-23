@@ -671,7 +671,7 @@ class MODNetModel:
                     test_data.df_targets[targ].values,
                     num_classes=self.num_classes[targ],
                 )
-                score.append(-roc_auc_score(y_true, y_pred[i], multi_class="ovo"))
+                score.append(-roc_auc_score(y_true, y_pred[i], multi_class="ovr"))
             else:
                 y_true = test_data.df_targets[targ].values.astype(np.float, copy=False)
                 score.append(mean_absolute_error(y_true, y_pred[i]))
