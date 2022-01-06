@@ -100,6 +100,7 @@ class BayesianMODNetModel(MODNetModel):
         if num_classes is not None:
             self.num_classes.update(num_classes)
         self._multi_target = len(self.targets_flatten) > 1
+        self.multi_label = False  # forced for compatibility with vanilla
 
         self.model = self.build_model(
             targets,
