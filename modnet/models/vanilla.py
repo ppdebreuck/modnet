@@ -46,6 +46,7 @@ class MODNetModel:
         weights: Dict[str, float],
         num_neurons=([64], [32], [16], [16]),
         num_classes: Optional[Dict[str, int]] = None,
+        multi_label: Optional[bool] = False,
         n_feat: Optional[int] = 64,
         act: str = "relu",
         out_act: str = "linear",
@@ -60,6 +61,8 @@ class MODNetModel:
             num_classes: Dictionary defining the target types (classification or regression).
                 Should be constructed as follows: key: string giving the target name; value: integer n,
                  with n=0 for regression and n>=2 for classification with n the number of classes.
+            multi_label: Whether the problem (if classification) is multi-label.
+                In this case the softmax output-activation is replaced by a sigmoid.
             num_neurons: A specification of the model layers, as a 4-tuple
                 of lists of integers. Hidden layers are split into four
                 blocks of `tf.keras.layers.Dense`, with neuron count specified
@@ -79,6 +82,7 @@ class MODNetModel:
         self.n_feat = n_feat
         self.weights = weights
         self.num_classes = num_classes
+        self.multi_label = multi_label
         self.num_neurons = num_neurons
         self.act = act
         self.out_act = out_act
@@ -103,6 +107,7 @@ class MODNetModel:
             act=act,
             out_act=out_act,
             num_classes=self.num_classes,
+            multi_label=multi_label,
         )
 
     def build_model(
@@ -111,6 +116,7 @@ class MODNetModel:
         n_feat: int,
         num_neurons: Tuple[List[int], List[int], List[int], List[int]],
         num_classes: Optional[Dict[str, int]] = None,
+        multi_label: Optional[bool] = False,
         act: str = "relu",
         out_act: str = "linear",
     ):
@@ -127,6 +133,8 @@ class MODNetModel:
             num_classes: Dictionary defining the target types (classification or regression).
                 Should be constructed as follows: key: string giving the target name; value: integer n,
                 with n=0 for regression and n>=2 for classification with n the number of classes.
+            multi_label: Whether the problem (if classification) is multi-label.
+                In this case the softmax output-activation is replaced by a sigmoid.
             act: A string defining a tf.keras activation function to pass to use
                 in the `tf.keras.layers.Dense` layers.
             out_act: A string defining a tf.keras activation function to pass to use
@@ -184,7 +192,9 @@ class MODNetModel:
                     n = num_classes[group[prop_idx][pi]]
                     if n >= 2:
                         out = tf.keras.layers.Dense(
-                            n, activation="softmax", name=group[prop_idx][pi]
+                            n,
+                            activation="sigmoid" if multi_label else "softmax",
+                            name=group[prop_idx][pi],
                         )(previous_layer)
                     else:
                         out = tf.keras.layers.Dense(
@@ -260,11 +270,15 @@ class MODNetModel:
         y = []
         for targ in self.targets_flatten:
             if self.num_classes[targ] >= 2:  # Classification
-                y_inner = tf.keras.utils.to_categorical(
-                    training_data.df_targets[targ].values,
-                    num_classes=self.num_classes[targ],
-                )
-                loss = "categorical_crossentropy"
+                if self.multi_label:
+                    y_inner = np.stack(training_data.df_targets[targ].values)
+                    loss = "binary_crossentropy"
+                else:
+                    y_inner = tf.keras.utils.to_categorical(
+                        training_data.df_targets[targ].values,
+                        num_classes=self.num_classes[targ],
+                    )
+                    loss = "categorical_crossentropy"
             else:
                 y_inner = training_data.df_targets[targ].values.astype(
                     np.float, copy=False
@@ -290,11 +304,14 @@ class MODNetModel:
             val_y = []
             for targ in self.targets_flatten:
                 if self.num_classes[targ] >= 2:  # Classification
-                    y_inner = tf.keras.utils.to_categorical(
-                        val_data.df_targets[targ].values,
-                        num_classes=self.num_classes[targ],
-                    )
-                    loss = "categorical_crossentropy"
+                    if self.multi_label:
+                        y_inner = np.stack(val_data.df_targets[targ].values)
+                        loss = "binary_crossentropy"
+                    else:
+                        y_inner = tf.keras.utils.to_categorical(
+                            val_data.df_targets[targ].values,
+                            num_classes=self.num_classes[targ],
+                        )
                 else:
                     y_inner = val_data.df_targets[targ].values.astype(
                         np.float, copy=False
@@ -305,8 +322,9 @@ class MODNetModel:
             validation_data = None
 
         # set up bounds for postprocessing
-        self.min_y = training_data.df_targets.values.min(axis=0)
-        self.max_y = training_data.df_targets.values.max(axis=0)
+        if max(self.num_classes.values()) <= 2:  # regression
+            self.min_y = training_data.df_targets.values.min(axis=0)
+            self.max_y = training_data.df_targets.values.max(axis=0)
 
         # Optionally set up print callback
         if verbose:
@@ -339,7 +357,7 @@ class MODNetModel:
             "y": y,
             "epochs": epochs,
             "batch_size": batch_size,
-            "verbose": verbose,
+            "verbose": 0,
             "validation_split": val_fraction,
             "validation_data": validation_data,
             "callbacks": callbacks,
@@ -603,24 +621,26 @@ class MODNetModel:
             p = np.array([p])
 
         # post-process based on training data
-        yrange = self.max_y - self.min_y
-        upper_bound = self.max_y + 0.25 * yrange
-        lower_bound = self.min_y - 0.25 * yrange
-        for i, vals in enumerate(p):
-            out_of_range_idxs = np.where(
-                (vals < lower_bound[i]) | (vals > upper_bound[i])
-            )
-            vals[out_of_range_idxs] = (
-                np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
-                * (self.max_y[i] - self.min_y[i])
-                + self.min_y[i]
-            )
+        if max(self.num_classes.values()) <= 2:  # regression
+            yrange = self.max_y - self.min_y
+            upper_bound = self.max_y + 0.25 * yrange
+            lower_bound = self.min_y - 0.25 * yrange
+            for i, vals in enumerate(p):
+                out_of_range_idxs = np.where(
+                    (vals < lower_bound[i]) | (vals > upper_bound[i])
+                )
+                vals[out_of_range_idxs] = (
+                    np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
+                    * (self.max_y[i] - self.min_y[i])
+                    + self.min_y[i]
+                )
 
         p_dic = {}
         for i, name in enumerate(self.targets_flatten):
             if self.num_classes[name] >= 2:
                 if return_prob:
-                    temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
+                    # temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
+                    temp = p[i, :, :]
                     for j in range(temp.shape[-1]):
                         p_dic["{}_prob_{}".format(name, j)] = temp[:, j]
                 else:
@@ -667,11 +687,23 @@ class MODNetModel:
         score = []
         for i, targ in enumerate(self.targets_flatten):
             if self.num_classes[targ] >= 2:  # Classification
-                y_true = tf.keras.utils.to_categorical(
-                    test_data.df_targets[targ].values,
-                    num_classes=self.num_classes[targ],
-                )
-                score.append(-roc_auc_score(y_true, y_pred[i], multi_class="ovr"))
+                if self.multi_label:
+                    y_true = np.stack(test_data.df_targets[targ].values)
+                else:
+                    y_true = tf.keras.utils.to_categorical(
+                        test_data.df_targets[targ].values,
+                        num_classes=self.num_classes[targ],
+                    )
+                try:
+                    score.append(-roc_auc_score(y_true, y_pred[i], multi_class="ovr"))
+                except ValueError:
+                    scores = []
+                    for j in range(y_true.shape[1]):
+                        try:
+                            scores.append(-roc_auc_score(y_true[:, j], y_pred[i][:, j]))
+                        except ValueError:
+                            scores.append(float("nan"))
+                    score.append(np.nanmean(scores))
             else:
                 y_true = test_data.df_targets[targ].values.astype(np.float, copy=False)
                 score.append(mean_absolute_error(y_true, y_pred[i]))

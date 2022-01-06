@@ -1,6 +1,6 @@
 from __future__ import annotations
 import random
-from typing import List, Optional
+from typing import List, Optional, Dict
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -15,19 +15,33 @@ class Individual:
 
     """Class representing a set of hyperparameters for the genetic algorithm."""
 
-    def __init__(self, max_feat: int, num_classes: dict) -> Individual:
+    def __init__(
+        self,
+        max_feat: int,
+        num_classes: dict,
+        multi_label: bool,
+        targets: List = None,
+        weights: Dict[str, float] = None,
+    ) -> Individual:
         """
         Args:
             max_feat (int): Maximum number of features
             num_classes (dict): MODData num_classes parameter.Used for distinguishing between regression and classification.
+            multi_label (bool): whether the task is a classification multi-label problem.
+            targets (List): Optional (for joint learning only). A nested list of targets names that defines the hierarchy
+                of the output layers.
+            weights (Dict[str, float]): Optional (for joint learning only). The relative loss weights to apply for each target.
         """
 
         self.max_feat = max_feat
         self.num_classes = num_classes
+        self.multi_label = multi_label
+        self.targets = targets
+        self.weights = weights
 
         self.xscale_list = ["minmax", "standard"]
         self.lr_list = [0.1, 0.01, 0.005, 0.001]
-        self.initial_batch_size_list = [32, 64, 128, 256]
+        self.batch_size_list = [32, 64, 128, 256]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
 
         self.genes = {
@@ -39,7 +53,7 @@ class Individual:
             "fraction3": random.choice(self.fraction_list),
             "xscale": random.choice(self.xscale_list),
             "lr": random.choice(self.lr_list),
-            "initial_batch_size": random.choice(self.initial_batch_size_list),
+            "batch_size": random.choice(self.batch_size_list),
             "n_feat": 0,
         }
 
@@ -73,7 +87,13 @@ class Individual:
             for i in range(10)
         }
 
-        child = Individual(max_feat=self.max_feat, num_classes=self.num_classes)
+        child = Individual(
+            max_feat=self.max_feat,
+            num_classes=self.num_classes,
+            multi_label=self.multi_label,
+            targets=self.targets,
+            weights=self.weights,
+        )
         child.genes = child_genes
         return child
 
@@ -88,7 +108,11 @@ class Individual:
 
         if np.random.rand() < prob_mut:
             individual = Individual(
-                max_feat=self.max_feat, num_classes=self.num_classes
+                max_feat=self.max_feat,
+                num_classes=self.num_classes,
+                multi_label=self.multi_label,
+                targets=self.targets,
+                weights=self.weights,
             )
             # modification of the number of features in a [-10%, +10%] range
             self.genes["n_feat"] = np.absolute(
@@ -119,14 +143,19 @@ class Individual:
             else:
                 self.genes["fraction3"] = individual.genes["fraction3"]
             # multiplication of the initial batch size by a factor of [1/2, 1, 2]
-            self.genes["initial_batch_size"] = int(
-                self.genes["initial_batch_size"] * 2 ** random.randint(-1, 1)
+            self.genes["batch_size"] = int(
+                self.genes["batch_size"] * 2 ** random.randint(-1, 1)
             )
         else:
             pass
         return None
 
-    def evaluate(self, train_data: MODData, val_data: MODData, fast: bool = False):
+    def evaluate(
+        self,
+        train_data: MODData,
+        val_data: MODData,
+        fast: bool = False,
+    ):
         """Internally evaluates the validation loss by setting self.val_loss
 
         Args:
@@ -146,8 +175,8 @@ class Individual:
         )
         callbacks = [es]
         model = MODNetModel(
-            targets=[[train_data.target_names]],
-            weights={n: 1 for n in train_data.target_names},
+            targets=self.targets,
+            weights=self.weights,
             n_feat=self.genes["n_feat"],
             num_neurons=[
                 [int(self.genes["n_neurons_first_layer"])],
@@ -170,6 +199,7 @@ class Individual:
             ],
             act=self.genes["act"],
             num_classes=self.num_classes,
+            multi_label=self.multi_label,
         )
 
         model.fit(
@@ -178,7 +208,7 @@ class Individual:
             loss=self.genes["loss"],
             lr=self.genes["lr"],
             epochs=800 if not fast else 1,
-            batch_size=self.genes["initial_batch_size"],
+            batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
             verbose=0,
@@ -205,8 +235,8 @@ class Individual:
         )
         callbacks = [es]
         model = EnsembleMODNetModel(
-            targets=[[data.target_names]],
-            weights={n: 1 for n in data.target_names},
+            targets=self.targets,
+            weights=self.weights,
             n_models=n_models,
             n_feat=self.genes["n_feat"],
             num_neurons=[
@@ -230,6 +260,7 @@ class Individual:
             ],
             act=self.genes["act"],
             num_classes=self.num_classes,
+            multi_label=self.multi_label,
         )
 
         model.fit(
@@ -239,7 +270,7 @@ class Individual:
             loss=self.genes["loss"],
             lr=self.genes["lr"],
             epochs=800 if not fast else 1,
-            batch_size=self.genes["initial_batch_size"],
+            batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
             callbacks=callbacks,
             verbose=0,
@@ -252,11 +283,20 @@ class Individual:
 class FitGenetic:
     """Class optimizing the model parameters using a genetic algorithm."""
 
-    def __init__(self, data: MODData, sample_threshold: int = 5000):
+    def __init__(
+        self,
+        data: MODData,
+        targets: List = None,
+        weights: Dict[str, float] = None,
+        sample_threshold: int = 5000,
+    ):
         """Genetic algorithm hyperparameter optimization for MODNet.
 
         Args:
             data (MODData): Training MODData
+            targets (List): Optional (for joint learning only). A nested list of targets names that defines the hierarchy
+                of the output layers.
+            weights (Dict[str, float]): Optional (for joint learning only). The relative loss weights to apply for each target.
             sample_threshold (int, optional): If the dataset size exceeds this threshold, individuals are
                 trained on sampled subsets of this size. Defaults to 5000.
         """
@@ -264,6 +304,12 @@ class FitGenetic:
         subset_ids = np.random.permutation(len(data.df_featurized))[:sample_threshold]
         self.train_data, _ = data.split((subset_ids, []))
         self.num_classes = data.num_classes
+        if targets is None:
+            targets = [[data.target_names]]
+        if weights is None:
+            weights = {n: 1 for n in data.target_names}
+        self.targets = targets
+        self.weights = weights
 
         LOG.info("Targets:")
         for i, (k, v) in enumerate(self.num_classes.items()):
@@ -288,17 +334,22 @@ class FitGenetic:
         self.pool.close()
         self.pool.join()
 
-    def initialization_population(self, size_pop: int) -> None:
+    def initialization_population(self, size_pop: int, multi_label: bool) -> None:
         """Initializes the initial population (Generation 0).
 
         Args:
             size_pop (int): Size of population.
+            multi_label: Whether the problem (if classification) is multi-label.
+                In this case the softmax output-activation is replaced by a sigmoid.
         """
 
         self.pop = [
             Individual(
                 max_feat=len(self.train_data.get_optimal_descriptors()),
                 num_classes=self.train_data.num_classes,
+                multi_label=multi_label,
+                targets=self.targets,
+                weights=self.weights,
             )
             for _ in range(size_pop)
         ]
@@ -309,6 +360,7 @@ class FitGenetic:
         n_jobs: int,
         nested=5,
         val_fraction=0.1,
+        multi_label: Optional[bool] = False,
         fast=False,
     ) -> None:
         """Calculates the fitness of each model, which has the parameters contained in the pop argument.
@@ -319,6 +371,8 @@ class FitGenetic:
             n_jobs (int): number of jobs to parallelize on.
             nested (int, optional): CV fold size. Defaults to 5. Use <=0 for hold-out validation.
             val_fraction (float, optional): Validation fraction if no CV is used. Defaults to 0.1.
+            multi_label: Whether the problem (if classification) is multi-label.
+                In this case the softmax output-activation is replaced by a sigmoid.
             fast (bool, optional): Limited epochs for testing and debugging only. Defaults to False.
 
         Returns:
@@ -405,6 +459,7 @@ class FitGenetic:
         num_generations: int = 10,
         prob_mut: Optional[int] = None,
         nested: Optional[int] = 5,
+        multi_label: bool = False,
         n_jobs: Optional[int] = None,
         early_stopping: Optional[int] = 4,
         refit: Optional[int] = 5,
@@ -417,6 +472,8 @@ class FitGenetic:
             num_generations (int, optional): Size of the population per generation. Defaults to 10.
             prob_mut (Optional[int], optional): Probability of mutation. Defaults to None.
             nested (Optional[int], optional): CV fold size. Use <=0 for hold-out validation. Defaults to 5.
+            multi_label: Whether the problem (if classification) is multi-label.
+                In this case the softmax output-activation is replaced by a sigmoid.
             n_jobs (Optional[int], optional): Number of jobs to parallelize on. Defaults to None.
             early_stopping (Optional[int], optional): Number of successive generations without improvement before stopping. Defaults to 4.
             refit (Optional[int], optional): Wether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
@@ -433,11 +490,14 @@ class FitGenetic:
             size_pop, num_generations, nested = 2, 2, 2
 
         LOG.info("Generation number 0")
-        self.initialization_population(size_pop)  # initialization of the population
+        self.initialization_population(
+            size_pop, multi_label=multi_label
+        )  # initialization of the population
         val_loss, models, individuals = self.function_fitness(
             pop=self.pop,
             nested=nested,
             n_jobs=n_jobs,
+            multi_label=multi_label,
             fast=fast,
         )
         ranking = val_loss.argsort()
@@ -474,7 +534,11 @@ class FitGenetic:
                 models_children,
                 individuals_children,
             ) = self.function_fitness(
-                pop=children, nested=nested, n_jobs=n_jobs, fast=fast
+                pop=children,
+                nested=nested,
+                n_jobs=n_jobs,
+                multi_label=multi_label,
+                fast=fast,
             )
             val_loss = np.concatenate([val_loss, val_loss_children])
             models = np.concatenate([models, models_children])
@@ -535,6 +599,8 @@ class FitGenetic:
             for m in models[ranking[:10]]:
                 ensemble += m.model
             self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
+
+        self.results = self.best_individual.genes
 
         return self.best_model
 
