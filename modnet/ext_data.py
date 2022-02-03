@@ -46,7 +46,7 @@ DATASETS = {
     "MP_210321": Dataset(
         url="https://figshare.com/ndownloader/files/33177986",
         description=(
-            "A pickled dataframe containing featurized materials from the Materials as of 21 March 2021."
+            "A pickled dataframe containing featurized (DeBreuck2020) materials from the Materials Project as of 21 March 2021."
         ),
         filename="feature_database_v2",
         md5="8efaac9b64f11073577396b9fb353f89",
