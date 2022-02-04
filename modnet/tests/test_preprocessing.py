@@ -310,10 +310,14 @@ def test_small_moddata_featurization(small_moddata):
 
     np.testing.assert_array_equal(old_cols, new_cols)
 
+    # assert relative error below 3 percent
     for col in new.df_featurized.columns:
-        np.testing.assert_almost_equal(
-            new.df_featurized[col].to_numpy(),
-            old.df_featurized[col].to_numpy(),
+        assert (
+            np.absolute(
+                (new.df_featurized[col].to_numpy() - old.df_featurized[col].to_numpy())
+                / (old.df_featurized[col].to_numpy() + 1e-6)
+            ).max()
+            < 0.03
         )
 
 
@@ -333,10 +337,17 @@ def test_small_moddata_composition_featurization(small_moddata_composition):
         # print(new_cols[i], ref_cols[i])
         assert new_cols[i] == ref_cols[i]
 
+    # assert relative error below 3 percent
     for col in new.df_featurized.columns:
-        np.testing.assert_almost_equal(
-            new.df_featurized[col].to_numpy(),
-            reference.df_featurized[col].to_numpy(),
+        assert (
+            np.absolute(
+                (
+                    new.df_featurized[col].to_numpy()
+                    - reference.df_featurized[col].to_numpy()
+                )
+                / (reference.df_featurized[col].to_numpy() + 1e-6)
+            ).max()
+            < 0.03
         )
 
 
