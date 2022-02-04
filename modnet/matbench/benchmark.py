@@ -19,14 +19,26 @@ def matbench_kfold_splits(data: MODData, n_splits=5, classification=False):
     Arguments:
         data: The featurized MODData.
     """
-
     if classification:
         from sklearn.model_selection import StratifiedKFold as KFold
     else:
         from sklearn.model_selection import KFold
 
+    # handles one-hot encoded targets
+    if classification and (
+        isinstance(data.df_targets.iloc[0, 0], list)
+        or isinstance(data.df_targets.iloc[0, 0], np.ndarray)
+    ):
+
+        def _mapArrayToInt(a):
+            return np.array(a).dot(2 ** np.arange(len(a)))
+
+        ycv = data.df_targets.iloc[:, 0].map(_mapArrayToInt)
+    else:
+        ycv = data.df_targets
+
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=MATBENCH_SEED)
-    kf_splits = kf.split(data.df_featurized, y=data.df_targets)
+    kf_splits = kf.split(data.df_featurized, y=ycv)
     return kf_splits
 
 

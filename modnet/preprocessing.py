@@ -97,6 +97,17 @@ def nmi_target(
     if df_target.shape[1] != 1:
         raise ValueError("The target DataFrame should have exactly one column.")
 
+    # handles one-hot encoded targets
+    if task_type == "classification" and (
+        isinstance(df_target.iloc[0, 0], list)
+        or isinstance(df_target.iloc[0, 0], np.ndarray)
+    ):
+
+        def _mapArrayToInt(a):
+            return np.array(a).dot(2 ** np.arange(len(a)))
+
+        df_target.iloc[:, 0] = df_target.iloc[:, 0].map(_mapArrayToInt)
+
     if len(df_feat) != len(df_target):
         raise ValueError(
             "The input features DataFrame and the target variable DataFrame "
