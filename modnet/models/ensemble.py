@@ -414,7 +414,7 @@ class EnsembleMODNetModel(MODNetModel):
 
     def _make_picklable(self):
         """
-        transforms inner keras model to jsons so that th MODNet object becomes picklable.
+        transforms inner keras model to jsons so that the MODNet object becomes picklable.
         """
 
         for m in self.model:

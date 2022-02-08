@@ -4,6 +4,7 @@ import numpy as np
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.local_env import VoronoiNN
 import modnet.featurizers
+import contextlib
 
 
 class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
@@ -16,105 +17,106 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
     """
 
-    from matminer.featurizers.composition import (
-        AtomicOrbitals,
-        AtomicPackingEfficiency,
-        BandCenter,
-        # CohesiveEnergy, - This descriptor was not used in the paper preset
-        # ElectronAffinity, - This descriptor was not used in the paper preset
-        ElectronegativityDiff,
-        ElementFraction,
-        ElementProperty,
-        IonProperty,
-        Miedema,
-        OxidationStates,
-        Stoichiometry,
-        TMetalFraction,
-        ValenceOrbital,
-        YangSolidSolution,
-    )
-    from matminer.featurizers.structure import (
-        # BagofBonds, - This descriptor was not used in the paper preset
-        BondFractions,
-        ChemicalOrdering,
-        CoulombMatrix,
-        DensityFeatures,
-        EwaldEnergy,
-        GlobalSymmetryFeatures,
-        MaximumPackingEfficiency,
-        # PartialRadialDistributionFunction,
-        RadialDistributionFunction,
-        SineCoulombMatrix,
-        StructuralHeterogeneity,
-        XRDPowderPattern,
-    )
-
-    from matminer.featurizers.site import (
-        AGNIFingerprints,
-        AverageBondAngle,
-        AverageBondLength,
-        BondOrientationalParameter,
-        ChemEnvSiteFingerprint,
-        CoordinationNumber,
-        CrystalNNFingerprint,
-        GaussianSymmFunc,
-        GeneralizedRadialDistributionFunction,
-        LocalPropertyDifference,
-        OPSiteFingerprint,
-        VoronoiFingerprint,
-    )
-
-    composition_featurizers = (
-        AtomicOrbitals(),
-        AtomicPackingEfficiency(),
-        BandCenter(),
-        ElementFraction(),
-        ElementProperty.from_preset("magpie"),
-        IonProperty(),
-        Miedema(),
-        Stoichiometry(),
-        TMetalFraction(),
-        ValenceOrbital(),
-        YangSolidSolution(),
-    )
-
-    oxid_composition_featurizers = (
-        ElectronegativityDiff(),
-        OxidationStates(),
-    )
-
-    structure_featurizers = (
-        DensityFeatures(),
-        GlobalSymmetryFeatures(),
-        RadialDistributionFunction(),
-        CoulombMatrix(),
-        # PartialRadialDistributionFunction(),
-        SineCoulombMatrix(),
-        EwaldEnergy(),
-        BondFractions(),
-        StructuralHeterogeneity(),
-        MaximumPackingEfficiency(),
-        ChemicalOrdering(),
-        XRDPowderPattern(),
-        # BagofBonds(),
-    )
-    site_featurizers = (
-        AGNIFingerprints(),
-        AverageBondAngle(VoronoiNN()),
-        AverageBondLength(VoronoiNN()),
-        BondOrientationalParameter(),
-        ChemEnvSiteFingerprint.from_preset("simple"),
-        CoordinationNumber(),
-        CrystalNNFingerprint.from_preset("ops"),
-        GaussianSymmFunc(),
-        GeneralizedRadialDistributionFunction.from_preset("gaussian"),
-        LocalPropertyDifference(),
-        OPSiteFingerprint(),
-        VoronoiFingerprint(),
-    )
-
     def __init__(self, fast_oxid=False):
         super().__init__()
+
+        with contextlib.redirect_stdout(None):
+            from matminer.featurizers.composition import (
+                AtomicOrbitals,
+                AtomicPackingEfficiency,
+                BandCenter,
+                # CohesiveEnergy, - This descriptor was not used in the paper preset
+                # ElectronAffinity, - This descriptor was not used in the paper preset
+                ElectronegativityDiff,
+                ElementFraction,
+                ElementProperty,
+                IonProperty,
+                Miedema,
+                OxidationStates,
+                Stoichiometry,
+                TMetalFraction,
+                ValenceOrbital,
+                YangSolidSolution,
+            )
+            from matminer.featurizers.structure import (
+                # BagofBonds, - This descriptor was not used in the paper preset
+                BondFractions,
+                ChemicalOrdering,
+                CoulombMatrix,
+                DensityFeatures,
+                EwaldEnergy,
+                GlobalSymmetryFeatures,
+                MaximumPackingEfficiency,
+                # PartialRadialDistributionFunction,
+                RadialDistributionFunction,
+                SineCoulombMatrix,
+                StructuralHeterogeneity,
+                XRDPowderPattern,
+            )
+
+            from matminer.featurizers.site import (
+                AGNIFingerprints,
+                AverageBondAngle,
+                AverageBondLength,
+                BondOrientationalParameter,
+                ChemEnvSiteFingerprint,
+                CoordinationNumber,
+                CrystalNNFingerprint,
+                GaussianSymmFunc,
+                GeneralizedRadialDistributionFunction,
+                LocalPropertyDifference,
+                OPSiteFingerprint,
+                VoronoiFingerprint,
+            )
+
+            self.composition_featurizers = (
+                AtomicOrbitals(),
+                AtomicPackingEfficiency(),
+                BandCenter(),
+                ElementFraction(),
+                ElementProperty.from_preset("magpie"),
+                IonProperty(),
+                Miedema(),
+                Stoichiometry(),
+                TMetalFraction(),
+                ValenceOrbital(),
+                YangSolidSolution(),
+            )
+
+            self.oxid_composition_featurizers = (
+                ElectronegativityDiff(),
+                OxidationStates(),
+            )
+
+            self.structure_featurizers = (
+                DensityFeatures(),
+                GlobalSymmetryFeatures(),
+                RadialDistributionFunction(),
+                CoulombMatrix(),
+                # PartialRadialDistributionFunction(),
+                SineCoulombMatrix(),
+                EwaldEnergy(),
+                BondFractions(),
+                StructuralHeterogeneity(),
+                MaximumPackingEfficiency(),
+                ChemicalOrdering(),
+                XRDPowderPattern(),
+                # BagofBonds(),
+            )
+            self.site_featurizers = (
+                AGNIFingerprints(),
+                AverageBondAngle(VoronoiNN()),
+                AverageBondLength(VoronoiNN()),
+                BondOrientationalParameter(),
+                ChemEnvSiteFingerprint.from_preset("simple"),
+                CoordinationNumber(),
+                CrystalNNFingerprint.from_preset("ops"),
+                GaussianSymmFunc(),
+                GeneralizedRadialDistributionFunction.from_preset("gaussian"),
+                LocalPropertyDifference(),
+                OPSiteFingerprint(),
+                VoronoiFingerprint(),
+            )
         self.fast_oxid = fast_oxid
 
     def featurize_composition(self, df):
@@ -208,6 +210,8 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
 
 class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
-    oxid_composition_featurizers = ()
-    structure_featurizers = ()
-    site_featurizers = ()
+    def __init__(self):
+        super().__init__()
+        self.oxid_composition_featurizers = ()
+        self.structure_featurizers = ()
+        self.site_featurizers = ()

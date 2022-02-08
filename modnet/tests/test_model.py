@@ -110,7 +110,6 @@ def test_train_small_model_presets(subset_moddata, tf_session):
         assert len(models[0]) == num_nested
 
 
-@pytest.mark.skip(msg="Until pickle bug is fixed")
 def test_model_integration(subset_moddata, tf_session):
     """Tests training, saving, loading and predictions."""
     from modnet.models import MODNetModel
@@ -133,7 +132,7 @@ def test_model_integration(subset_moddata, tf_session):
     model.save("test")
     loaded_model = MODNetModel.load("test")
 
-    assert model.predict(data) == loaded_model.predict(data)
+    assert model.predict(data).equals(loaded_model.predict(data))
 
 
 def test_train_small_bayesian_single_target(subset_moddata, tf_session):

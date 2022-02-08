@@ -23,7 +23,7 @@ The usual workflow is as follows:
     # Creating MODNetModel
     model = MODNetModel(target_hierarchy,
                         weights,
-                        num_neurons=[[256],[64,64],[32]],
+                        num_neurons=[[256],[64],[64],[32]],
                         )
     model.fit(data)
 
