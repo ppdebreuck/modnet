@@ -299,7 +299,7 @@ def get_rr_p_parameter_default(nn: int) -> float:
         float: the value for p.
 
     """
-    return max(0.1, 4.5 - 0.4 * nn ** 0.4)
+    return max(0.1, 4.5 - 0.4 * nn**0.4)
 
 
 def get_rr_c_parameter_default(nn: int) -> float:
@@ -313,7 +313,7 @@ def get_rr_c_parameter_default(nn: int) -> float:
         float: the value for p.
 
     """
-    return min(1e5, 1e-6 * nn ** 3)
+    return min(1e5, 1e-6 * nn**3)
 
 
 def get_features_relevance_redundancy(
@@ -445,7 +445,7 @@ def get_features_relevance_redundancy(
         # Get the scores of the remaining features
         for i in score.index:
             row = score.loc[i, :]
-            score.loc[i, :] = target_nmi.loc[i, target_column] / (row ** p + c)
+            score.loc[i, :] = target_nmi.loc[i, target_column] / (row**p + c)
 
         # Get the next feature (the one with the highest score)
         scores_remaining_features = score.min(axis=1)
@@ -499,7 +499,7 @@ def get_features_dyn(n_feat, cross_nmi, target_nmi):
 
         for i in score.index:
             row = score.loc[i, :]
-            score.loc[i, :] = target_nmi[i] / (row ** p + c)
+            score.loc[i, :] = target_nmi[i] / (row**p + c)
 
         next_feature = score.min(axis=1).idxmax(axis=0)
         feature_set.append(next_feature)
