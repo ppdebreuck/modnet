@@ -279,7 +279,7 @@ def test_get_cross_nmi():
 
 
 def test_load_moddata_zip(subset_moddata):
-    """ This test checks that older MODData objects can still be loaded. """
+    """This test checks that older MODData objects can still be loaded."""
 
     data = subset_moddata
 
@@ -292,7 +292,7 @@ def test_load_moddata_zip(subset_moddata):
 
 
 def test_small_moddata_featurization(small_moddata):
-    """ This test creates a new MODData from the MP 2018.6 structures. """
+    """This test creates a new MODData from the MP 2018.6 structures."""
 
     old = small_moddata
     structures = old.structures
@@ -322,7 +322,7 @@ def test_small_moddata_featurization(small_moddata):
 
 
 def test_small_moddata_composition_featurization(small_moddata_composition):
-    """ This test creates a new MODData from the MP 2018.6 structures. """
+    """This test creates a new MODData from the MP 2018.6 structures."""
 
     reference = small_moddata_composition
     compositions = reference.compositions
@@ -352,7 +352,7 @@ def test_small_moddata_composition_featurization(small_moddata_composition):
 
 
 def test_small_moddata_feature_selection_classif(small_moddata):
-    """ This test creates classifier MODData and test the feature selection method """
+    """This test creates classifier MODData and test the feature selection method"""
 
     x1 = np.array([0] * 500 + [1] * 500 + [2] * 500, dtype="float")
     x2 = np.random.choice(2, 1500)
