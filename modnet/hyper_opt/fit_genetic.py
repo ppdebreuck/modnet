@@ -510,7 +510,7 @@ class FitGenetic:
 
             # select parents
             weights = [
-                1 / lw ** 5 for lw in val_loss[ranking]
+                1 / lw**5 for lw in val_loss[ranking]
             ]  # **5 in order to give relatively more importance to the best individuals
             weights = [w / sum(weights) for w in weights]
             # selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
