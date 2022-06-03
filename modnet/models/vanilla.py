@@ -625,10 +625,10 @@ class MODNetModel:
             x = self._scaler.transform(x)
             x = np.nan_to_num(x, nan=-1)
 
-        p = np.array(self.model.predict(x))
+        p = self.model.predict(x)
 
-        if len(p.shape) == 2:
-            p = np.array([p])
+        if len(self.targets_groups) == 1:
+            p = [p]
 
         # post-process based on training data
         if max(self.num_classes.values()) <= 2:  # regression
@@ -652,14 +652,14 @@ class MODNetModel:
             name = props[0]
             if self.num_classes[name] >= 2:
                 if return_prob:
-                    temp = p[i, :, :]
+                    temp = p[i]
                     for j in range(temp.shape[-1]):
                         p_dic["{}_prob_{}".format(name, j)] = temp[:, j]
                 else:
-                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+                    p_dic[name] = np.argmax(p[i], axis=1)
             else:
                 for j, name in enumerate(props):
-                    p_dic[name] = p[i, :, j]
+                    p_dic[name] = p[i][:, j]
         predictions = pd.DataFrame(p_dic)
         predictions.index = test_data.structure_ids
 
@@ -694,9 +694,9 @@ class MODNetModel:
             x = self._scaler.transform(x)
             x = np.nan_to_num(x, nan=-1)
 
-        y_pred = np.array(self.model.predict(x))
-        if len(y_pred.shape) == 2:
-            y_pred = np.array([y_pred])
+        y_pred = self.model.predict(x)
+        if len(self.targets_groups) == 1:
+            y_pred = [y_pred]
 
         score = []
         for i, prop in enumerate(self.targets_groups):
