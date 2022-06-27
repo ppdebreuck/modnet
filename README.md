@@ -45,12 +45,6 @@ activate the environment:
 conda activate modnet
 ```
 
-Then, install pymatgen v2020.8.13 with conda, which will bundle several pre-built dependencies (e.g., numpy, scipy):
-
-```shell
-conda install -c conda-forge pymatgen=2020.8.13
-```
-
 Finally, install MODNet from PyPI with pip:
 
 ```bash

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
 from functools import partial
 
-from pymatgen import Structure, Composition
+from pymatgen.core import Structure, Composition
 
 from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
 from sklearn.utils import resample
@@ -539,14 +539,14 @@ def merge_ranked(lists: List[List[Hashable]]) -> List[Hashable]:
 
 
 class MODData:
-    """The MODData class takes takes a list of `pymatgen.Structure`
+    """The MODData class takes takes a list of `pymatgen.core.structure.Structure`
     objects and creates a `pandas.DataFrame` that contains many matminer
     features per structure. It then uses mutual information between
     features and targets, and between the features themselves, to
     perform feature selection using relevance-redundancy indices.
 
     Attributes:
-        df_structure (pd.DataFrame): dataframe storing the `pymatgen.Structure`
+        df_structure (pd.DataFrame): dataframe storing the `pymatgen.core.structure.Structure`
             representations for each structured, indexed by ID.
         df_targets (pd.Dataframe): dataframe storing the prediction targets
             per structure, indexed by ID.
@@ -906,12 +906,12 @@ class MODData:
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
-        """Returns the list of `pymatgen.Structure` objects."""
+        """Returns the list of `pymatgen.core.structure.Structure` objects."""
         return list(self.df_structure["structure"])
 
     @property
     def compositions(self) -> List[Union[Structure, CompositionContainer]]:
-        """Returns the list of materials as`pymatgen.Composition` objects."""
+        """Returns the list of materials as`pymatgen.core.composition.Composition` objects."""
         return [s.composition for s in self.df_structure["structure"]]
 
     @property

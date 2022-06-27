@@ -70,7 +70,7 @@ class MODFeaturizer(abc.ABC):
 
         Arguments:
             df: the input dataframe with a `"structure"` column
-                containing `pymatgen.Structure` objects.
+                containing `pymatgen.core.structure.Structure` objects.
 
         Returns:
             The featurized DataFrame.
@@ -137,7 +137,7 @@ class MODFeaturizer(abc.ABC):
 
         Arguments:
             df: the input dataframe with a `"structure"` column
-                containing `pymatgen.Structure` objects.
+                containing `pymatgen.core.structure.Structure` objects.
 
         Returns:
             pandas.DataFrame: the decorated DataFrame, or an empty
@@ -184,7 +184,7 @@ class MODFeaturizer(abc.ABC):
 
         Arguments:
             df: the input dataframe with a `"structure"` column
-                containing `pymatgen.Structure` objects.
+                containing `pymatgen.core.structure.Structure` objects.
 
         Returns:
             pandas.DataFrame: the decorated DataFrame.
@@ -206,7 +206,7 @@ class MODFeaturizer(abc.ABC):
 
         Arguments:
             df: the input dataframe with a `"structure"` column
-                containing `pymatgen.Structure` objects.
+                containing `pymatgen.core.structure.Structure` objects.
             aliases: optional dictionary to map matminer output column
                 names to new aliases, mostly used for
                 backwards-compatibility.
