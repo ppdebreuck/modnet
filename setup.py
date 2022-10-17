@@ -12,11 +12,8 @@ with open("modnet/__init__.py", "r") as f:
 
 version = re.search('__version__ = "(.*)"', lines).group(1)
 
-tests_require = ["pytest>=6.0", "pytest-cov>=2.10", "flake8>=3.8"]
-
-dev_require = [
-    "pre-commit~=2.11",
-]
+tests_require = ("pytest>=6.0", "pytest-cov>=2.10", "flake8>=3.8")
+dev_require = ("pre-commit~=2.11",)
 
 setuptools.setup(
     name="modnet",
@@ -34,13 +31,13 @@ setuptools.setup(
     include_package_data=True,
     packages=setuptools.find_packages(),
     install_requires=[
-        "pandas",
-        "tensorflow",
-        "tensorflow-probability",
-        "pymatgen",
-        "matminer",
-        "numpy",
-        "scikit-learn",
+        "pandas~=1.5",
+        "tensorflow~=2.10",
+        "tensorflow-probability~=0.18",
+        "pymatgen~=2022.9",
+        "matminer~=0.7",
+        "numpy~=1.23",
+        "scikit-learn~=1.1",
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",

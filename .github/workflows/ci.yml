@@ -44,4 +44,4 @@ jobs:
     - name: Run tests with pytest
       run: |
         # run tests with pytest, reporting coverage and timings
-        py.test -rs -vvv  --durations=0 --cov=./modnet/
+        pytest -m "not slow" -rs -vvv  --durations=0 --cov=./modnet/

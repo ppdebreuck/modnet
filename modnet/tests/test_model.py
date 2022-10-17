@@ -72,6 +72,7 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
     model.predict(data)
 
 
+@pytest.mark.slow
 def test_train_small_model_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets

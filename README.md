@@ -47,10 +47,10 @@ Activate the environment:
 conda activate modnet
 ```
 
-Then, install pymatgen v2020.8.13 with conda, which will bundle several pre-built dependencies (e.g., numpy, scipy):
+Then, install pymatgen from conda-forge, which will bundle several pre-built dependencies (e.g., numpy, scipy):
 
 ```shell
-conda install -c conda-forge pymatgen=2020.8.13
+conda install -c conda-forge pymatgen
 ```
 
 (you could alternatively do this step with `pip install pymatgen==2020.8.13`).
