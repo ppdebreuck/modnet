@@ -151,18 +151,21 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
         df = super().featurize_structure(df)
 
-        dist = df["RadialDistributionFunction|radial distribution function"].iloc[0][
-            "distances"
-        ][:50]
-        for i, d in enumerate(dist):
-            _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(
-                d
-            )
-            df[_rdf_key] = df[
-                "RadialDistributionFunction|radial distribution function"
-            ].apply(lambda x: x["distribution"][i])
+        if "RadialDistributionFunction|radial distribution function" in df:
+            dist = df["RadialDistributionFunction|radial distribution function"].iloc[
+                0
+            ]["distances"][:50]
+            for i, d in enumerate(dist):
+                _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(
+                    d
+                )
+                df[_rdf_key] = df[
+                    "RadialDistributionFunction|radial distribution function"
+                ].apply(lambda x: x["distribution"][i])
 
-        df = df.drop("RadialDistributionFunction|radial distribution function", axis=1)
+            df = df.drop(
+                "RadialDistributionFunction|radial distribution function", axis=1
+            )
 
         _crystal_system = {
             "cubic": 1,
