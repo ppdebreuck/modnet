@@ -79,6 +79,10 @@ pip install -e .
 ## Documentation
 The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
 
+<a name="changelog"></a>
+## Changelog
+A brief changelog can be found in the [release summaries on GitHub](https://github.com/ppdebreuck/modnet/releases).
+
 <a name="author"></a>
 ## Author
 This software was written by [Pierre-Paul De Breuck](mailto:pierre-paul.debreuck@uclouvain.be) and [Matthew Evans](https://www.github.com/ml-evs) with contributions from David Waroquiers and  Gregoire Heymans.
