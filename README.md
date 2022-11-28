@@ -33,27 +33,55 @@ See the MODNet papers and repositories below for more details:
 <a name="install"></a>
 ## How to install
 
-First, create a virtual environment (e.g., named modnet) with Python 3.8:
+First, create a virtual environment (e.g., named modnet) with Python 3.8 using
+your favourite environment manager (the following instructions use
+[conda](https://docs.conda.io/)):
 
 ```shell
 conda create -n modnet python=3.8
 ```
 
-activate the environment:
+Activate the environment:
 
 ```shell
 conda activate modnet
 ```
 
-Finally, install MODNet from PyPI with pip:
+Then, install pymatgen with conda, which will bundle several pre-built dependencies (e.g., numpy, scipy):
 
-```bash
+```shell
+conda install -c conda-forge pymatgen
+```
+
+(you could alternatively do this step with `pip install pymatgen`).
+
+Finally, install MODNet from PyPI with `pip`:
+
+```shell
 pip install modnet
 ```
+
+Alternatively, for local development (or if you wish to use pinned
+dependencies that MODNet has been tested with), you can clone this git
+repository and make an editable install inside your chosen environment with `pip`:
+
+```shell
+git clone git@github.com:ppdebreuck/modnet
+cd modnet
+conda create -n modnet python=3.8
+conda activate modnet
+pip install -r requirements.txt  # optionally use pinned requirements
+pip install -e .
+```
+
 
 <a name="documentation"></a>
 ## Documentation
 The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
+
+<a name="changelog"></a>
+## Changelog
+A brief changelog can be found in the [release summaries on GitHub](https://github.com/ppdebreuck/modnet/releases).
 
 <a name="author"></a>
 ## Author
