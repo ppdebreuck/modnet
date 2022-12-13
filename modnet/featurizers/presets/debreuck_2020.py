@@ -1,26 +1,56 @@
 """ This submodule contains the DeBreuck2020Featurizer class. """
 
 import numpy as np
-from pymatgen.core.periodic_table import Element
-from pymatgen.analysis.local_env import VoronoiNN
 import modnet.featurizers
 import contextlib
+import warnings
 
 
 class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
-    """Featurizer presets used for the paper 'Machine learning
-    materials properties for small datasets' by Pierre-Paul De Breuck,
-    Geoffroy Hautier & Gian-Marco Rignanese, arXiv:2004.14766 (2020).
+    """Featurizer presets used for the paper
+
+        **Materials property prediction for limited datasets enabled
+        by feature selection and joint learning with MODNet**,
+        Pierre-Paul De Breuck, Geoffroy Hautier & Gian-Marco Rignanese
+        npj Comp. Mat. 7(1) 1-8 (2021)
+        10.1038/s41524-021-00552-2
 
     Uses most of the featurizers implemented by matminer at the time of
     writing with their default hyperparameters and presets.
 
     """
 
-    def __init__(self, fast_oxid=False):
-        super().__init__()
+    package_version_requirements = {"matminer": "==0.6.2"}
 
+    def __init__(self, fast_oxid: bool = False):
+        """Creates the featurizer and imports all featurizer functions.
+
+        Parameters:
+            fast_oxid: Whether to use the accelerated oxidation state parameters within
+                pymatgen when constructing features that constrain oxidation states such
+                that all sites with the same species in a structure will have the same
+                oxidation state (recommended if featurizing any structure
+                with large unit cells).
+
+        """
+        import matminer
+        if matminer.__version__ != self.package_version_requirements["matminer"]:
+            warnings.warn(
+                f"The {self.__class__.__name__} preset was written for and tested only with matminer{self.package_version_requirements['matminer']}.\n"
+                "Newer versions of matminer will not work, and older versions may not be compatible with newer MODNet versions due to other conflicts.\n"
+                "To use this featurizer robustly, please install `modnet==0.1.13` with its pinned dependencies.\n\n"
+                "This preset will now be initialised without importing matminer featurisers to enable use with existing previously featurized data, "
+                "but attempts to perform further featurization will result in an error."
+            )
+
+        else:
+            super().__init__()
+            self.load_featurizers()
+            self.fast_oxid = fast_oxid
+
+    def load_featurizers(self):
         with contextlib.redirect_stdout(None):
+            from pymatgen.analysis.local_env import VoronoiNN
             from matminer.featurizers.composition import (
                 AtomicOrbitals,
                 AtomicPackingEfficiency,
@@ -117,13 +147,13 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
                 OPSiteFingerprint(),
                 VoronoiFingerprint(),
             )
-        self.fast_oxid = fast_oxid
 
     def featurize_composition(self, df):
         """Applies the preset composition featurizers to the input dataframe,
         renames some fields and cleans the output dataframe.
 
         """
+        from pymatgen.core.periodic_table import Element
         df = super().featurize_composition(df)
 
         _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
@@ -213,6 +243,19 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
 
 class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
+    """This subclass simply disables structure and site-level features
+    frm the main `DeBreuck2020Featurizer` class.
+
+        **Materials property prediction for limited datasets enabled
+        by feature selection and joint learning with MODNet**
+        Pierre-Paul De Breuck, Geoffroy Hautier & Gian-Marco Rignanese
+        npj Comp. Mat. 7(1) 1-8 (2021)
+        10.1038/s41524-021-00552-2
+
+    Uses most of the featurizers implemented by matminer at the time of
+    writing with their default hyperparameters and presets.
+
+    """
     def __init__(self):
         super().__init__()
         self.oxid_composition_featurizers = ()
