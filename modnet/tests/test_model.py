@@ -19,7 +19,7 @@ def test_train_small_model_single_target(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
 
 
@@ -48,7 +48,7 @@ def test_train_small_model_single_target_classif(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
 
 
 def test_train_small_model_multi_target(subset_moddata, tf_session):
@@ -68,7 +68,7 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
 
 
@@ -81,7 +81,7 @@ def test_train_small_model_presets(subset_moddata, tf_session):
     modified_presets = gen_presets(100, 100)[:2]
 
     for ind, preset in enumerate(modified_presets):
-        modified_presets[ind]["epochs"] = 5
+        modified_presets[ind]["epochs"] = 2
 
     data = subset_moddata
     # set 'optimal' features manually
@@ -128,7 +128,7 @@ def test_model_integration(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
 
     model.save("test")
     loaded_model = MODNetModel.load("test")
@@ -153,7 +153,7 @@ def test_train_small_bayesian_single_target(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
 
@@ -183,7 +183,7 @@ def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
 
@@ -205,7 +205,7 @@ def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
         n_feat=10,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
 
@@ -229,7 +229,7 @@ def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
         bootstrap=True,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
 
@@ -261,7 +261,7 @@ def test_train_small_bootstrap_single_target_classif(small_moddata, tf_session):
         bootstrap=True,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
 
@@ -285,16 +285,18 @@ def test_train_small_bootstrap_multi_target(small_moddata, tf_session):
         bootstrap=True,
     )
 
-    model.fit(data, epochs=5)
+    model.fit(data, epochs=2)
     model.predict(data, return_unc=True)
 
 
 @pytest.mark.slow
 def test_train_small_bootstrap_presets(small_moddata, tf_session):
     """Tests the `fit_preset()` method."""
+    import time
     from modnet.model_presets import gen_presets
     from modnet.models import EnsembleMODNetModel
 
+    start = time.time()
     modified_presets = gen_presets(100, 100)[:2]
 
     for ind, preset in enumerate(modified_presets):
@@ -314,6 +316,7 @@ def test_train_small_bootstrap_presets(small_moddata, tf_session):
         n_models=2,
         bootstrap=True,
     )
+    print(f"{time.time() - start} elapsed after model creation.")
 
     # nested=0/False -> no inner loop, so only 1 model
     # nested=1/True -> inner loop, but default n_folds so 5
@@ -325,6 +328,7 @@ def test_train_small_bootstrap_presets(small_moddata, tf_session):
             val_fraction=0.2,
             n_jobs=2,
         )
+        print(f"{time.time() - start} elapsed nested {num_nested}, {nested_option}")
         models = results[0]
         assert len(models) == len(modified_presets)
         assert len(models[0]) == num_nested
