@@ -291,24 +291,28 @@ def test_load_moddata_zip(subset_moddata):
     assert len(data.df_targets) == 100
 
 
-def test_small_moddata_featurization(small_moddata):
+def test_small_moddata_featurization(small_moddata_2023):
     """This test creates a new MODData from the MP 2018.6 structures."""
 
-    old = small_moddata
+    from modnet.featurizers.presets import Matminer2023Featurizer
+
+    old = small_moddata_2023
     structures = old.structures
     targets = old.targets
 
     names = old.names
-    new = MODData(structures, targets, target_names=names)
+    new = MODData(
+        structures, targets, target_names=names, featurizer=Matminer2023Featurizer()
+    )
     new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
     old_cols = sorted(old.df_featurized.columns.tolist())
 
-    # for i in range(len(old_cols)):
-    #     assert new_cols[i] == old_cols[i]
+    for i in range(len(old_cols)):
+        assert new_cols[i] == old_cols[i]
 
-    # np.testing.assert_array_equal(old_cols, new_cols)
+    np.testing.assert_array_equal(old_cols, new_cols)
 
     # assert relative error below 3 percent
     for col in new.df_featurized.columns:
@@ -320,20 +324,23 @@ def test_small_moddata_featurization(small_moddata):
                             new.df_featurized[col].to_numpy()
                             - old.df_featurized[col].to_numpy()
                         )
-                        # / (old.df_featurized[col].to_numpy() + 1e-6)
+                        / (old.df_featurized[col].to_numpy() + 1e-6)
                     )
                 )
                 < 0.03
             )
 
 
-def test_small_moddata_composition_featurization(small_moddata_composition):
+def test_small_moddata_composition_featurization(small_moddata_composition_2023):
     """This test creates a new MODData from the MP 2018.6 structures."""
+    from modnet.featurizers.presets import CompositionOnlyMatminer2023Featurizer
 
-    reference = small_moddata_composition
+    reference = small_moddata_composition_2023
     compositions = reference.compositions
 
-    new = MODData(materials=compositions)
+    new = MODData(
+        materials=compositions, featurizer=CompositionOnlyMatminer2023Featurizer()
+    )
     new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
@@ -357,7 +364,7 @@ def test_small_moddata_composition_featurization(small_moddata_composition):
         )
 
 
-def test_small_moddata_feature_selection_classif(small_moddata):
+def test_small_moddata_feature_selection_classif(small_moddata_2023):
     """This test creates classifier MODData and test the feature selection method"""
 
     x1 = np.array([0] * 500 + [1] * 500 + [2] * 500, dtype="float")
@@ -472,13 +479,13 @@ def test_moddata_splits(subset_moddata):
         break
 
 
-def test_precomputed_cross_nmi(small_moddata):
+def test_precomputed_cross_nmi(small_moddata_2020):
 
     new = MODData(
-        materials=small_moddata.structures,
-        targets=small_moddata.targets,
-        target_names=small_moddata.names,
-        df_featurized=small_moddata.df_featurized,
+        materials=small_moddata_2020.structures,
+        targets=small_moddata_2020.targets,
+        target_names=small_moddata_2020.names,
+        df_featurized=small_moddata_2020.df_featurized,
     )
     new.feature_selection(5, use_precomputed_cross_nmi=True)
 

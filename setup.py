@@ -35,7 +35,7 @@ setuptools.setup(
         "tensorflow~=2.10",
         "tensorflow-probability~=0.18",
         "pymatgen~=2022.9",
-        "matminer~=0.7",
+        "matminer~=0.8",
         "numpy~=1.23",
         "scikit-learn~=1.1",
     ],
