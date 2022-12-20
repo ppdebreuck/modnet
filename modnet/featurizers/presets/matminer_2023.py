@@ -218,7 +218,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
 
 class CompositionOnlyMatminer2023Featurizer(Matminer2023Featurizer):
     """This subclass simply disables structure and site-level features
-    frm the main `Matminer2023Featurizer` class.
+    from the main `Matminer2023Featurizer` class.
 
     This should yield identical results to the original 2020 version.
 
