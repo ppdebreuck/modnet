@@ -35,12 +35,14 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         """
         import matminer
 
-        if matminer.__version__ != self.package_version_requirements["matminer"]:
+        if matminer.__version__ != self.package_version_requirements[
+            "matminer"
+        ].replace("==", ""):
             warnings.warn(
                 f"The {self.__class__.__name__} preset was written for and tested only with matminer{self.package_version_requirements['matminer']}.\n"
                 "Newer versions of matminer will not work, and older versions may not be compatible with newer MODNet versions due to other conflicts.\n"
                 "To use this featurizer robustly, please install `modnet==0.1.13` with its pinned dependencies.\n\n"
-                "This preset will now be initialised without importing matminer featurisers to enable use with existing previously featurized data, "
+                "This preset will now be initialised without importing matminer featurizers to enable use with existing previously featurized data, "
                 "but attempts to perform further featurization will result in an error."
             )
 
@@ -246,7 +248,7 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
 class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
     """This subclass simply disables structure and site-level features
-    frm the main `DeBreuck2020Featurizer` class.
+    from the main `DeBreuck2020Featurizer` class.
 
         **Materials property prediction for limited datasets enabled
         by feature selection and joint learning with MODNet**
