@@ -365,7 +365,7 @@ class MODNetModel:
 
         self.model.compile(
             loss=loss,
-            optimizer=tf.keras.optimizers.Adam(lr=lr),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
             metrics=metrics,
             loss_weights=self.weights,
         )
