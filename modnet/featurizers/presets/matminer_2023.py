@@ -1,26 +1,19 @@
-""" This submodule contains the DeBreuck2020Featurizer class. """
+""" This submodule contains the `Matminer2023Featurizer` class. """
 
 import numpy as np
 import modnet.featurizers
 import contextlib
-import warnings
 
 
-class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
-    """Featurizer presets used for the paper
+class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
+    """A "kitchen-sink" featurizer for features implemented in matminer
+    at time of creation (matminer v0.8.0 from late 2022/early 2023).
 
-        **Materials property prediction for limited datasets enabled
-        by feature selection and joint learning with MODNet**,
-        Pierre-Paul De Breuck, Geoffroy Hautier & Gian-Marco Rignanese
-        npj Comp. Mat. 7(1) 1-8 (2021)
-        10.1038/s41524-021-00552-2
-
-    Uses most of the featurizers implemented by matminer at the time of
-    writing with their default hyperparameters and presets.
+    Follows the same philosophy and featurizer list as the `DeBreuck2020Featurizer`
+    but with with many features changing their underlying matminer implementation,
+    definition and behaviour since the creation of the former featurizer.
 
     """
-
-    package_version_requirements = {"matminer": "==0.6.2"}
 
     def __init__(self, fast_oxid: bool = False):
         """Creates the featurizer and imports all featurizer functions.
@@ -33,23 +26,10 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
                 with large unit cells).
 
         """
-        import matminer
 
-        if matminer.__version__ != self.package_version_requirements[
-            "matminer"
-        ].replace("==", ""):
-            warnings.warn(
-                f"The {self.__class__.__name__} preset was written for and tested only with matminer{self.package_version_requirements['matminer']}.\n"
-                "Newer versions of matminer will not work, and older versions may not be compatible with newer MODNet versions due to other conflicts.\n"
-                "To use this featurizer robustly, please install `modnet==0.1.13` with its pinned dependencies.\n\n"
-                "This preset will now be initialised without importing matminer featurizers to enable use with existing previously featurized data, "
-                "but attempts to perform further featurization will result in an error."
-            )
-
-        else:
-            super().__init__()
-            self.load_featurizers()
-            self.fast_oxid = fast_oxid
+        super().__init__()
+        self.load_featurizers()
+        self.fast_oxid = fast_oxid
 
     def load_featurizers(self):
         with contextlib.redirect_stdout(None):
@@ -136,6 +116,11 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
                 XRDPowderPattern(),
                 # BagofBonds(),
             )
+
+            # Patch for matminer: see https://github.com/hackingmaterials/matminer/issues/864
+            self.structure_featurizers[0].desired_features = None
+            self.structure_featurizers[1].desired_features = None
+
             self.site_featurizers = (
                 AGNIFingerprints(),
                 AverageBondAngle(VoronoiNN()),
@@ -183,23 +168,8 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
 
         """
 
-        df = super().featurize_structure(df)
-
-        if "RadialDistributionFunction|radial distribution function" in df:
-            dist = df["RadialDistributionFunction|radial distribution function"].iloc[
-                0
-            ]["distances"][:50]
-            for i, d in enumerate(dist):
-                _rdf_key = "RadialDistributionFunction|radial distribution function|d_{:.2f}".format(
-                    d
-                )
-                df[_rdf_key] = df[
-                    "RadialDistributionFunction|radial distribution function"
-                ].apply(lambda x: x["distribution"][i])
-
-            df = df.drop(
-                "RadialDistributionFunction|radial distribution function", axis=1
-            )
+        if self.structure_featurizers:
+            df = super().featurize_structure(df)
 
         _crystal_system = {
             "cubic": 1,
@@ -246,18 +216,11 @@ class DeBreuck2020Featurizer(modnet.featurizers.MODFeaturizer):
         return modnet.featurizers.clean_df(df)
 
 
-class CompositionOnlyFeaturizer(DeBreuck2020Featurizer):
+class CompositionOnlyMatminer2023Featurizer(Matminer2023Featurizer):
     """This subclass simply disables structure and site-level features
-    from the main `DeBreuck2020Featurizer` class.
+    from the main `Matminer2023Featurizer` class.
 
-        **Materials property prediction for limited datasets enabled
-        by feature selection and joint learning with MODNet**
-        Pierre-Paul De Breuck, Geoffroy Hautier & Gian-Marco Rignanese
-        npj Comp. Mat. 7(1) 1-8 (2021)
-        10.1038/s41524-021-00552-2
-
-    Uses most of the featurizers implemented by matminer at the time of
-    writing with their default hyperparameters and presets.
+    This should yield identical results to the original 2020 version.
 
     """
 

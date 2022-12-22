@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Union, Optional, Callable, Hashable, Iterable, Tuple
 from functools import partial
 
-from pymatgen import Structure, Composition
+from pymatgen.core import Structure, Composition
 
 from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
 from sklearn.utils import resample
@@ -27,6 +27,7 @@ from multiprocessing import Pool
 from modnet.featurizers import MODFeaturizer
 from modnet import __version__
 from modnet.utils import LOG
+
 
 DATABASE = pd.DataFrame([])
 
@@ -539,14 +540,14 @@ def merge_ranked(lists: List[List[Hashable]]) -> List[Hashable]:
 
 
 class MODData:
-    """The MODData class takes takes a list of `pymatgen.Structure`
+    """The MODData class takes takes a list of pymatgen `Structure`
     objects and creates a `pandas.DataFrame` that contains many matminer
     features per structure. It then uses mutual information between
     features and targets, and between the features themselves, to
     perform feature selection using relevance-redundancy indices.
 
     Attributes:
-        df_structure (pd.DataFrame): dataframe storing the `pymatgen.Structure`
+        df_structure (pd.DataFrame): dataframe storing the pymatgen `Structure`
             representations for each structured, indexed by ID.
         df_targets (pd.Dataframe): dataframe storing the prediction targets
             per structure, indexed by ID.
@@ -600,7 +601,11 @@ class MODData:
 
         """
 
-        from modnet.featurizers.presets import FEATURIZER_PRESETS
+        from modnet.featurizers.presets import (
+            FEATURIZER_PRESETS,
+            DEFAULT_FEATURIZER,
+            DEFAULT_COMPOSITION_ONLY_FEATURIZER,
+        )
 
         self.__modnet_version__ = __version__
         self.df_featurized = df_featurized
@@ -644,9 +649,11 @@ class MODData:
             self.featurizer = featurizer
         elif featurizer is None and self.df_featurized is None:
             if getattr(self, "_composition_only", False):
-                self.featurizer = FEATURIZER_PRESETS["CompositionOnly"]()
+                self.featurizer = FEATURIZER_PRESETS[
+                    DEFAULT_COMPOSITION_ONLY_FEATURIZER
+                ]()
             else:
-                self.featurizer = FEATURIZER_PRESETS["DeBreuck2020"]()
+                self.featurizer = FEATURIZER_PRESETS[DEFAULT_FEATURIZER]()
 
         if self.featurizer is not None:
             LOG.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
@@ -906,12 +913,12 @@ class MODData:
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
-        """Returns the list of `pymatgen.Structure` objects."""
+        """Returns the list of pymatgen `Structure` objects."""
         return list(self.df_structure["structure"])
 
     @property
     def compositions(self) -> List[Union[Structure, CompositionContainer]]:
-        """Returns the list of materials as`pymatgen.Composition` objects."""
+        """Returns the list of materials as pymatgen `Composition` objects."""
         return [s.composition for s in self.df_structure["structure"]]
 
     @property

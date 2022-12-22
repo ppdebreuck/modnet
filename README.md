@@ -1,6 +1,6 @@
 # MODNet: Material Optimal Descriptor Network
 
-[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/workflow/status/ppdebreuck/modnet/Run%20tests?logo=github)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+) [![Read the Docs](https://img.shields.io/readthedocs/modnet)](https://modnet.readthedocs.io/en/latest/)
+[![arXiv](https://img.shields.io/badge/arXiv-2004.14766-brightgreen)](https://arxiv.org/abs/2004.14766) [![Build Status](https://img.shields.io/github/actions/workflow/status/ppdebreuck/modnet/ci.yml?logo=github&branch=main)](https://github.com/ppdebreuck/modnet/actions?query=branch%3Amaster+) [![Read the Docs](https://img.shields.io/readthedocs/modnet)](https://modnet.readthedocs.io/en/latest/)
 
 <a name="introduction"></a>
 ## Introduction
@@ -33,33 +33,47 @@ See the MODNet papers and repositories below for more details:
 <a name="install"></a>
 ## How to install
 
-First, create a virtual environment (e.g., named modnet) with Python 3.8:
+First, create a virtual environment (e.g., named modnet) with Python 3.8 using
+your favourite environment manager (the following instructions use
+[conda](https://docs.conda.io/)):
 
 ```shell
 conda create -n modnet python=3.8
 ```
 
-activate the environment:
+Activate the environment:
 
 ```shell
 conda activate modnet
 ```
 
-Then, install pymatgen v2020.8.13 with conda, which will bundle several pre-built dependencies (e.g., numpy, scipy):
+Finally, install MODNet from PyPI with `pip`:
 
 ```shell
-conda install -c conda-forge pymatgen=2020.8.13
-```
-
-Finally, install MODNet from PyPI with pip:
-
-```bash
 pip install modnet
 ```
+
+Alternatively, for local development (or if you wish to use pinned
+dependencies that MODNet has been tested with), you can clone this git
+repository and make an editable install inside your chosen environment with `pip`:
+
+```shell
+git clone git@github.com:ppdebreuck/modnet
+cd modnet
+conda create -n modnet python=3.8
+conda activate modnet
+pip install -r requirements.txt  # optionally use pinned requirements
+pip install -e .
+```
+
 
 <a name="documentation"></a>
 ## Documentation
 The documentation is available at [ReadTheDocs](https://modnet.readthedocs.io).
+
+<a name="changelog"></a>
+## Changelog
+A brief changelog can be found in the [release summaries on GitHub](https://github.com/ppdebreuck/modnet/releases).
 
 <a name="author"></a>
 ## Author
