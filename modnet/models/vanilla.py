@@ -281,7 +281,7 @@ class MODNetModel:
                     loss = "categorical_crossentropy"
             else:
                 y_inner = training_data.df_targets[targ].values.astype(
-                    np.float, copy=False
+                    np.float64, copy=False
                 )
             y.append(y_inner)
 
@@ -314,7 +314,7 @@ class MODNetModel:
                         )
                 else:
                     y_inner = val_data.df_targets[targ].values.astype(
-                        np.float, copy=False
+                        np.float64, copy=False
                     )
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
@@ -705,7 +705,9 @@ class MODNetModel:
                             scores.append(float("nan"))
                     score.append(np.nanmean(scores))
             else:
-                y_true = test_data.df_targets[targ].values.astype(np.float, copy=False)
+                y_true = test_data.df_targets[targ].values.astype(
+                    np.float64, copy=False
+                )
                 score.append(mean_absolute_error(y_true, y_pred[i]))
 
         return np.mean(score)
