@@ -3,5 +3,5 @@ tensorflow-probability==0.18.0
 pandas==1.5.2
 pymatgen==2022.9.21
 matminer==0.8.0
-numpy==1.23.5
+numpy==1.24.1
 scikit-learn==1.2.0
