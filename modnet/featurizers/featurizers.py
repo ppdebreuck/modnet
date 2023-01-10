@@ -34,6 +34,9 @@ class MODFeaturizer(abc.ABC):
             calculated.
         site_stats: Iterable of string statistic names to be used by the
             `SiteStatsFingerprint` objects.
+        featurizer_mode: Whether or not to apply all featurizers at once
+            ("multi"), i.e., parallelising over structures, or one-at-a-time
+            ("single"), i.e., parallelising over featurisers.
 
     """
 
@@ -42,6 +45,7 @@ class MODFeaturizer(abc.ABC):
     structure_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     site_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     site_stats: Tuple[str] = ("mean", "std_dev")
+    featurizer_mode: str = "multi"
 
     def __init__(self, n_jobs=None):
         """Initialise the MODFeaturizer object with a requested
@@ -96,6 +100,7 @@ class MODFeaturizer(abc.ABC):
         featurizers: Iterable[BaseFeaturizer],
         column: str,
         fit_to_df: bool = True,
+        mode: str = "single",
     ) -> pd.DataFrame:
         """For the list of featurizers, fit each to the chosen column of
         the input pd.DataFrame and then apply them as a MultipleFeaturizer.
@@ -109,25 +114,61 @@ class MODFeaturizer(abc.ABC):
                 input dataframe. If not true, it will be assumed that
                 any featurizers that required fitting have already been
                 fitted.
+            mode: either 'multi' or 'single' to indicate whether featurizers
+                will be applied all at once, or one at a time (useful for timing).
 
         Returns:
             pandas.DataFrame: the decorated DataFrame.
 
         """
+        import time
+
         LOG.info(f"Applying featurizers {featurizers} to column {column!r}.")
-        if fit_to_df:
-            _featurizers = MultipleFeaturizer(
-                [feat.fit(df[column]) for feat in featurizers]
+        if mode == "multi":
+            if fit_to_df:
+                _featurizers = MultipleFeaturizer(
+                    [feat.fit(df[column]) for feat in featurizers]
+                )
+            else:
+                _featurizers = MultipleFeaturizer(featurizers)
+            if self._n_jobs is not None:
+                _featurizers.set_n_jobs(self._n_jobs)
+
+            return _featurizers.featurize_dataframe(
+                df, column, multiindex=True, ignore_errors=True
             )
+        elif mode == "single":
+
+            for featurizer in featurizers:
+
+                if column not in df:
+                    column = ("Input Data", column)
+                start = time.monotonic_ns()
+                if fit_to_df:
+                    LOG.info(
+                        f"Fitting featurizer {featurizer.__class__.__name__} to column {column!r}."
+                    )
+                    featurizer = featurizer.fit(df[column])
+                    LOG.info(
+                        f"Fitted featurizer {featurizer.__class__.__name__} to column {column!r} in {(time.monotonic_ns() - start) * 1e-9} seconds"
+                    )
+                featurizer.set_n_jobs(1)
+                LOG.info(
+                    f"Applying featurizer {featurizer.__class__.__name__} to column {column!r}."
+                )
+                start = time.monotonic_ns()
+                df = featurizer.featurize_dataframe(
+                    df, column, multiindex=True, ignore_errors=True
+                )
+                LOG.info(
+                    f"Applied featurizer {featurizer.__class__.__name__} to column {column!r} in {(time.monotonic_ns() - start) * 1e-9} seconds"
+                )
+            LOG.info("Applied all featurizers")
+
+            return df
+
         else:
-            _featurizers = MultipleFeaturizer(featurizers)
-
-        if self._n_jobs is not None:
-            _featurizers.set_n_jobs(self._n_jobs)
-
-        return _featurizers.featurize_dataframe(
-            df, column, multiindex=True, ignore_errors=True
-        )
+            raise RuntimeError(f"`mode` must be 'multi' or 'single', not {mode}.")
 
     def featurize_composition(self, df: pd.DataFrame) -> pd.DataFrame:
         """Decorate input `pandas.DataFrame` of structures with composition
@@ -153,7 +194,10 @@ class MODFeaturizer(abc.ABC):
             LOG.info("Applying composition featurizers...")
             df["composition"] = df["structure"].apply(lambda s: s.composition)
             df = self._fit_apply_featurizers(
-                df, self.composition_featurizers, "composition"
+                df,
+                self.composition_featurizers,
+                "composition",
+                mode=self.featurizer_mode,
             )
             df = df.rename(columns={"Input Data": ""})
             df.columns = df.columns.map("|".join).str.strip("|")
@@ -169,7 +213,10 @@ class MODFeaturizer(abc.ABC):
                     df, "composition"
                 )
             df = self._fit_apply_featurizers(
-                df, self.oxid_composition_featurizers, "composition_oxid"
+                df,
+                self.oxid_composition_featurizers,
+                "composition_oxid",
+                mode=self.featurizer_mode,
             )
             df = df.rename(columns={"Input Data": ""})
             df.columns = df.columns.map("|".join).str.strip("|")
@@ -193,7 +240,9 @@ class MODFeaturizer(abc.ABC):
 
         LOG.info("Applying structure featurizers...")
         df = df.copy()
-        df = self._fit_apply_featurizers(df, self.structure_featurizers, "structure")
+        df = self._fit_apply_featurizers(
+            df, self.structure_featurizers, "structure", mode=self.featurizer_mode
+        )
         df.columns = df.columns.map("|".join).str.strip("|")
 
         return df

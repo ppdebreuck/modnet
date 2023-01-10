@@ -291,7 +291,8 @@ def test_load_moddata_zip(subset_moddata):
     assert len(data.df_targets) == 100
 
 
-def test_small_moddata_featurization(small_moddata_2023):
+@pytest.mark.parametrize("featurizer_mode", ["single", "multi"])
+def test_small_moddata_featurization(small_moddata_2023, featurizer_mode):
     """This test creates a new MODData from the MP 2018.6 structures."""
 
     from modnet.featurizers.presets import Matminer2023Featurizer
@@ -301,9 +302,9 @@ def test_small_moddata_featurization(small_moddata_2023):
     targets = old.targets
 
     names = old.names
-    new = MODData(
-        structures, targets, target_names=names, featurizer=Matminer2023Featurizer()
-    )
+    featurizer = Matminer2023Featurizer()
+    featurizer.featurizer_mode = featurizer_mode
+    new = MODData(structures, targets, target_names=names, featurizer=featurizer)
     new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
@@ -331,16 +332,20 @@ def test_small_moddata_featurization(small_moddata_2023):
             )
 
 
-def test_small_moddata_composition_featurization(small_moddata_composition_2023):
+@pytest.mark.parametrize("featurizer_mode", ["multi", "single"])
+def test_small_moddata_composition_featurization(
+    small_moddata_composition_2023, featurizer_mode
+):
     """This test creates a new MODData from the MP 2018.6 structures."""
     from modnet.featurizers.presets import CompositionOnlyMatminer2023Featurizer
 
     reference = small_moddata_composition_2023
     compositions = reference.compositions
 
-    new = MODData(
-        materials=compositions, featurizer=CompositionOnlyMatminer2023Featurizer()
-    )
+    featurizer = CompositionOnlyMatminer2023Featurizer()
+    featurizer.featurizer_mode = featurizer_mode
+
+    new = MODData(materials=compositions, featurizer=featurizer)
     new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
