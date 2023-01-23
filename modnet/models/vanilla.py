@@ -347,10 +347,10 @@ class MODNetModel:
                     )
                 )
 
-                if callbacks is None:
-                    callbacks = [print_callback]
-                else:
-                    callbacks.append(print_callback)
+            if callbacks is None:
+                callbacks = [print_callback]
+            else:
+                callbacks.append(print_callback)
 
         fit_params = {
             "x": x,
