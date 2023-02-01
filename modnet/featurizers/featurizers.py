@@ -100,7 +100,7 @@ class MODFeaturizer(abc.ABC):
         featurizers: Iterable[BaseFeaturizer],
         column: str,
         fit_to_df: bool = True,
-        mode: str = "single",
+        mode: str = "multi",
     ) -> pd.DataFrame:
         """For the list of featurizers, fit each to the chosen column of
         the input pd.DataFrame and then apply them as a MultipleFeaturizer.
