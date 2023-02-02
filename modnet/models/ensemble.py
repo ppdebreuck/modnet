@@ -464,7 +464,7 @@ def _validate_ensemble_model(
 
     model.fit(
         train_data,
-        lr=lr,
+        learning_rate=lr,
         epochs=epochs,
         batch_size=batch_size,
         loss=loss,
