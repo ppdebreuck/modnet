@@ -4,7 +4,7 @@
 
 <a name="introduction"></a>
 ## Introduction
-This repository contains the Python (3.8) package implementing the Material Optimal Descriptor Network (MODNet).
+This repository contains the Python (3.8+) package implementing the Material Optimal Descriptor Network (MODNet).
 It is a supervised machine learning framework for **learning material properties** from
 either the **composition** or  **crystal structure**. The framework is well suited for **limited datasets**
 and can be used for learning *multiple* properties together by using **joint learning**.
@@ -33,12 +33,12 @@ See the MODNet papers and repositories below for more details:
 <a name="install"></a>
 ## How to install
 
-First, create a virtual environment (e.g., named modnet) with Python 3.8 using
+First, create a virtual environment (e.g., named modnet) with Python (3.8+) using
 your favourite environment manager (the following instructions use
 [conda](https://docs.conda.io/)):
 
 ```shell
-conda create -n modnet python=3.8
+conda create -n modnet python=3.9
 ```
 
 Activate the environment:
@@ -53,14 +53,22 @@ Finally, install MODNet from PyPI with `pip`:
 pip install modnet
 ```
 
-Alternatively, for local development (or if you wish to use pinned
-dependencies that MODNet has been tested with), you can clone this git
-repository and make an editable install inside your chosen environment with `pip`:
+>**Warning**
+>We strongly recommend pinning your Python environment when using MODNet
+>across multiple machines, or multiple MODNet versions, as changes to the
+>dependencies and sub-dependencies can lead to different values for particular
+>features.
+>
+>This can be achieved with `conda export` or `pip freeze`.
+
+For development (or if you wish to use pinned versions of direct dependencies that
+MODNet has been tested with), you can clone this git repository and make an
+editable install inside your chosen environment with `pip`:
 
 ```shell
 git clone git@github.com:ppdebreuck/modnet
 cd modnet
-conda create -n modnet python=3.8
+conda create -n modnet python=3.9
 conda activate modnet
 pip install -r requirements.txt  # optionally use pinned requirements
 pip install -e .
