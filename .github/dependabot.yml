@@ -3,8 +3,15 @@ updates:
 - package-ecosystem: pip
   directory: "/"
   schedule:
-    interval: daily
+    interval: monthly
   open-pull-requests-limit: 10
   target-branch: master
   labels:
   - dependency_updates
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    interval: monthly
+  target-branch: master
+  labels:
+    - CI

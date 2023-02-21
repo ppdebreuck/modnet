@@ -1,9 +1,12 @@
+### Custom
+modnet/data/
+.mypy_cache
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-modnet/data/
 
 # Distribution / packaging
 build/

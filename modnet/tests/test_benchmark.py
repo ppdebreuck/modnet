@@ -2,6 +2,7 @@
 import pytest
 
 
+@pytest.mark.slow
 def test_train_small_model_benchmark(small_moddata, tf_session):
     """Tests the `matbench_benchmark()` method with optional arguments."""
     from modnet.matbench.benchmark import matbench_benchmark
@@ -81,6 +82,7 @@ def test_train_small_ensemblemodel_benchmark(small_moddata, tf_session):
     assert all(len(results[key]) == 5 for key in expected_keys)
 
 
+@pytest.mark.slow
 def test_train_small_model_benchmark_with_extra_args(small_moddata):
     """Tests the `matbench_benchmark()` method with some extra settings,
     parallelised over 2 jobs.
@@ -130,6 +132,7 @@ def test_train_small_model_benchmark_with_extra_args(small_moddata):
     assert all(len(results[key]) == 5 for key in expected_keys)
 
 
+@pytest.mark.slow
 def test_ga_benchmark(small_moddata, tf_session):
     """Tests the `matbench_benchmark()` method with the GA strategy."""
     from modnet.matbench.benchmark import matbench_benchmark
@@ -156,7 +159,7 @@ def test_ga_benchmark(small_moddata, tf_session):
             "refit": False,
         },
         fast=True,
-        n_jobs=2,
+        n_jobs=1,
     )
 
     expected_keys = (
