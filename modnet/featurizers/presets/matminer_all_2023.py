@@ -86,6 +86,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             # get only the features that are not yet present with another featurizer.
             # Also in the case of continuous features, use only the mean and avg_dev.
             from matminer.utils.data import PymatgenData, DemlData
+
             magpie_featurizer = ElementProperty.from_preset("magpie")
             magpie_featurizer.stats = ["mean", "avg_dev"]
 
@@ -221,12 +222,12 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
 
         if self.composition_featurizers:
             _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
-            df["AtomicOrbitals|HOMO_character"] = df["AtomicOrbitals|HOMO_character"].map(
-                _orbitals
-            )
-            df["AtomicOrbitals|LUMO_character"] = df["AtomicOrbitals|LUMO_character"].map(
-                _orbitals
-            )
+            df["AtomicOrbitals|HOMO_character"] = df[
+                "AtomicOrbitals|HOMO_character"
+            ].map(_orbitals)
+            df["AtomicOrbitals|LUMO_character"] = df[
+                "AtomicOrbitals|LUMO_character"
+            ].map(_orbitals)
 
             df["AtomicOrbitals|HOMO_element"] = df["AtomicOrbitals|HOMO_element"].apply(
                 lambda x: -1 if not isinstance(x, str) else Element(x).Z
@@ -251,7 +252,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     "WenAlloys|Atomic weight mean",
                     "WenAlloys|Total weight",
                 ],
-                inplace=True
+                inplace=True,
             )
 
         if self.oxid_composition_continuous_featurizers:
@@ -321,7 +322,12 @@ class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
 
     """
 
-    def __init__(self, continuous_only: bool = False, oxidation_featurizers: bool = False, fast_oxid: bool = False):
+    def __init__(
+        self,
+        continuous_only: bool = False,
+        oxidation_featurizers: bool = False,
+        fast_oxid: bool = False,
+    ):
         super().__init__(fast_oxid=fast_oxid)
         self.fast_oxid = fast_oxid
         self.structure_featurizers = ()
