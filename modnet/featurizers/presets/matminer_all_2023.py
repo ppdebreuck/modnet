@@ -5,12 +5,12 @@ import modnet.featurizers
 import contextlib
 
 
-class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
+class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
     """A "kitchen-sink" featurizer for features implemented in matminer
     at time of creation (matminer v0.8.0 from late 2022/early 2023).
 
     Follows the same philosophy and featurizer list as the `DeBreuck2020Featurizer`
-    but with with many features changing their underlying matminer implementation,
+    but with many features changing their underlying matminer implementation,
     definition and behaviour since the creation of the former featurizer.
 
     """
@@ -28,8 +28,8 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
         """
 
         super().__init__()
-        self.load_featurizers()
         self.fast_oxid = fast_oxid
+        self.load_featurizers()
 
     def load_featurizers(self):
         with contextlib.redirect_stdout(None):
@@ -38,8 +38,8 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
                 AtomicOrbitals,
                 AtomicPackingEfficiency,
                 BandCenter,
-                # CohesiveEnergy, - This descriptor was not used in the paper preset
-                # ElectronAffinity, - This descriptor was not used in the paper preset
+                CationProperty,
+                ElectronAffinity,
                 ElectronegativityDiff,
                 ElementFraction,
                 ElementProperty,
@@ -49,7 +49,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
                 Stoichiometry,
                 TMetalFraction,
                 ValenceOrbital,
-                YangSolidSolution,
+                WenAlloys,
             )
             from matminer.featurizers.structure import (
                 # BagofBonds, - This descriptor was not used in the paper preset
@@ -82,22 +82,96 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
                 VoronoiFingerprint,
             )
 
+            # Get additional ElementProperty featurizer, but
+            # get only the features that are not yet present with another featurizer.
+            # Also in the case of continuous features, use only the mean and avg_dev.
+            from matminer.utils.data import PymatgenData, DemlData
+            magpie_featurizer = ElementProperty.from_preset("magpie")
+            magpie_featurizer.stats = ["mean", "avg_dev"]
+
+            pymatgen_features = [
+                "block",
+                "mendeleev_no",
+                "electrical_resistivity",
+                "velocity_of_sound",
+                "thermal_conductivity",
+                "bulk_modulus",
+                "coefficient_of_linear_thermal_expansion",
+            ]
+            pymatgen_featurizer = ElementProperty(
+                data_source=PymatgenData(),
+                stats=["mean", "avg_dev"],
+                features=pymatgen_features,
+            )
+
+            deml_features = [
+                "atom_radius",
+                "molar_vol",
+                "heat_fusion",
+                "boiling_point",
+                "heat_cap",
+                "first_ioniz",
+                "electric_pol",
+                "GGAU_Etot",
+                "mus_fere",
+                "FERE correction",
+            ]
+            deml_featurizer = ElementProperty(
+                data_source=DemlData(),
+                stats=["mean", "avg_dev"],
+                features=deml_features,
+            )
+
+            self.composition_continuous_featurizers = (
+                BandCenter(),
+                ElementFraction(),
+                magpie_featurizer,
+                pymatgen_featurizer,
+                deml_featurizer,
+                Stoichiometry(p_list=[2, 3, 5, 7, 10]),
+                TMetalFraction(),
+                ValenceOrbital(props=["frac"]),
+                WenAlloys(),
+            )
+
+            # Get back the initial presets from Matminer, without the duplicate features from Magpie
+            pymatgen_featurizer_full = ElementProperty(
+                data_source=PymatgenData(),
+                stats=["minimum", "maximum", "range", "mean", "std_dev"],
+                features=pymatgen_features,
+            )
+
+            deml_featurizer_full = ElementProperty(
+                data_source=DemlData(),
+                stats=["minimum", "maximum", "range", "mean", "std_dev"],
+                features=deml_features,
+            )
+
             self.composition_featurizers = (
                 AtomicOrbitals(),
                 AtomicPackingEfficiency(),
                 BandCenter(),
                 ElementFraction(),
                 ElementProperty.from_preset("magpie"),
-                IonProperty(),
+                pymatgen_featurizer_full,
+                deml_featurizer_full,
                 Miedema(),
                 Stoichiometry(),
                 TMetalFraction(),
                 ValenceOrbital(),
-                YangSolidSolution(),
+                WenAlloys(),
+            )
+
+            self.oxid_composition_continuous_featurizers = (
+                IonProperty(fast=self.fast_oxid),
+                OxidationStates(stats=["mean"]),
             )
 
             self.oxid_composition_featurizers = (
+                CationProperty.from_preset("deml"),
+                ElectronAffinity(),
                 ElectronegativityDiff(),
+                IonProperty(fast=self.fast_oxid),
                 OxidationStates(),
             )
 
@@ -145,20 +219,43 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
 
         df = super().featurize_composition(df)
 
-        _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
-        df["AtomicOrbitals|HOMO_character"] = df["AtomicOrbitals|HOMO_character"].map(
-            _orbitals
-        )
-        df["AtomicOrbitals|LUMO_character"] = df["AtomicOrbitals|LUMO_character"].map(
-            _orbitals
-        )
+        if self.composition_featurizers:
+            _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
+            df["AtomicOrbitals|HOMO_character"] = df["AtomicOrbitals|HOMO_character"].map(
+                _orbitals
+            )
+            df["AtomicOrbitals|LUMO_character"] = df["AtomicOrbitals|LUMO_character"].map(
+                _orbitals
+            )
 
-        df["AtomicOrbitals|HOMO_element"] = df["AtomicOrbitals|HOMO_element"].apply(
-            lambda x: -1 if not isinstance(x, str) else Element(x).Z
-        )
-        df["AtomicOrbitals|LUMO_element"] = df["AtomicOrbitals|LUMO_element"].apply(
-            lambda x: -1 if not isinstance(x, str) else Element(x).Z
-        )
+            df["AtomicOrbitals|HOMO_element"] = df["AtomicOrbitals|HOMO_element"].apply(
+                lambda x: -1 if not isinstance(x, str) else Element(x).Z
+            )
+            df["AtomicOrbitals|LUMO_element"] = df["AtomicOrbitals|LUMO_element"].apply(
+                lambda x: -1 if not isinstance(x, str) else Element(x).Z
+            )
+
+        if self.composition_continuous_featurizers:
+            df.drop(
+                columns=[
+                    "WenAlloys|Yang omega",
+                    "WenAlloys|Yang delta",
+                    "WenAlloys|Radii gamma",
+                    "WenAlloys|Lambda entropy",
+                    "WenAlloys|APE mean",
+                    "WenAlloys|Interant electrons",
+                    "WenAlloys|Interant s electrons",
+                    "WenAlloys|Interant p electrons",
+                    "WenAlloys|Interant d electrons",
+                    "WenAlloys|Interant f electrons",
+                    "WenAlloys|Atomic weight mean",
+                    "WenAlloys|Total weight",
+                ],
+                inplace=True
+            )
+
+        if self.oxid_composition_continuous_featurizers:
+            df.drop(columns=["IonProperty|max ionic char"], inplace=True)
 
         return modnet.featurizers.clean_df(df)
 
@@ -216,7 +313,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
         return modnet.featurizers.clean_df(df)
 
 
-class CompositionOnlyMatminer2023Featurizer(Matminer2023Featurizer):
+class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
     """This subclass simply disables structure and site-level features
     from the main `Matminer2023Featurizer` class.
 
@@ -224,8 +321,21 @@ class CompositionOnlyMatminer2023Featurizer(Matminer2023Featurizer):
 
     """
 
-    def __init__(self):
-        super().__init__()
-        self.oxid_composition_featurizers = ()
+    def __init__(self, continuous_only: bool = False, oxidation_featurizers: bool = False, fast_oxid: bool = False):
+        super().__init__(fast_oxid=fast_oxid)
+        self.fast_oxid = fast_oxid
         self.structure_featurizers = ()
         self.site_featurizers = ()
+        if continuous_only:
+            self.composition_featurizers = ()
+        else:
+            self.composition_continuous_featurizers = ()
+
+        if oxidation_featurizers:
+            if continuous_only:
+                self.oxid_composition_featurizers = ()
+            else:
+                self.oxid_composition_continuous_featurizers = ()
+        else:
+            self.oxid_composition_featurizers = ()
+            self.oxid_composition_continuous_featurizers = ()

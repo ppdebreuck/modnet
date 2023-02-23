@@ -2,6 +2,7 @@ import abc
 from typing import Optional, Iterable, Tuple, Dict
 
 import pandas as pd
+from pymatgen.core import Composition
 
 from matminer.featurizers.base import MultipleFeaturizer, BaseFeaturizer
 from matminer.featurizers.structure import SiteStatsFingerprint
@@ -40,7 +41,9 @@ class MODFeaturizer(abc.ABC):
 
     """
 
+    composition_continuous_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     composition_featurizers: Optional[Iterable[BaseFeaturizer]] = None
+    oxid_composition_continuous_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     oxid_composition_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     structure_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     site_featurizers: Optional[Iterable[BaseFeaturizer]] = None
@@ -81,7 +84,7 @@ class MODFeaturizer(abc.ABC):
 
         """
         df_composition = pd.DataFrame([])
-        if self.composition_featurizers or self.oxid_composition_featurizers:
+        if self.composition_featurizers or self.oxid_composition_featurizers or self.composition_continuous_featurizers:
             df_composition = self.featurize_composition(df)
 
         df_structure = pd.DataFrame([])
@@ -189,32 +192,52 @@ class MODFeaturizer(abc.ABC):
 
         df = df.copy()
 
-        if self.composition_featurizers:
+        if self.composition_featurizers or self.composition_continuous_featurizers:
 
             LOG.info("Applying composition featurizers...")
             df["composition"] = df["structure"].apply(lambda s: s.composition)
             df = self._fit_apply_featurizers(
                 df,
-                self.composition_featurizers,
+                self.composition_featurizers or self.composition_continuous_featurizers,
                 "composition",
                 mode=self.featurizer_mode,
             )
             df = df.rename(columns={"Input Data": ""})
             df.columns = df.columns.map("|".join).str.strip("|")
 
-        if self.oxid_composition_featurizers:
+        if self.oxid_composition_featurizers or self.oxid_composition_continuous_featurizers:
             LOG.info("Applying oxidation state featurizers...")
+            # Get integer composition if some are not
+            col_comp = "composition"
+            if not all(all(amt == int(amt) for amt in comp.values()) for comp in df["composition"].values):
+                LOG.info("There are non-integer compositions in the dataset, and featurizers that need them. "
+                         "Computing...")
+                df["integer_composition"] = [
+                    Composition(comp.get_integer_formula_and_factor(
+                        max_denominator=5 if getattr(self, "fast_oxid", False) else 100)[0]
+                                )
+                    for comp in df["composition"].values
+                ]
+                # df["integer_composition"] = df["composition"].apply(
+                # lambda c: c.get_integer_formula_and_factor(
+                #         max_denominator=10 if getattr(self, "fast_oxid", False) else 100
+                #     )[0]
+                # )
+
+                col_comp = "integer_composition"
             if getattr(self, "fast_oxid", False):
                 df = CompositionToOxidComposition(
                     all_oxi_states=False, max_sites=-1
-                ).featurize_dataframe(df, "composition")
+                ).featurize_dataframe(df, col_id=col_comp)
             else:
-                df = CompositionToOxidComposition().featurize_dataframe(
-                    df, "composition"
+                df = CompositionToOxidComposition(
+                    max_sites=-1 if self.oxid_composition_continuous_featurizers else None
+                ).featurize_dataframe(
+                    df, col_id=col_comp, ignore_errors=True
                 )
             df = self._fit_apply_featurizers(
                 df,
-                self.oxid_composition_featurizers,
+                self.oxid_composition_featurizers or self.oxid_composition_continuous_featurizers,
                 "composition_oxid",
                 mode=self.featurizer_mode,
             )

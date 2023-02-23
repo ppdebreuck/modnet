@@ -117,9 +117,7 @@ def nmi_target(
 
     # Drop features which have the same value for the entire data set
     if drop_constant_features:
-        frange = df_feat.max(axis=0) - df_feat.min(axis=0)
-        to_drop = frange[frange == 0].index
-        df_feat = df_feat.drop(to_drop, axis=1)
+        df_feat = df_feat.loc[:, (df_feat != df_feat.iloc[0]).any()]
 
     # preprocess the input matrix
     if (
