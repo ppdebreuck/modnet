@@ -41,9 +41,7 @@ class MODFeaturizer(abc.ABC):
 
     """
 
-    composition_continuous_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     composition_featurizers: Optional[Iterable[BaseFeaturizer]] = None
-    oxid_composition_continuous_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     oxid_composition_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     structure_featurizers: Optional[Iterable[BaseFeaturizer]] = None
     site_featurizers: Optional[Iterable[BaseFeaturizer]] = None
@@ -84,11 +82,7 @@ class MODFeaturizer(abc.ABC):
 
         """
         df_composition = pd.DataFrame([])
-        if (
-            self.composition_featurizers
-            or self.oxid_composition_featurizers
-            or self.composition_continuous_featurizers
-        ):
+        if self.composition_featurizers or self.oxid_composition_featurizers:
             df_composition = self.featurize_composition(df)
 
         df_structure = pd.DataFrame([])
@@ -196,23 +190,20 @@ class MODFeaturizer(abc.ABC):
 
         df = df.copy()
 
-        if self.composition_featurizers or self.composition_continuous_featurizers:
+        if self.composition_featurizers:
 
             LOG.info("Applying composition featurizers...")
             df["composition"] = df["structure"].apply(lambda s: s.composition)
             df = self._fit_apply_featurizers(
                 df,
-                self.composition_featurizers or self.composition_continuous_featurizers,
+                self.composition_featurizers,
                 "composition",
                 mode=self.featurizer_mode,
             )
             df = df.rename(columns={"Input Data": ""})
             df.columns = df.columns.map("|".join).str.strip("|")
 
-        if (
-            self.oxid_composition_featurizers
-            or self.oxid_composition_continuous_featurizers
-        ):
+        if self.oxid_composition_featurizers:
             LOG.info("Applying oxidation state featurizers...")
             # Get integer composition if some are not
             col_comp = "composition"
@@ -227,7 +218,7 @@ class MODFeaturizer(abc.ABC):
                 df["integer_composition"] = [
                     Composition(
                         comp.get_integer_formula_and_factor(
-                            max_denominator=5
+                            max_denominator=10
                             if getattr(self, "fast_oxid", False)
                             else 100
                         )[0]
@@ -247,14 +238,11 @@ class MODFeaturizer(abc.ABC):
                 ).featurize_dataframe(df, col_id=col_comp)
             else:
                 df = CompositionToOxidComposition(
-                    max_sites=-1
-                    if self.oxid_composition_continuous_featurizers
-                    else None
+                    max_sites=-1 if getattr(self, "continuous_only", False) else None
                 ).featurize_dataframe(df, col_id=col_comp, ignore_errors=True)
             df = self._fit_apply_featurizers(
                 df,
-                self.oxid_composition_featurizers
-                or self.oxid_composition_continuous_featurizers,
+                self.oxid_composition_featurizers,
                 "composition_oxid",
                 mode=self.featurizer_mode,
             )
