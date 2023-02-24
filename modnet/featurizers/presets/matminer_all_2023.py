@@ -105,7 +105,12 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             # get only the features that are not yet present with another featurizer.
             # For this reason, we cannot rely on the Matminer presets for those.
             # Also in the case of continuous features, use only the mean and avg_dev for the statistics.
-            from matminer.utils.data import PymatgenData, DemlData
+            from matminer.utils.data import (
+                PymatgenData,
+                DemlData,
+                MatscholarElementData,
+                MEGNetElementData,
+            )
 
             pymatgen_features = [
                 "block",
@@ -146,12 +151,26 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     features=deml_features,
                 )
 
+                matscholar_featurizer = ElementProperty(
+                    data_source=MatscholarElementData(),
+                    stats=["mean", "avg_dev"],
+                    features=MatscholarElementData().prop_names,
+                )
+
+                megnet_featurizer = ElementProperty(
+                    data_source=MEGNetElementData(),
+                    stats=["mean", "avg_dev"],
+                    features=MEGNetElementData().prop_names,
+                )
+
                 self.composition_featurizers = (
                     BandCenter(),
                     ElementFraction(),
                     magpie_featurizer,
                     pymatgen_featurizer,
                     deml_featurizer,
+                    matscholar_featurizer,
+                    megnet_featurizer,
                     Stoichiometry(p_list=[2, 3, 5, 7, 10]),
                     TMetalFraction(),
                     ValenceOrbital(props=["frac"]),
@@ -185,10 +204,12 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     ElementProperty.from_preset("magpie"),
                     pymatgen_featurizer_full,
                     deml_featurizer_full,
+                    ElementProperty.from_preset("matscholar_el"),
+                    ElementProperty.from_preset("megnet_el"),
                     Miedema(),
                     Stoichiometry(),
                     TMetalFraction(),
-                    ValenceOrbital(),
+                    ValenceOrbital(props=["frac"]),
                     WenAlloys(),
                 )
 
@@ -261,6 +282,8 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             )
 
         if self.continuous_only:
+            # These are additional features that have shown discontinuities in my tests.
+            # Hopefully, I got them all...
             df.drop(
                 columns=[
                     "WenAlloys|Yang omega",
@@ -275,6 +298,11 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     "WenAlloys|Interant f electrons",
                     "WenAlloys|Atomic weight mean",
                     "WenAlloys|Total weight",
+                    "ElementProperty|DemlData mean electric_pol",
+                    "ElementProperty|DemlData mean FERE correction",
+                    "ElementProperty|DemlData mean GGAU_Etot",
+                    "ElementProperty|DemlData mean heat_fusion",
+                    "ElementProperty|DemlData mean mus_fere",
                 ],
                 inplace=True,
             )
