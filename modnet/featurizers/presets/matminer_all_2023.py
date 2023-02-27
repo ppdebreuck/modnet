@@ -49,55 +49,57 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                 ElementFraction,
                 ElementProperty,
                 IonProperty,
+                # Meredig,  # Included in others
                 Miedema,
                 OxidationStates,
                 Stoichiometry,
                 TMetalFraction,
                 ValenceOrbital,
                 WenAlloys,
+                # YangSolidSolution,  # Included in WenAlloys
             )
             from matminer.featurizers.structure import (
-                # BagofBonds,
+                # BagofBonds,  # Leads to >24 000 features
                 BondFractions,
                 ChemicalOrdering,
-                CoulombMatrix,
+                # CoulombMatrix,  # Redundant with SineCoulombMatrix, which is better for periodic systems
                 DensityFeatures,
-                # Dimensionality,
-                # ElectronicRadialDistributionFunction,
+                Dimensionality,
+                ElectronicRadialDistributionFunction,
                 EwaldEnergy,
                 # GlobalInstabilityIndex,  # Still experimental?
                 GlobalSymmetryFeatures,
-                # JarvisCFID,
+                JarvisCFID,
                 MaximumPackingEfficiency,
-                # MinimumRelativeDistances,
-                # OrbitalFieldMatrix,
-                # PartialRadialDistributionFunction,
+                MinimumRelativeDistances,
+                # OrbitalFieldMatrix,  # Buggy
+                # PartialRadialDistributionFunction,  # Leads to >198 000 features
                 RadialDistributionFunction,
                 SineCoulombMatrix,
-                # SiteStatsFingerprint,
-                # StructuralComplexity,
+                # SiteStatsFingerprint,  # Done in featurizers.py
+                StructuralComplexity,
                 StructuralHeterogeneity,
                 XRDPowderPattern,
             )
 
             from matminer.featurizers.site import (
                 AGNIFingerprints,
-                # AngularFourierSeries,
+                # AngularFourierSeries,  # Redundant with GaussianSymmFunc
                 AverageBondAngle,
                 AverageBondLength,
                 BondOrientationalParameter,
                 ChemEnvSiteFingerprint,
-                # ChemicalSRO,
+                # ChemicalSRO,  # Buggy
                 CoordinationNumber,
                 CrystalNNFingerprint,
-                # EwaldSiteEnergy,
+                EwaldSiteEnergy,
                 GaussianSymmFunc,
                 GeneralizedRadialDistributionFunction,
-                # IntersticeDistribution,
+                IntersticeDistribution,
                 LocalPropertyDifference,
                 OPSiteFingerprint,
-                # SiteElementalProperty,
-                # SOAP,
+                # SiteElementalProperty,  # Already included in composition featurizers
+                # SOAP, # Leads to >260 000 features...
                 VoronoiFingerprint,
             )
 
@@ -222,37 +224,48 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                 )
 
             self.structure_featurizers = (
-                DensityFeatures(),
-                GlobalSymmetryFeatures(),
-                RadialDistributionFunction(),
-                CoulombMatrix(),
-                # PartialRadialDistributionFunction(),
-                SineCoulombMatrix(),
-                EwaldEnergy(),
+                # BagofBonds(),  # > 24 000 features
                 BondFractions(),
-                StructuralHeterogeneity(),
-                MaximumPackingEfficiency(),
                 ChemicalOrdering(),
+                # CoulombMatrix(),  # Redundant with SineCoulombMatrix, which is better for periodic systems
+                DensityFeatures(),
+                Dimensionality(),
+                ElectronicRadialDistributionFunction(),
+                EwaldEnergy(),
+                GlobalSymmetryFeatures(),
+                JarvisCFID(),  # 1557 features, many redundant ones
+                MaximumPackingEfficiency(),
+                MinimumRelativeDistances(),
+                # OrbitalFieldMatrix(),  # Buggy
+                # PartialRadialDistributionFunction(),  # > 198 000 features
+                RadialDistributionFunction(),
+                SineCoulombMatrix(),
+                StructuralComplexity(),
+                StructuralHeterogeneity(),
                 XRDPowderPattern(),
-                # BagofBonds(),
             )
 
             # Patch for matminer: see https://github.com/hackingmaterials/matminer/issues/864
-            self.structure_featurizers[0].desired_features = None
-            self.structure_featurizers[1].desired_features = None
+            self.structure_featurizers[2].desired_features = None
+            self.structure_featurizers[6].desired_features = None
 
             self.site_featurizers = (
                 AGNIFingerprints(),
+                # AngularFourierSeries.from_preset("gaussian"), # Redundant with GaussianSymmFunc
                 AverageBondAngle(VoronoiNN()),
                 AverageBondLength(VoronoiNN()),
                 BondOrientationalParameter(),
                 ChemEnvSiteFingerprint.from_preset("simple"),
+                # ChemicalSRO.from_preset("VoronoiNN"),  # Buggy
                 CoordinationNumber(),
                 CrystalNNFingerprint.from_preset("ops"),
+                EwaldSiteEnergy(),
                 GaussianSymmFunc(),
                 GeneralizedRadialDistributionFunction.from_preset("gaussian"),
+                IntersticeDistribution(),
                 LocalPropertyDifference(),
                 OPSiteFingerprint(),
+                # SOAP.from_preset("formation_energy"),  # Leads to >260 000 features...
                 VoronoiFingerprint(),
             )
 

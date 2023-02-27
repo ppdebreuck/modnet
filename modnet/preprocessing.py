@@ -70,6 +70,7 @@ def nmi_target(
     df_target: pd.DataFrame,
     task_type: str = "regression",
     drop_constant_features: bool = True,
+    drop_duplicate_features: bool = True,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -85,6 +86,8 @@ def nmi_target(
         task_type (integer): 0 for regression, 1 for classification
         drop_constant_features (bool): If True, the features that are constant
             across the entire data set will be dropped.
+        drop_duplicate_features (bool): If True, the features that have exactly the same
+            values across the entire data set will be dropped.
         **kwargs: Keyword arguments to be passed down to the
             :py:func:`mutual_info_regression` function from scikit-learn. This
             can be useful e.g. for testing purposes.
@@ -114,6 +117,10 @@ def nmi_target(
             "The input features DataFrame and the target variable DataFrame "
             "should contain the same number of data points."
         )
+
+    # Drop features that are duplicates across the entire data set
+    if drop_duplicate_features:
+        df_feat = df_feat.T.drop_duplicates().T
 
     # Drop features which have the same value for the entire data set
     if drop_constant_features:

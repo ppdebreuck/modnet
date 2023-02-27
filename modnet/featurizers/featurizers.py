@@ -299,6 +299,9 @@ class MODFeaturizer(abc.ABC):
         df.columns = ["Input data|" + x for x in df.columns]
 
         for fingerprint in self.site_featurizers:
+            fingerprint_name = fingerprint.__class__.__name__
+            if fingerprint_name == "SOAP":
+                fingerprint.fit(df["Input data|structure"])
             site_stats_fingerprint = SiteStatsFingerprint(
                 fingerprint, stats=self.site_stats
             )
@@ -306,7 +309,6 @@ class MODFeaturizer(abc.ABC):
                 df, "Input data|structure", multiindex=False, ignore_errors=True
             )
 
-            fingerprint_name = fingerprint.__class__.__name__
             if aliases:
                 fingerprint_name = aliases.get(fingerprint_name, fingerprint_name)
             if "|" not in fingerprint_name:
