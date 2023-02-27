@@ -7,7 +7,10 @@ __all__ = (
 from typing import Dict, Type
 from .debreuck_2020 import DeBreuck2020Featurizer, CompositionOnlyFeaturizer
 from .matminer_2023 import Matminer2023Featurizer, CompositionOnlyMatminer2023Featurizer
-from .matminer_all_2023 import MatminerAll2023Featurizer, CompositionOnlyMatminerAll2023Featurizer
+from .matminer_all_2023 import (
+    MatminerAll2023Featurizer,
+    CompositionOnlyMatminerAll2023Featurizer,
+)
 from modnet.featurizers import MODFeaturizer
 
 DEFAULT_FEATURIZER: str = "Matminer2023"
