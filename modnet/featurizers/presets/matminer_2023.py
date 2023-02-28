@@ -15,7 +15,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
 
     """
 
-    def __init__(self, fast_oxid: bool = False):
+    def __init__(self, fast_oxid: bool = False, continuous_only: bool = False):
         """Creates the featurizer and imports all featurizer functions.
 
         Parameters:
@@ -28,8 +28,9 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
         """
 
         super().__init__()
-        self.load_featurizers()
+        self.continuous_only = continuous_only
         self.fast_oxid = fast_oxid
+        self.load_featurizers()
 
     def load_featurizers(self):
         with contextlib.redirect_stdout(None):
@@ -82,19 +83,33 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
                 VoronoiFingerprint,
             )
 
-            self.composition_featurizers = (
-                AtomicOrbitals(),
-                AtomicPackingEfficiency(),
-                BandCenter(),
-                ElementFraction(),
-                ElementProperty.from_preset("magpie"),
-                IonProperty(),
-                Miedema(),
-                Stoichiometry(),
-                TMetalFraction(),
-                ValenceOrbital(),
-                YangSolidSolution(),
-            )
+            if self.continuous_only:
+                magpie_featurizer = ElementProperty.from_preset("magpie")
+                magpie_featurizer.stats = ["mean", "avg_dev"]
+
+                self.composition_featurizers = (
+                    BandCenter(),
+                    ElementFraction(),
+                    magpie_featurizer,
+                    IonProperty(fast=self.fast_oxid),
+                    Stoichiometry(p_list=[2, 3, 5, 7, 10]),
+                    TMetalFraction(),
+                    ValenceOrbital(props=["frac"]),
+                )
+            else:
+                self.composition_featurizers = (
+                    AtomicOrbitals(),
+                    AtomicPackingEfficiency(),
+                    BandCenter(),
+                    ElementFraction(),
+                    ElementProperty.from_preset("magpie"),
+                    IonProperty(),
+                    Miedema(),
+                    Stoichiometry(),
+                    TMetalFraction(),
+                    ValenceOrbital(),
+                    YangSolidSolution(),
+                )
 
             self.oxid_composition_featurizers = (
                 ElectronegativityDiff(),
@@ -224,8 +239,8 @@ class CompositionOnlyMatminer2023Featurizer(Matminer2023Featurizer):
 
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, continuous_only: bool = False, fast_oxid: bool = False):
+        super().__init__(fast_oxid=fast_oxid, continuous_only=continuous_only)
         self.oxid_composition_featurizers = ()
         self.structure_featurizers = ()
         self.site_featurizers = ()
