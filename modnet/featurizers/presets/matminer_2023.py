@@ -160,20 +160,24 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
 
         df = super().featurize_composition(df)
 
-        _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
-        df["AtomicOrbitals|HOMO_character"] = df["AtomicOrbitals|HOMO_character"].map(
-            _orbitals
-        )
-        df["AtomicOrbitals|LUMO_character"] = df["AtomicOrbitals|LUMO_character"].map(
-            _orbitals
-        )
+        if not self.continuous_only:
+            _orbitals = {"s": 1, "p": 2, "d": 3, "f": 4}
+            df["AtomicOrbitals|HOMO_character"] = df[
+                "AtomicOrbitals|HOMO_character"
+            ].map(_orbitals)
+            df["AtomicOrbitals|LUMO_character"] = df[
+                "AtomicOrbitals|LUMO_character"
+            ].map(_orbitals)
 
-        df["AtomicOrbitals|HOMO_element"] = df["AtomicOrbitals|HOMO_element"].apply(
-            lambda x: -1 if not isinstance(x, str) else Element(x).Z
-        )
-        df["AtomicOrbitals|LUMO_element"] = df["AtomicOrbitals|LUMO_element"].apply(
-            lambda x: -1 if not isinstance(x, str) else Element(x).Z
-        )
+            df["AtomicOrbitals|HOMO_element"] = df["AtomicOrbitals|HOMO_element"].apply(
+                lambda x: -1 if not isinstance(x, str) else Element(x).Z
+            )
+            df["AtomicOrbitals|LUMO_element"] = df["AtomicOrbitals|LUMO_element"].apply(
+                lambda x: -1 if not isinstance(x, str) else Element(x).Z
+            )
+
+        else:
+            df.drop(columns=["IonProperty|max ionic char"], inplace=True)
 
         return modnet.featurizers.clean_df(df)
 
