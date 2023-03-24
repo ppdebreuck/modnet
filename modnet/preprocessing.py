@@ -915,6 +915,9 @@ class MODData:
                     self.df_targets = self.df_targets.append(sampled_y)
                     self.df_structure = self.df_structure.append(sampled_struct)
 
+    def __len__(self):
+        return len(self.df_targets)
+
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
         """Returns the list of pymatgen `Structure` objects."""
