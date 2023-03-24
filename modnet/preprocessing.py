@@ -239,7 +239,9 @@ def get_cross_nmi(
 
     to_drop = []
     for res in tqdm.tqdm(
-        pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)
+        pool.imap_unordered(map_mi, tasks, chunksize=100),
+        total=len(tasks),
+        desc="Computing self-NMI",
     ):
         feat_name = res[1]
         diag[feat_name] = res[0]
@@ -270,7 +272,9 @@ def get_cross_nmi(
             ]
 
     for res in tqdm.tqdm(
-        pool.imap_unordered(map_mi, tasks, chunksize=100), total=len(tasks)
+        pool.imap_unordered(map_mi, tasks, chunksize=100),
+        total=len(tasks),
+        desc="Computing cross-NMI",
     ):
         mutual_info.loc[res[1], res[2]] = mutual_info.loc[res[2], res[1]] = res[0] / (
             0.5 * (diag[res[1]] + diag[res[2]])

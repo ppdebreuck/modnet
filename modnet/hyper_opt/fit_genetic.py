@@ -433,6 +433,7 @@ class FitGenetic:
         for res in tqdm.tqdm(
             self.pool.imap_unordered(_map_evaluate_individual, tasks, chunksize=1),
             total=len(tasks),
+            desc="Evaluating FitGenetic individuals",
         ):
             individual, individual_id, fold_id = res
             individual.model._restore_model()

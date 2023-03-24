@@ -526,6 +526,7 @@ class MODNetModel:
         for res in tqdm.tqdm(
             pool.imap_unordered(map_validate_model, tasks, chunksize=1),
             total=len(tasks),
+            desc="Validating preset models",
         ):
             val_loss, learning_curve, model, preset_id, fold_id = res
             LOG.info(f"Preset #{preset_id} fitting finished, loss: {val_loss}")

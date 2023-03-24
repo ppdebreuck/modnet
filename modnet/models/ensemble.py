@@ -123,6 +123,7 @@ class EnsembleMODNetModel(MODNetModel):
             for res in tqdm.tqdm(
                 pool.imap_unordered(_map_fit_MODNet, tasks, chunksize=1),
                 total=self.n_models,
+                desc="Loading models",
             ):
                 model, model_id = res
                 model._restore_model()
