@@ -3,7 +3,7 @@ model with deterministic weights and outputs.
 
 """
 
-from typing import List, Tuple, Dict, Optional, Callable, Any
+from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 from pathlib import Path
 import multiprocessing
 
@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, roc_auc_score
+from sklearn.impute import SimpleImputer
 import tensorflow as tf
 
 from modnet.preprocessing import MODData
@@ -88,6 +89,7 @@ class MODNetModel:
         self.out_act = out_act
 
         self._scaler = None
+        self._imputer = None
         self.optimal_descriptors = None
         self.target_names = None
         self.targets = targets
@@ -214,6 +216,7 @@ class MODNetModel:
         epochs: int = 200,
         batch_size: int = 128,
         xscale: Optional[str] = "minmax",
+        impute_missing: Optional[Union[float, str]] = -1,
         metrics: List[str] = ["mae"],
         callbacks: List[Callable] = None,
         verbose: int = 0,
@@ -237,6 +240,13 @@ class MODNetModel:
             batch_size: The batch size to use for training.
             xscale: The feature scaler to use, either `None`,
                 `'minmax'` or `'standard'`.
+            impute_missing: Determines how the NaN features are treated.
+                If float, sets the NaNs to the given float when the features
+                are scaled with xscale (default to -1).
+                If you use a StandardScaler (see xscale), make sure to use a value
+                that makes sense (most likely not -1 !).
+                If string, defines the strategy used in the scikit-learn SimpleImputer,
+                e.g., "mean" sets the NaNs to the mean of their feature column.
             metrics: A list of tf.keras metrics to pass to `compile(...)`.
             loss: The built-in tf.keras loss to pass to `compile(...)`.
             fit_params: Any additional parameters to pass to `fit(...)`,
@@ -293,14 +303,25 @@ class MODNetModel:
             self._scaler = StandardScaler()
 
         x = self._scaler.fit_transform(x)
-        x = np.nan_to_num(x, nan=-1)
+
+        # Handles NaN data
+        if isinstance(impute_missing, str):
+            imp = SimpleImputer(missing_values=np.nan, strategy=impute_missing)
+        else:
+            imp = SimpleImputer(
+                missing_values=np.nan, strategy="constant", fill_value=impute_missing
+            )
+
+        self._imputer = imp
+
+        x = self._imputer.fit_transform(x)
 
         if val_data is not None:
             val_x = val_data.get_featurized_df()[
                 self.optimal_descriptors[: self.n_feat]
             ].values
             val_x = self._scaler.transform(val_x)
-            val_x = np.nan_to_num(val_x, nan=-1)
+            val_x = self._imputer.transform(val_x)
             val_y = []
             for targ in self.targets_flatten:
                 if self.num_classes[targ] >= 2:  # Classification
@@ -384,6 +405,7 @@ class MODNetModel:
         nested: int = 5,
         callbacks: List[Any] = None,
         n_jobs=None,
+        **fit_params,
     ) -> Tuple[
         List[List[Any]],
         np.ndarray,
@@ -576,11 +598,13 @@ class MODNetModel:
                 loss=best_preset["loss"],
                 callbacks=callbacks,
                 verbose=verbose,
+                **fit_params,
             )
         else:
             self.n_feat = best_model.n_feat
             self.model = best_model.model
             self._scaler = best_model._scaler
+            self._imputer = best_model._imputer
 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
 
@@ -603,17 +627,17 @@ class MODNetModel:
         # prevents Nan predictions if some features are inf
         x = (
             test_data.get_featurized_df()
-            .replace([np.inf, -np.inf, np.nan], 0)[
-                self.optimal_descriptors[: self.n_feat]
-            ]
+            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
             .values
         )
 
         # Scale the input features:
-        x = np.nan_to_num(x)
         if self._scaler is not None:
             x = self._scaler.transform(x)
-            x = np.nan_to_num(x, nan=-1)
+
+        # Handle the missing data (NaN features)
+        if self._imputer is not None:
+            x = self._imputer.transform(x)
 
         p = np.array(self.model.predict(x))
 
@@ -669,17 +693,16 @@ class MODNetModel:
         # prevents Nan predictions if some features are inf
         x = (
             test_data.get_featurized_df()
-            .replace([np.inf, -np.inf, np.nan], 0)[
-                self.optimal_descriptors[: self.n_feat]
-            ]
+            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
             .values
         )
 
         # Scale the input features:
-        x = np.nan_to_num(x)
         if self._scaler is not None:
             x = self._scaler.transform(x)
-            x = np.nan_to_num(x, nan=-1)
+
+        if self._imputer is not None:
+            x = self._imputer.transform(x)
 
         y_pred = np.array(self.model.predict(x))
         if len(y_pred.shape) == 2:

@@ -769,7 +769,8 @@ class MODData:
         else:
             df_final = self.featurizer.featurize(self.df_structure)
 
-        df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
+        # replace infinite values by nan that are handled during the fit
+        df_final = df_final.replace([np.inf, -np.inf], np.nan)
 
         self.df_featurized = df_final
         LOG.info("Data has successfully been featurized!")
@@ -801,7 +802,7 @@ class MODData:
         """
         if getattr(self, "df_featurized", None) is None:
             raise RuntimeError(
-                "Mutual information feature selection requiresd featurized data, please call `.featurize()`"
+                "Mutual information feature selection requires featurized data, please call `.featurize()`"
             )
         if getattr(self, "df_targets", None) is None:
             raise RuntimeError(
@@ -813,8 +814,6 @@ class MODData:
 
         if cross_nmi is not None:
             self.cross_nmi = cross_nmi
-        elif getattr(self, "cross_nmi", None) is None:
-            self.cross_nmi = None
 
         # Loading mutual information between features
         if use_precomputed_cross_nmi:
@@ -841,9 +840,7 @@ class MODData:
             )
 
         if self.cross_nmi.isna().sum().sum() > 0:
-            raise RuntimeError(
-                "Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero."
-            )
+            raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values.")
 
         for i, name in enumerate(self.names):
             LOG.info(f"Starting target {i + 1}/{len(self.names)}: {self.names[i]} ...")

@@ -40,6 +40,7 @@ class Individual:
         self.weights = weights
 
         self.xscale_list = ["minmax", "standard"]
+        self.impute_missing_list = [-1, "mean"]
         self.lr_list = [0.1, 0.01, 0.005, 0.001]
         self.batch_size_list = [32, 64, 128, 256]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
@@ -52,6 +53,7 @@ class Individual:
             "fraction2": random.choice(self.fraction_list),
             "fraction3": random.choice(self.fraction_list),
             "xscale": random.choice(self.xscale_list),
+            "impute_missing": random.choice(self.impute_missing_list),
             "lr": random.choice(self.lr_list),
             "batch_size": random.choice(self.batch_size_list),
             "n_feat": 0,
@@ -210,6 +212,7 @@ class Individual:
             epochs=800 if not fast else 1,
             batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
+            impute_missing=self.genes["impute_missing"],
             callbacks=callbacks,
             verbose=0,
         )
@@ -272,6 +275,7 @@ class Individual:
             epochs=800 if not fast else 1,
             batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
+            impute_missing=self.genes["impute_missing"],
             callbacks=callbacks,
             verbose=0,
         )
