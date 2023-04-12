@@ -79,14 +79,14 @@ class Individual:
         """
 
         genes_from_mother = random.sample(
-            range(10), k=5
+            range(len(self.genes)), k=5
         )  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
 
         child_genes = {
             list(self.genes.keys())[i]: list(self.genes.values())[i]
             if i in genes_from_mother
             else list(partner.genes.values())[i]
-            for i in range(10)
+            for i in range(len(self.genes))
         }
 
         child = Individual(
