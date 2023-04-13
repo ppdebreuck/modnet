@@ -22,6 +22,7 @@ class Individual:
         multi_label: bool,
         targets: List = None,
         weights: Dict[str, float] = None,
+        **model_params,
     ) -> Individual:
         """
         Args:
@@ -33,6 +34,9 @@ class Individual:
             weights (Dict[str, float]): Optional (for joint learning only). The relative loss weights to apply for each target.
         """
 
+        self.elu = "elu"
+        self.loss = "mae"
+        self.n_neurons_first_layer = 32 * random.randint(1, 10)
         self.max_feat = max_feat
         self.num_classes = num_classes
         self.multi_label = multi_label
@@ -40,20 +44,25 @@ class Individual:
         self.weights = weights
 
         self.xscale_list = ["minmax", "standard"]
-        self.impute_missing_list = [-1, "mean"]
+        self.impute_missing_list = [0, "mean"]
+        self.xscale_before_impute = True
         self.lr_list = [0.1, 0.01, 0.005, 0.001]
         self.batch_size_list = [32, 64, 128, 256]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
 
+        if model_params:
+            self.__dict__.update(model_params)
+
         self.genes = {
-            "act": "elu",
-            "loss": "mae",
-            "n_neurons_first_layer": 32 * random.randint(1, 10),
+            "act": self.elu,
+            "loss": self.loss,
+            "n_neurons_first_layer": self.n_neurons_first_layer,
             "fraction1": random.choice(self.fraction_list),
             "fraction2": random.choice(self.fraction_list),
             "fraction3": random.choice(self.fraction_list),
             "xscale": random.choice(self.xscale_list),
             "impute_missing": random.choice(self.impute_missing_list),
+            "xscale_before_impute": self.xscale_before_impute,
             "lr": random.choice(self.lr_list),
             "batch_size": random.choice(self.batch_size_list),
             "n_feat": 0,
@@ -79,8 +88,8 @@ class Individual:
         """
 
         genes_from_mother = random.sample(
-            range(len(self.genes)), k=5
-        )  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
+            range(len(self.genes)), k=len(self.genes) // 2
+        )  # creates indices to take randomly half the genes from one parent, and half the genes from the other
 
         child_genes = {
             list(self.genes.keys())[i]: list(self.genes.values())[i]
@@ -213,6 +222,7 @@ class Individual:
             batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
             impute_missing=self.genes["impute_missing"],
+            xscale_before_impute=self.genes["xscale_before_impute"],
             callbacks=callbacks,
             verbose=0,
         )
@@ -276,6 +286,7 @@ class Individual:
             batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
             impute_missing=self.genes["impute_missing"],
+            xscale_before_impute=self.genes["xscale_before_impute"],
             callbacks=callbacks,
             verbose=0,
         )
@@ -338,7 +349,9 @@ class FitGenetic:
         self.pool.close()
         self.pool.join()
 
-    def initialization_population(self, size_pop: int, multi_label: bool) -> None:
+    def initialization_population(
+        self, size_pop: int, multi_label: bool, **model_params
+    ) -> None:
         """Initializes the initial population (Generation 0).
 
         Args:
@@ -354,6 +367,7 @@ class FitGenetic:
                 multi_label=multi_label,
                 targets=self.targets,
                 weights=self.weights,
+                **model_params,
             )
             for _ in range(size_pop)
         ]
@@ -468,6 +482,7 @@ class FitGenetic:
         early_stopping: Optional[int] = 4,
         refit: Optional[int] = 5,
         fast=False,
+        **model_params,
     ) -> EnsembleMODNetModel:
         """Run the GA and return best model.
 
@@ -495,7 +510,7 @@ class FitGenetic:
 
         LOG.info("Generation number 0")
         self.initialization_population(
-            size_pop, multi_label=multi_label
+            size_pop, multi_label=multi_label, **model_params
         )  # initialization of the population
         val_loss, models, individuals = self.function_fitness(
             pop=self.pop,

@@ -13,6 +13,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, roc_auc_score
 from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 import tensorflow as tf
 
 from modnet.preprocessing import MODData
@@ -88,8 +89,11 @@ class MODNetModel:
         self.act = act
         self.out_act = out_act
 
+        self.xscale = None
         self._scaler = None
         self._imputer = None
+        self.impute_missing = None
+        self._scale_impute = None
         self.optimal_descriptors = None
         self.target_names = None
         self.targets = targets
@@ -216,7 +220,8 @@ class MODNetModel:
         epochs: int = 200,
         batch_size: int = 128,
         xscale: Optional[str] = "minmax",
-        impute_missing: Optional[Union[float, str]] = -1,
+        impute_missing: Optional[Union[float, str]] = 0,
+        xscale_before_impute: bool = True,
         metrics: List[str] = ["mae"],
         callbacks: List[Callable] = None,
         verbose: int = 0,
@@ -241,12 +246,16 @@ class MODNetModel:
             xscale: The feature scaler to use, either `None`,
                 `'minmax'` or `'standard'`.
             impute_missing: Determines how the NaN features are treated.
-                If float, sets the NaNs to the given float when the features
-                are scaled with xscale (default to -1).
-                If you use a StandardScaler (see xscale), make sure to use a value
-                that makes sense (most likely not -1 !).
-                If string, defines the strategy used in the scikit-learn SimpleImputer,
+                If str, defines the strategy used in the scikit-learn SimpleImputer,
                 e.g., "mean" sets the NaNs to the mean of their feature column.
+                If a float is provided, and if xscale_before_impute is False, this
+                float is used to replace NaNs in the original dataset.
+                If a float is provided but xscale_before_impute is True, the float
+                is not used and standard values are used.
+                If you want to do something more sophisticated, make your own
+                modifications to MODData.df_featurized before fitting the model.
+            xscale_before_impute: whether to first scale the input and then impute values, or
+                                  first impute values and then scale the inputs.
             metrics: A list of tf.keras metrics to pass to `compile(...)`.
             loss: The built-in tf.keras loss to pass to `compile(...)`.
             fit_params: Any additional parameters to pass to `fit(...)`,
@@ -262,6 +271,7 @@ class MODNetModel:
             )
 
         self.xscale = xscale
+        self.impute_missing = impute_missing
         self.target_names = list(self.weights.keys())
         self.optimal_descriptors = training_data.get_optimal_descriptors()
 
@@ -295,33 +305,50 @@ class MODNetModel:
                 )
             y.append(y_inner)
 
-        # Scale the input features:
+        # Define the scaler
         if self.xscale == "minmax":
             self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
 
         elif self.xscale == "standard":
             self._scaler = StandardScaler()
 
-        x = self._scaler.fit_transform(x)
-
-        # Handles NaN data
+        # Define the imputer
         if isinstance(impute_missing, str):
-            imp = SimpleImputer(missing_values=np.nan, strategy=impute_missing)
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy=impute_missing
+            )
         else:
-            imp = SimpleImputer(
+            if self.xscale == "minmax":
+                impute_missing = -1 if xscale_before_impute else impute_missing
+            elif self.xscale == "standard":
+                impute_missing = (
+                    10 * np.max(StandardScaler().fit_transform(np.nan_to_num(x)))
+                    if xscale_before_impute
+                    else impute_missing
+                )
+            self.impute_missing = impute_missing
+
+            self._imputer = SimpleImputer(
                 missing_values=np.nan, strategy="constant", fill_value=impute_missing
             )
 
-        self._imputer = imp
+        # Scale and impute input features in the desired order
+        if xscale_before_impute:
+            self._scale_impute = Pipeline(
+                [("scaler", self._scaler), ("imputer", self._imputer)]
+            )
+        else:
+            self._scale_impute = Pipeline(
+                [("imputer", self._imputer), ("scaler", self._scaler)]
+            )
 
-        x = self._imputer.fit_transform(x)
+        x = self._scale_impute.fit_transform(x)
 
         if val_data is not None:
             val_x = val_data.get_featurized_df()[
                 self.optimal_descriptors[: self.n_feat]
             ].values
-            val_x = self._scaler.transform(val_x)
-            val_x = self._imputer.transform(val_x)
+            val_x = self._scale_impute.transform(val_x)
             val_y = []
             for targ in self.targets_flatten:
                 if self.num_classes[targ] >= 2:  # Classification
@@ -605,6 +632,7 @@ class MODNetModel:
             self.model = best_model.model
             self._scaler = best_model._scaler
             self._imputer = best_model._imputer
+            self._scale_impute = best_model._scale_impute
 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
 
@@ -631,13 +659,9 @@ class MODNetModel:
             .values
         )
 
-        # Scale the input features:
-        if self._scaler is not None:
-            x = self._scaler.transform(x)
-
-        # Handle the missing data (NaN features)
-        if self._imputer is not None:
-            x = self._imputer.transform(x)
+        # Scale and impute input features:
+        if self._scale_impute is not None:
+            x = self._scale_impute.transform(x)
 
         p = np.array(self.model.predict(x))
 
@@ -697,12 +721,9 @@ class MODNetModel:
             .values
         )
 
-        # Scale the input features:
-        if self._scaler is not None:
-            x = self._scaler.transform(x)
-
-        if self._imputer is not None:
-            x = self._imputer.transform(x)
+        # Scale and impute input features:
+        if self._scale_impute is not None:
+            x = self._scale_impute.transform(x)
 
         y_pred = np.array(self.model.predict(x))
         if len(y_pred.shape) == 2:

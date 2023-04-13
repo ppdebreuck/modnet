@@ -24,7 +24,7 @@ import numpy as np
 import tqdm
 from multiprocessing import Pool
 
-from modnet.featurizers import MODFeaturizer
+from modnet.featurizers import MODFeaturizer, clean_df
 from modnet import __version__
 from modnet.utils import LOG
 
@@ -770,7 +770,7 @@ class MODData:
             df_final = self.featurizer.featurize(self.df_structure)
 
         # replace infinite values by nan that are handled during the fit
-        df_final = df_final.replace([np.inf, -np.inf], np.nan)
+        df_final = clean_df(df_final)
 
         self.df_featurized = df_final
         LOG.info("Data has successfully been featurized!")

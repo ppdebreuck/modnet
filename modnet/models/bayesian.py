@@ -89,7 +89,6 @@ class BayesianMODNetModel(MODNetModel):
         self.out_act = out_act
 
         self._scaler = None
-        self._imputer = None
         self.optimal_descriptors = None
         self.target_names = None
         self.targets = targets
@@ -301,17 +300,17 @@ class BayesianMODNetModel(MODNetModel):
         # prevents Nan predictions if some features are inf
         x = (
             test_data.get_featurized_df()
-            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
+            .replace([np.inf, -np.inf, np.nan], 0)[
+                self.optimal_descriptors[: self.n_feat]
+            ]
             .values
         )
 
         # Scale the input features:
+        x = np.nan_to_num(x)
         if self._scaler is not None:
             x = self._scaler.transform(x)
-
-        # Impute missing data
-        if self._imputer is not None:
-            x = self._imputer.transform(x)
+            x = np.nan_to_num(x)
 
         all_predictions = []
 
