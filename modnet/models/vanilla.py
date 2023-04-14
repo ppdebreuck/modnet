@@ -322,7 +322,7 @@ class MODNetModel:
                 impute_missing = -1 if xscale_before_impute else impute_missing
             elif self.xscale == "standard":
                 impute_missing = (
-                    10 * np.max(StandardScaler().fit_transform(np.nan_to_num(x)))
+                    10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
                     if xscale_before_impute
                     else impute_missing
                 )
