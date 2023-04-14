@@ -98,7 +98,6 @@ class FitGeneticEstimator(BaseEstimator):
             ):
                 self.moddata_params["featurizer"] = DEFAULT_FEATURIZER
 
-            # LOG.info(f"Chosen featurizer: {self.moddata_params['featurizer']}.")
             # Create the MODData object
             data = MODData(
                 materials=X,
@@ -120,9 +119,8 @@ class FitGeneticEstimator(BaseEstimator):
             LOG.info("The MODData has been obtained correctly!")
 
         else:  # data is provided
-            LOG.info(
-                "MODData object passed to fit, we will ignore X and y if provided as well."
-            )
+            if X is not None or y is not None:
+                LOG.info("MODData object passed to fit, we will ignore X and y.")
             if data.df_featurized is None:
                 LOG.info("Featurization has not yet been performed, running now...")
                 data.featurize(**self.featurize_params)
