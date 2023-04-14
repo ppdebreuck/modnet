@@ -591,7 +591,7 @@ class FitGenetic:
             self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
             """
             self.best_model = self.best_individual.refit_model(
-                self.data, n_models=refit, n_jobs=n_jobs, fast=fast
+                self.data, n_models=refit, n_jobs=n_jobs or 1, fast=fast
             )
 
         else:
