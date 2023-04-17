@@ -662,7 +662,10 @@ class MODData:
             if np.shape(targets)[-1] != len(target_names):
                 raise ValueError("Target names must be supplied for every target.")
         elif targets is not None:
-            target_names = ["prop" + str(i) for i in range(len(targets))]
+            if len(np.shape(targets)) == 1:
+                target_names = ["prop0"]
+            else:
+                target_names = ["prop" + str(i) for i in range(np.shape(targets)[1])]
 
         if structure_ids is not None:
             # for backwards compat, always store the *passed* list of
