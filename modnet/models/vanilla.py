@@ -2,13 +2,14 @@
 model with deterministic weights and outputs.
 
 """
-
+from collections import defaultdict
 from typing import List, Tuple, Dict, Optional, Callable, Any
 from pathlib import Path
 import multiprocessing
 
 import pandas as pd
 import numpy as np
+import warnings
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, roc_auc_score
@@ -794,34 +795,136 @@ class MODNetModel:
             f"instead found {pickled_data.__class__.__name__}."
         )
 
-    def get_params(self):
-        params = {
-            "targets": self.targets,
-            "weights": self.weights,
-            "num_neurons": self.num_neurons,
-            "num_classes": self.num_classes,
-            "multi_label": self.multi_label,
-            "n_feat": self.n_feat,
-            "act": self.act,
-            "out_act": self.out_act,
-        }
+    # def get_params(self):
+    #     params = {
+    #         "targets": self.targets,
+    #         "weights": self.weights,
+    #         "num_neurons": self.num_neurons,
+    #         "num_classes": self.num_classes,
+    #         "multi_label": self.multi_label,
+    #         "n_feat": self.n_feat,
+    #         "act": self.act,
+    #         "out_act": self.out_act,
+    #     }
+    #
+    #     return params
 
-        return params
+    def _get_param_names(self):
+        possible_params = [
+            "targets",
+            "weights",
+            "num_neurons",
+            "num_classes",
+            "multi_label",
+            "n_feat",
+            "act",
+            "out_act",
+        ]
+        return possible_params
+
+    def get_params(self, deep=True):
+        """
+        Get parameters for this estimator.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, will return the parameters for this estimator and
+            contained subobjects that are estimators.
+
+        Returns
+        -------
+        params : dict
+            Parameter names mapped to their values.
+        """
+        out = dict()
+
+        for key in self._get_param_names():
+            value = getattr(self, key)
+            if deep and hasattr(value, "get_params") and not isinstance(value, type):
+                deep_items = value.get_params().items()
+                out.update((key + "__" + k, val) for k, val in deep_items)
+            out[key] = value
+        return out
+
+    # def set_params(self, **params):
+    #     """
+    #     Simplified version of BaseEstimator.set_params.
+    #     In the future, MODNetModel may inherit from BaseEstimator.
+    #     """
+    #     if not params:
+    #         return self
+    #
+    #     valid_params = self.get_params()
+    #     for key, value in params.items():
+    #         if key not in valid_params:
+    #             raise ValueError("Invalid parameter.")
+    #         else:
+    #             setattr(self, key, value)
+    #     return self
 
     def set_params(self, **params):
-        """
-        Simplified version of BaseEstimator.set_params.
-        In the future, MODNetModel may inherit from BaseEstimator.
+        """Set the parameters of this estimator.
+
+        The method works on simple estimators as well as on nested objects
+        (such as :class:`~sklearn.pipeline.Pipeline`). The latter have
+        parameters of the form ``<component>__<parameter>`` so that it's
+        possible to update each component of a nested object.
+
+        Parameters
+        ----------
+        **params : dict
+            Estimator parameters.
+
+        Returns
+        -------
+        self : estimator instance
+            Estimator instance.
         """
         if not params:
+            # Simple optimization to gain speed (inspect is slow)
             return self
+        valid_params = self.get_params(deep=True)
 
-        valid_params = self.get_params()
+        nested_params = defaultdict(dict)  # grouped by prefix
         for key, value in params.items():
+            key, delim, sub_key = key.partition("__")
             if key not in valid_params:
-                raise ValueError("Invalid parameter.")
+                local_valid_params = self._get_param_names()
+                raise ValueError(
+                    f"Invalid parameter {key!r} for estimator {self}. "
+                    f"Valid parameters are: {local_valid_params!r}."
+                )
+
+            if delim:
+                nested_params[key][sub_key] = value
             else:
                 setattr(self, key, value)
+                valid_params[key] = value
+
+        for key, sub_params in nested_params.items():
+            # TODO(1.4): remove specific handling of "base_estimator".
+            # The "base_estimator" key is special. It was deprecated and
+            # renamed to "estimator" for several estimators. This means we
+            # need to translate it here and set sub-parameters on "estimator",
+            # but only if the user did not explicitly set a value for
+            # "base_estimator".
+            if (
+                key == "base_estimator"
+                and valid_params[key] == "deprecated"
+                and self.__module__.startswith("sklearn.")
+            ):
+                warnings.warn(
+                    f"Parameter 'base_estimator' of {self.__class__.__name__} is"
+                    " deprecated in favor of 'estimator'. See"
+                    f" {self.__class__.__name__}'s docstring for more details.",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                key = "estimator"
+            valid_params[key].set_params(**sub_params)
+
+        return self
 
 
 def validate_model(
