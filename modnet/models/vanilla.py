@@ -794,6 +794,35 @@ class MODNetModel:
             f"instead found {pickled_data.__class__.__name__}."
         )
 
+    def get_params(self):
+        params = {
+            "targets": self.targets,
+            "weights": self.weights,
+            "num_neurons": self.num_neurons,
+            "num_classes": self.num_classes,
+            "multi_label": self.multi_label,
+            "n_feat": self.n_feat,
+            "act": self.act,
+            "out_act": self.out_act,
+        }
+
+        return params
+
+    def set_params(self, **params):
+        """
+        Simplified version of BaseEstimator.set_params.
+        In the future, MODNetModel may inherit from BaseEstimator.
+        """
+        if not params:
+            return self
+
+        valid_params = self.get_params()
+        for key, value in params.items():
+            if key not in valid_params:
+                raise ValueError("Invalid parameter.")
+            else:
+                setattr(self, key, value)
+
 
 def validate_model(
     train_data=None,
