@@ -28,4 +28,4 @@ def test_ga(small_moddata, tf_session):
     from modnet.models import EnsembleMODNetModel
 
     assert type(model) is EnsembleMODNetModel
-    assert len(model.model) == 1
+    assert len(model.models) == 1
