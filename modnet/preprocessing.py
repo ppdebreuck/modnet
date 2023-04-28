@@ -783,6 +783,7 @@ class MODData:
         cross_nmi: Optional[pd.DataFrame] = None,
         use_precomputed_cross_nmi: bool = False,
         n_samples=6000,
+        drop_thr: float = 0.2,
         n_jobs: int = None,
     ):
         """Compute the mutual information between features and targets,
@@ -840,7 +841,7 @@ class MODData:
             else:
                 df = self.df_featurized.copy()
             self.cross_nmi, self.feature_entropy = get_cross_nmi(
-                df, return_entropy=True, n_jobs=n_jobs
+                df, return_entropy=True, drop_thr=drop_thr, n_jobs=n_jobs
             )
 
         if self.cross_nmi.isna().sum().sum() > 0:
