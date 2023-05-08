@@ -781,6 +781,7 @@ class MODData:
         use_precomputed_cross_nmi: bool = False,
         n_samples=6000,
         n_jobs: int = None,
+        ignore_names: Optional[List] = [],
     ):
         """Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
@@ -797,6 +798,8 @@ class MODData:
                 that was computed on Materials Project features, instead of
                 precomputing.
             n_jobs: max. number of processes to use when calculating cross NMI.
+            ignore_names (List): Optional list of property names to ignore during feature selection.
+                Feature selection will be performed w.r.t. all properties except the ones in ignore_names.
 
         """
         if getattr(self, "df_featurized", None) is None:
@@ -807,6 +810,12 @@ class MODData:
             raise RuntimeError(
                 "Mutual information feature selection requires target properties"
             )
+
+        for na in ignore_names:
+            if na not in self.names:
+                raise RuntimeError(
+                    f"Names provided in ignore_names should be part of {self.names}. {na} was not found."
+                )
 
         ranked_lists = []
         optimal_features_by_target = {}
@@ -845,8 +854,11 @@ class MODData:
                 "Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero."
             )
 
-        for i, name in enumerate(self.names):
-            LOG.info(f"Starting target {i + 1}/{len(self.names)}: {self.names[i]} ...")
+        selection_names = list(set(self.names).difference(set(ignore_names)))
+        for i, name in enumerate(selection_names):
+            LOG.info(
+                f"Starting target {i + 1}/{len(selection_names)}: {selection_names[i]} ..."
+            )
 
             # Computing mutual information with target
             LOG.info("Computing mutual information between features and target...")
