@@ -34,7 +34,7 @@ class Individual:
             weights (Dict[str, float]): Optional (for joint learning only). The relative loss weights to apply for each target.
         """
 
-        self.elu = "elu"
+        self.act = "elu"
         self.loss = "mae"
         self.n_neurons_first_layer = 32 * random.randint(1, 10)
         self.max_feat = max_feat
@@ -54,7 +54,7 @@ class Individual:
             self.__dict__.update(model_params)
 
         self.genes = {
-            "act": self.elu,
+            "act": self.act,
             "loss": self.loss,
             "n_neurons_first_layer": self.n_neurons_first_layer,
             "fraction1": random.choice(self.fraction_list),
