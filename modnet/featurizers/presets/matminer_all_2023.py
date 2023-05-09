@@ -110,8 +110,8 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             from matminer.utils.data import (
                 PymatgenData,
                 DemlData,
-                MatscholarElementData,
-                MEGNetElementData,
+                # MatscholarElementData,
+                # MEGNetElementData,
             )
 
             pymatgen_features = [
@@ -153,17 +153,17 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     features=deml_features,
                 )
 
-                matscholar_featurizer = ElementProperty(
-                    data_source=MatscholarElementData(),
-                    stats=["mean", "avg_dev"],
-                    features=MatscholarElementData().prop_names,
-                )
-
-                megnet_featurizer = ElementProperty(
-                    data_source=MEGNetElementData(),
-                    stats=["mean", "avg_dev"],
-                    features=MEGNetElementData().prop_names,
-                )
+                # matscholar_featurizer = ElementProperty(
+                #     data_source=MatscholarElementData(),
+                #     stats=["mean", "avg_dev"],
+                #     features=MatscholarElementData().prop_names,
+                # )
+                #
+                # megnet_featurizer = ElementProperty(
+                #     data_source=MEGNetElementData(),
+                #     stats=["mean", "avg_dev"],
+                #     features=MEGNetElementData().prop_names,
+                # )
 
                 self.composition_featurizers = (
                     BandCenter(),
@@ -171,8 +171,8 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     magpie_featurizer,
                     pymatgen_featurizer,
                     deml_featurizer,
-                    matscholar_featurizer,
-                    megnet_featurizer,
+                    # matscholar_featurizer,
+                    # megnet_featurizer,
                     Stoichiometry(p_list=[2, 3, 5, 7, 10]),
                     TMetalFraction(),
                     ValenceOrbital(props=["frac"]),
@@ -206,8 +206,8 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     ElementProperty.from_preset("magpie"),
                     pymatgen_featurizer_full,
                     deml_featurizer_full,
-                    ElementProperty.from_preset("matscholar_el"),
-                    ElementProperty.from_preset("megnet_el"),
+                    # ElementProperty.from_preset("matscholar_el"),
+                    # ElementProperty.from_preset("megnet_el"),
                     Miedema(),
                     Stoichiometry(),
                     TMetalFraction(),
