@@ -795,20 +795,6 @@ class MODNetModel:
             f"instead found {pickled_data.__class__.__name__}."
         )
 
-    # def get_params(self):
-    #     params = {
-    #         "targets": self.targets,
-    #         "weights": self.weights,
-    #         "num_neurons": self.num_neurons,
-    #         "num_classes": self.num_classes,
-    #         "multi_label": self.multi_label,
-    #         "n_feat": self.n_feat,
-    #         "act": self.act,
-    #         "out_act": self.out_act,
-    #     }
-    #
-    #     return params
-
     def _get_param_names(self):
         possible_params = [
             "targets",
@@ -825,6 +811,7 @@ class MODNetModel:
     def get_params(self, deep=True):
         """
         Get parameters for this estimator.
+        Taken from sklearn.
 
         Parameters
         ----------
@@ -847,22 +834,6 @@ class MODNetModel:
             out[key] = value
         return out
 
-    # def set_params(self, **params):
-    #     """
-    #     Simplified version of BaseEstimator.set_params.
-    #     In the future, MODNetModel may inherit from BaseEstimator.
-    #     """
-    #     if not params:
-    #         return self
-    #
-    #     valid_params = self.get_params()
-    #     for key, value in params.items():
-    #         if key not in valid_params:
-    #             raise ValueError("Invalid parameter.")
-    #         else:
-    #             setattr(self, key, value)
-    #     return self
-
     def set_params(self, **params):
         """Set the parameters of this estimator.
 
@@ -870,6 +841,7 @@ class MODNetModel:
         (such as :class:`~sklearn.pipeline.Pipeline`). The latter have
         parameters of the form ``<component>__<parameter>`` so that it's
         possible to update each component of a nested object.
+        Taken from sklearn.
 
         Parameters
         ----------
