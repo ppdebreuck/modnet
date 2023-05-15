@@ -440,9 +440,7 @@ class FitGenetic:
             individuals[individual_id] = individual
             models[individual_id][fold_id] = individual.model
 
-        models = [
-            EnsembleMODNetModel(modnet_models=inner_models) for inner_models in models
-        ]
+        models = [EnsembleMODNetModel(models=inner_models) for inner_models in models]
         val_loss_per_individual = np.mean(val_losses, axis=1)
         res_str = "Loss per individual: "
         for ind, vl in enumerate(val_loss_per_individual):
@@ -588,17 +586,17 @@ class FitGenetic:
                 model._restore_model()
                 ensemble.append(model)
 
-            self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
+            self.best_model = EnsembleMODNetModel(models=ensemble)
             """
             self.best_model = self.best_individual.refit_model(
-                self.data, n_models=refit, n_jobs=n_jobs, fast=fast
+                self.data, n_models=refit, n_jobs=n_jobs or 1, fast=fast
             )
 
         else:
             ensemble = []
             for m in models[ranking[:10]]:
                 ensemble += m.model
-            self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
+            self.best_model = EnsembleMODNetModel(models=ensemble)
 
         self.results = self.best_individual.genes
 
