@@ -255,7 +255,7 @@ class MODNetModel:
                 If you want to do something more sophisticated, make your own
                 modifications to MODData.df_featurized before fitting the model.
             xscale_before_impute: whether to first scale the input and then impute values, or
-                                  first impute values and then scale the inputs.
+                first impute values and then scale the inputs.
             metrics: A list of tf.keras metrics to pass to `compile(...)`.
             loss: The built-in tf.keras loss to pass to `compile(...)`.
             fit_params: Any additional parameters to pass to `fit(...)`,
