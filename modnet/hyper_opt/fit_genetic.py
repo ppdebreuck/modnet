@@ -37,6 +37,9 @@ class Individual:
             fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,
         """
 
+        self.act = "elu"
+        self.loss = loss
+        self.n_neurons_first_layer = 32 * random.randint(1, 10)
         self.max_feat = max_feat
         self.num_classes = num_classes
         self.multi_label = multi_label
@@ -45,18 +48,25 @@ class Individual:
         self.fit_params = fit_params
 
         self.xscale_list = ["minmax", "standard"]
+        self.impute_missing_list = [0, "mean"]
+        self.xscale_before_impute = True
         self.lr_list = [0.1, 0.01, 0.005, 0.001]
         self.batch_size_list = [32, 64, 128, 256]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
 
+        if fit_params:
+            self.__dict__.update(fit_params)
+
         self.genes = {
-            "act": "elu",
-            "loss": loss,
-            "n_neurons_first_layer": 32 * random.randint(1, 10),
+            "act": self.act,
+            "loss": self.loss,
+            "n_neurons_first_layer": self.n_neurons_first_layer,
             "fraction1": random.choice(self.fraction_list),
             "fraction2": random.choice(self.fraction_list),
             "fraction3": random.choice(self.fraction_list),
             "xscale": random.choice(self.xscale_list),
+            "impute_missing": random.choice(self.impute_missing_list),
+            "xscale_before_impute": self.xscale_before_impute,
             "lr": random.choice(self.lr_list),
             "batch_size": random.choice(self.batch_size_list),
             "n_feat": 0,
@@ -82,14 +92,14 @@ class Individual:
         """
 
         genes_from_mother = random.sample(
-            range(10), k=5
-        )  # creates indices to take randomly 5 genes from one parent, and 5 genes from the other
+            range(len(self.genes)), k=len(self.genes) // 2
+        )  # creates indices to take randomly half the genes from one parent, and half the genes from the other
 
         child_genes = {
             list(self.genes.keys())[i]: list(self.genes.values())[i]
             if i in genes_from_mother
             else list(partner.genes.values())[i]
-            for i in range(10)
+            for i in range(len(self.genes))
         }
 
         child = Individual(
@@ -221,6 +231,8 @@ class Individual:
             epochs=800 if not fast else 1,
             batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
+            impute_missing=self.genes["impute_missing"],
+            xscale_before_impute=self.genes["xscale_before_impute"],
             callbacks=callbacks,
             verbose=0,
             **self.fit_params,
@@ -288,6 +300,8 @@ class Individual:
             epochs=800 if not fast else 1,
             batch_size=self.genes["batch_size"],
             xscale=self.genes["xscale"],
+            impute_missing=self.genes["impute_missing"],
+            xscale_before_impute=self.genes["xscale_before_impute"],
             callbacks=callbacks,
             verbose=0,
             **self.fit_params,
@@ -522,8 +536,8 @@ class FitGenetic:
             loss: The built-in tf.keras loss to pass to `compile(...)`.
             n_jobs (Optional[int], optional): Number of jobs to parallelize on. Defaults to None.
             early_stopping (Optional[int], optional): Number of successive generations without improvement before stopping. Defaults to 4.
-            refit (Optional[int], optional): Wether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
-                The amount corresponds the the number of models used in the ensemble. Defaults to 0.
+            refit (Optional[int], optional): Whether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
+                The amount corresponds to the number of models used in the ensemble. Defaults to 0.
             fast (bool, optional): Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
                 Overrides the size_pop, num_generation and nested arguments.. Defaults to False.
             fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,
@@ -646,7 +660,7 @@ class FitGenetic:
 
         else:
             ensemble = []
-            for m in models[ranking[:10]]:
+            for m in models[ranking[:refit]]:
                 ensemble += m.model
             self.best_model = EnsembleMODNetModel(modnet_models=ensemble)
 

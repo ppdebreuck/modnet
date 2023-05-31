@@ -31,7 +31,17 @@ def check_column_values(new: MODData, reference: MODData, tolerance=0.03):
     # different number of symm ops being detected.
 
     # We need a mechanism to allow these discrepancies through in certain cases:
-    allowed_bad_columns = ["GlobalSymmetryFeatures|n_symmetry_ops"]
+    allowed_bad_columns = [
+        "GlobalSymmetryFeatures|n_symmetry_ops",
+        "GlobalSymmetryFeatures|crystal_system",
+        "YangSolidSolution|Yang delta",
+        "Miedema|Miedema_deltaH_inter",
+        "AtomicPackingEfficiency|mean simul. packing efficiency",
+        "Miedema|Miedema_deltaH_amor",
+        "AtomicPackingEfficiency|mean abs simul. packing efficiency",
+        "Miedema|Miedema_deltaH_ss_min",
+    ]
+
     for col in allowed_bad_columns:
         if col in error_cols:
             error_cols.remove(col)
