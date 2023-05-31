@@ -38,7 +38,7 @@ class Individual:
         """
 
         self.act = "elu"
-        self.loss = "mae"
+        self.loss = loss
         self.n_neurons_first_layer = 32 * random.randint(1, 10)
         self.max_feat = max_feat
         self.num_classes = num_classes
@@ -61,8 +61,6 @@ class Individual:
             "act": self.act,
             "loss": self.loss,
             "n_neurons_first_layer": self.n_neurons_first_layer,
-            "loss": loss,
-            "n_neurons_first_layer": 32 * random.randint(1, 10),
             "fraction1": random.choice(self.fraction_list),
             "fraction2": random.choice(self.fraction_list),
             "fraction3": random.choice(self.fraction_list),
