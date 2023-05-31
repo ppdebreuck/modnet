@@ -207,6 +207,7 @@ class MODNetModel:
     def fit(
         self,
         training_data: MODData,
+        custom_data: Optional[np.ndarray] = None,
         val_fraction: float = 0.0,
         val_key: Optional[str] = None,
         val_data: Optional[MODData] = None,
@@ -217,7 +218,7 @@ class MODNetModel:
         metrics: List[str] = ["mae"],
         callbacks: List[Callable] = None,
         verbose: int = 0,
-        loss: str = "mse",
+        loss: str = None,
         **fit_params,
     ) -> None:
         """Train the model on the passed training `MODData` object.
@@ -227,6 +228,8 @@ class MODNetModel:
                 feature selected. The first `self.n_feat` entries in
                 `training_data.get_optimal_descriptors()` will be used
                 for training.
+            custom_data (np.ndarray): Optional array of shape (n_sampels, n_custom_props) that will be appended to the targets (columns wise).
+                This can be useful for defining custom loss functions.
             val_fraction: The fraction of the training data to use as a
                 validation set for tracking model performance during
                 training.
@@ -272,16 +275,28 @@ class MODNetModel:
             if self.num_classes[targ] >= 2:  # Classification
                 if self.multi_label:
                     y_inner = np.stack(training_data.df_targets[targ].values)
-                    loss = "binary_crossentropy"
+                    if loss is None:
+                        loss = "binary_crossentropy"
                 else:
                     y_inner = tf.keras.utils.to_categorical(
                         training_data.df_targets[targ].values,
                         num_classes=self.num_classes[targ],
                     )
-                    loss = "categorical_crossentropy"
+                    if loss is None:
+                        loss = "categorical_crossentropy"
             else:
                 y_inner = training_data.df_targets[targ].values.astype(
                     np.float64, copy=False
+                )
+            if custom_data is not None:
+                val_data = None
+                val_fraction = 0
+                metrics = []
+                y_inner = np.hstack(
+                    (
+                        np.reshape(y_inner, (len(y_inner), -1)),
+                        custom_data.reshape((len(custom_data), -1)),
+                    )
                 )
             y.append(y_inner)
 
@@ -306,7 +321,8 @@ class MODNetModel:
                 if self.num_classes[targ] >= 2:  # Classification
                     if self.multi_label:
                         y_inner = np.stack(val_data.df_targets[targ].values)
-                        loss = "binary_crossentropy"
+                        if loss is None:
+                            loss = "binary_crossentropy"
                     else:
                         y_inner = tf.keras.utils.to_categorical(
                             val_data.df_targets[targ].values,
@@ -352,7 +368,7 @@ class MODNetModel:
             else:
                 callbacks.append(print_callback)
 
-        fit_params = {
+        fit_params_kw = {
             "x": x,
             "y": y,
             "epochs": epochs,
@@ -363,6 +379,10 @@ class MODNetModel:
             "callbacks": callbacks,
         }
 
+        fit_params.update(fit_params_kw)
+
+        if loss is None:
+            loss = "mse"
         self.model.compile(
             loss=loss,
             optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),

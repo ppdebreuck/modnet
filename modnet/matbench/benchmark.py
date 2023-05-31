@@ -35,7 +35,7 @@ def matbench_kfold_splits(data: MODData, n_splits=5, classification=False):
 
         ycv = data.df_targets.iloc[:, 0].map(_mapArrayToInt)
     else:
-        ycv = data.df_targets
+        ycv = data.df_targets.values[:, 0]
 
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=MATBENCH_SEED)
     kf_splits = kf.split(data.df_featurized, y=ycv)
