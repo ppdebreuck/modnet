@@ -1,6 +1,6 @@
 from __future__ import annotations
 import random
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union, Callable
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -20,18 +20,21 @@ class Individual:
         max_feat: int,
         num_classes: dict,
         multi_label: bool,
+        loss: Union[str, Callable] = "mae",
         targets: List = None,
         weights: Dict[str, float] = None,
-        **model_params,
+        **fit_params,
     ) -> Individual:
         """
         Args:
             max_feat (int): Maximum number of features
             num_classes (dict): MODData num_classes parameter.Used for distinguishing between regression and classification.
             multi_label (bool): whether the task is a classification multi-label problem.
+            loss: The built-in tf.keras loss to pass to `compile(...)`.
             targets (List): Optional (for joint learning only). A nested list of targets names that defines the hierarchy
                 of the output layers.
             weights (Dict[str, float]): Optional (for joint learning only). The relative loss weights to apply for each target.
+            fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,
         """
 
         self.act = "elu"
@@ -42,6 +45,7 @@ class Individual:
         self.multi_label = multi_label
         self.targets = targets
         self.weights = weights
+        self.fit_params = fit_params
 
         self.xscale_list = ["minmax", "standard"]
         self.impute_missing_list = [0, "mean"]
@@ -57,6 +61,8 @@ class Individual:
             "act": self.act,
             "loss": self.loss,
             "n_neurons_first_layer": self.n_neurons_first_layer,
+            "loss": loss,
+            "n_neurons_first_layer": 32 * random.randint(1, 10),
             "fraction1": random.choice(self.fraction_list),
             "fraction2": random.choice(self.fraction_list),
             "fraction3": random.choice(self.fraction_list),
@@ -102,6 +108,7 @@ class Individual:
             max_feat=self.max_feat,
             num_classes=self.num_classes,
             multi_label=self.multi_label,
+            loss=self.genes["loss"],
             targets=self.targets,
             weights=self.weights,
         )
@@ -122,6 +129,7 @@ class Individual:
                 max_feat=self.max_feat,
                 num_classes=self.num_classes,
                 multi_label=self.multi_label,
+                loss=self.genes["loss"],
                 targets=self.targets,
                 weights=self.weights,
             )
@@ -212,9 +220,13 @@ class Individual:
             num_classes=self.num_classes,
             multi_label=self.multi_label,
         )
-
+        if "custom_data" in train_data.df_targets.columns:
+            custom_data = np.array(list(train_data.df_targets["custom_data"].values))
+        else:
+            custom_data = None
         model.fit(
             train_data,
+            custom_data=custom_data,
             val_data=val_data,
             loss=self.genes["loss"],
             lr=self.genes["lr"],
@@ -225,6 +237,7 @@ class Individual:
             xscale_before_impute=self.genes["xscale_before_impute"],
             callbacks=callbacks,
             verbose=0,
+            **self.fit_params,
         )
 
         self.val_loss = model.evaluate(val_data)
@@ -275,9 +288,13 @@ class Individual:
             num_classes=self.num_classes,
             multi_label=self.multi_label,
         )
-
+        if "custom_data" in data.df_targets.columns:
+            custom_data = np.array(list(data.df_targets["custom_data"].values))
+        else:
+            custom_data = None
         model.fit(
             data,
+            custom_data=custom_data,
             n_jobs=n_jobs,
             val_fraction=0,
             loss=self.genes["loss"],
@@ -289,6 +306,7 @@ class Individual:
             xscale_before_impute=self.genes["xscale_before_impute"],
             callbacks=callbacks,
             verbose=0,
+            **self.fit_params,
         )
 
         self.model = model
@@ -301,28 +319,44 @@ class FitGenetic:
     def __init__(
         self,
         data: MODData,
+        custom_data: Optional[np.ndarray] = None,
         targets: List = None,
         weights: Dict[str, float] = None,
         sample_threshold: int = 5000,
+        ignore_names: Optional[List] = [],
     ):
         """Genetic algorithm hyperparameter optimization for MODNet.
 
         Args:
             data (MODData): Training MODData
+            custom_data (np.ndarray): Optional array of shape (n_sampels, n_custom_props) that will be appended to the targets (columns wise).
+                This can be useful for defining custom loss functions.
             targets (List): Optional (for joint learning only). A nested list of targets names that defines the hierarchy
                 of the output layers.
             weights (Dict[str, float]): Optional (for joint learning only). The relative loss weights to apply for each target.
             sample_threshold (int, optional): If the dataset size exceeds this threshold, individuals are
                 trained on sampled subsets of this size. Defaults to 5000.
+            ignore_names (List): Optional list of property names to ignore during feature selection.
+                Feature selection will be performed w.r.t. all properties except the ones in ignore_names.
+
         """
+        for n in ignore_names:
+            if n not in data.names:
+                raise RuntimeError(
+                    f"Names provided in ignore_names should be part of {data.names}. {n} was not found."
+                )
+
         self.data = data
+        if custom_data is not None:
+            self.data.df_targets["custom_data"] = [list(x) for x in custom_data]
         subset_ids = np.random.permutation(len(data.df_featurized))[:sample_threshold]
         self.train_data, _ = data.split((subset_ids, []))
         self.num_classes = data.num_classes
+        t_names = list(set(data.names).difference(set(ignore_names)))
         if targets is None:
-            targets = [[data.target_names]]
+            targets = [[t_names]]
         if weights is None:
-            weights = {n: 1 for n in data.target_names}
+            weights = {n: 1 for n in t_names}
         self.targets = targets
         self.weights = weights
 
@@ -350,7 +384,11 @@ class FitGenetic:
         self.pool.join()
 
     def initialization_population(
-        self, size_pop: int, multi_label: bool, **model_params
+        self,
+        size_pop: int,
+        multi_label: bool,
+        loss: Union[str, Callable] = "mae",
+        **fit_params,
     ) -> None:
         """Initializes the initial population (Generation 0).
 
@@ -358,6 +396,8 @@ class FitGenetic:
             size_pop (int): Size of population.
             multi_label: Whether the problem (if classification) is multi-label.
                 In this case the softmax output-activation is replaced by a sigmoid.
+            loss: The built-in tf.keras loss to pass to `compile(...)`.
+            fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,
         """
 
         self.pop = [
@@ -365,9 +405,10 @@ class FitGenetic:
                 max_feat=len(self.train_data.get_optimal_descriptors()),
                 num_classes=self.train_data.num_classes,
                 multi_label=multi_label,
+                loss=loss,
                 targets=self.targets,
                 weights=self.weights,
-                **model_params,
+                **fit_params,
             )
             for _ in range(size_pop)
         ]
@@ -478,11 +519,12 @@ class FitGenetic:
         prob_mut: Optional[int] = None,
         nested: Optional[int] = 5,
         multi_label: bool = False,
+        loss: Union[str, Callable] = "mae",
         n_jobs: Optional[int] = None,
         early_stopping: Optional[int] = 4,
         refit: Optional[int] = 5,
         fast=False,
-        **model_params,
+        **fit_params,
     ) -> EnsembleMODNetModel:
         """Run the GA and return best model.
 
@@ -493,12 +535,14 @@ class FitGenetic:
             nested (Optional[int], optional): CV fold size. Use <=0 for hold-out validation. Defaults to 5.
             multi_label: Whether the problem (if classification) is multi-label.
                 In this case the softmax output-activation is replaced by a sigmoid.
+            loss: The built-in tf.keras loss to pass to `compile(...)`.
             n_jobs (Optional[int], optional): Number of jobs to parallelize on. Defaults to None.
             early_stopping (Optional[int], optional): Number of successive generations without improvement before stopping. Defaults to 4.
             refit (Optional[int], optional): Whether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
                 The amount corresponds to the number of models used in the ensemble. Defaults to 0.
             fast (bool, optional): Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
                 Overrides the size_pop, num_generation and nested arguments.. Defaults to False.
+            fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,
 
         Returns:
             EnsembleMODNetModel: Fitted model with best hyperparameters
@@ -510,7 +554,10 @@ class FitGenetic:
 
         LOG.info("Generation number 0")
         self.initialization_population(
-            size_pop, multi_label=multi_label, **model_params
+            size_pop,
+            multi_label=multi_label,
+            loss=loss,
+            **fit_params,
         )  # initialization of the population
         val_loss, models, individuals = self.function_fitness(
             pop=self.pop,
