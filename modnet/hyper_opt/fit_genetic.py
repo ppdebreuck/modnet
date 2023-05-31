@@ -54,8 +54,8 @@ class Individual:
         self.batch_size_list = [32, 64, 128, 256]
         self.fraction_list = [1, 0.75, 0.5, 0.25]
 
-        if model_params:
-            self.__dict__.update(model_params)
+        if fit_params:
+            self.__dict__.update(fit_params)
 
         self.genes = {
             "act": self.act,
