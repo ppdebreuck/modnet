@@ -36,7 +36,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
             from pymatgen.analysis.local_env import VoronoiNN
             from matminer.featurizers.composition import (
                 AtomicOrbitals,
-                AtomicPackingEfficiency,
+                # AtomicPackingEfficiency,
                 BandCenter,
                 # CohesiveEnergy, - This descriptor was not used in the paper preset
                 # ElectronAffinity, - This descriptor was not used in the paper preset
@@ -44,7 +44,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
                 ElementFraction,
                 ElementProperty,
                 IonProperty,
-                Miedema,
+                # Miedema,
                 OxidationStates,
                 Stoichiometry,
                 TMetalFraction,
@@ -61,7 +61,6 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
                 GlobalSymmetryFeatures,
                 MaximumPackingEfficiency,
                 # PartialRadialDistributionFunction,
-                RadialDistributionFunction,
                 SineCoulombMatrix,
                 StructuralHeterogeneity,
                 XRDPowderPattern,
@@ -84,12 +83,11 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
 
             self.composition_featurizers = (
                 AtomicOrbitals(),
-                AtomicPackingEfficiency(),
+                # AtomicPackingEfficiency(),
                 BandCenter(),
                 ElementFraction(),
                 ElementProperty.from_preset("magpie"),
-                IonProperty(),
-                Miedema(),
+                # Miedema(),
                 Stoichiometry(),
                 TMetalFraction(),
                 ValenceOrbital(),
@@ -99,12 +97,13 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
             self.oxid_composition_featurizers = (
                 ElectronegativityDiff(),
                 OxidationStates(),
+                IonProperty(fast=True),
             )
 
             self.structure_featurizers = (
                 DensityFeatures(),
                 GlobalSymmetryFeatures(),
-                RadialDistributionFunction(),
+                # RadialDistributionFunction(),
                 CoulombMatrix(),
                 # PartialRadialDistributionFunction(),
                 SineCoulombMatrix(),
