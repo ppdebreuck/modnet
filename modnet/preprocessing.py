@@ -662,7 +662,10 @@ class MODData:
             if np.shape(targets)[-1] != len(target_names):
                 raise ValueError("Target names must be supplied for every target.")
         elif targets is not None:
-            target_names = ["prop" + str(i) for i in range(len(targets))]
+            if len(np.shape(targets)) == 1:
+                target_names = ["prop0"]
+            else:
+                target_names = ["prop" + str(i) for i in range(np.shape(targets)[1])]
 
         if structure_ids is not None:
             # for backwards compat, always store the *passed* list of
@@ -781,6 +784,7 @@ class MODData:
         cross_nmi: Optional[pd.DataFrame] = None,
         use_precomputed_cross_nmi: bool = False,
         n_samples=6000,
+        drop_thr: float = 0.2,
         n_jobs: int = None,
         ignore_names: Optional[List] = [],
     ):
@@ -845,7 +849,7 @@ class MODData:
             else:
                 df = self.df_featurized.copy()
             self.cross_nmi, self.feature_entropy = get_cross_nmi(
-                df, return_entropy=True, n_jobs=n_jobs
+                df, return_entropy=True, drop_thr=drop_thr, n_jobs=n_jobs
             )
 
         if self.cross_nmi.isna().sum().sum() > 0:
