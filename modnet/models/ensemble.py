@@ -140,9 +140,9 @@ class EnsembleMODNetModel(MODNetModel):
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
-            return_prob: For a classification tasks only: whether to return the probability of each
+            return_prob: For a classification task only: whether to return the probability of each
                 class OR only return the most probable class.
-            return_unc: wheter to return a second dataframe containing the uncertainties
+            return_unc: whether to return a second dataframe containing the uncertainties
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
@@ -273,8 +273,6 @@ class EnsembleMODNetModel(MODNetModel):
             presets = presets[:2]
             for k, _ in enumerate(presets):
                 presets[k]["epochs"] = 5
-
-        val_losses = 1e20 * np.ones((len(presets),))
 
         num_nested_folds = 5
         if nested:
@@ -451,6 +449,7 @@ def _validate_ensemble_model(
     act="relu",
     out_act="linear",
     xscale="minmax",
+    impute_missing=-1,
     callbacks=[],
     preset_id=None,
     fold_id=None,
@@ -475,6 +474,7 @@ def _validate_ensemble_model(
         batch_size=batch_size,
         loss=loss,
         xscale=xscale,
+        impute_missing=impute_missing,
         callbacks=callbacks,
         verbose=verbose,
         val_fraction=0,

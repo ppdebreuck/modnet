@@ -3,7 +3,8 @@ model with deterministic weights and outputs.
 
 """
 from collections import defaultdict
-from typing import List, Tuple, Dict, Optional, Callable, Any
+from typing import List, Tuple, Dict, Optional, Callable, Any, Union
+
 from pathlib import Path
 import multiprocessing
 
@@ -13,6 +14,8 @@ import warnings
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, roc_auc_score
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 import tensorflow as tf
 
 from modnet.preprocessing import MODData
@@ -88,7 +91,11 @@ class MODNetModel:
         self.act = act
         self.out_act = out_act
 
+        self.xscale = None
         self._scaler = None
+        self._imputer = None
+        self.impute_missing = None
+        self._scale_impute = None
         self.optimal_descriptors = None
         self.target_names = None
         self.targets = targets
@@ -208,6 +215,7 @@ class MODNetModel:
     def fit(
         self,
         training_data: MODData,
+        custom_data: Optional[np.ndarray] = None,
         val_fraction: float = 0.0,
         val_key: Optional[str] = None,
         val_data: Optional[MODData] = None,
@@ -215,10 +223,12 @@ class MODNetModel:
         epochs: int = 200,
         batch_size: int = 128,
         xscale: Optional[str] = "minmax",
+        impute_missing: Optional[Union[float, str]] = 0,
+        xscale_before_impute: bool = True,
         metrics: List[str] = ["mae"],
         callbacks: List[Callable] = None,
         verbose: int = 0,
-        loss: str = "mse",
+        loss: str = None,
         **fit_params,
     ) -> None:
         """Train the model on the passed training `MODData` object.
@@ -228,6 +238,8 @@ class MODNetModel:
                 feature selected. The first `self.n_feat` entries in
                 `training_data.get_optimal_descriptors()` will be used
                 for training.
+            custom_data (np.ndarray): Optional array of shape (n_sampels, n_custom_props) that will be appended to the targets (columns wise).
+                This can be useful for defining custom loss functions.
             val_fraction: The fraction of the training data to use as a
                 validation set for tracking model performance during
                 training.
@@ -238,6 +250,17 @@ class MODNetModel:
             batch_size: The batch size to use for training.
             xscale: The feature scaler to use, either `None`,
                 `'minmax'` or `'standard'`.
+            impute_missing: Determines how the NaN features are treated.
+                If str, defines the strategy used in the scikit-learn SimpleImputer,
+                e.g., "mean" sets the NaNs to the mean of their feature column.
+                If a float is provided, and if xscale_before_impute is False, this
+                float is used to replace NaNs in the original dataset.
+                If a float is provided but xscale_before_impute is True, the float
+                is not used and standard values are used.
+                If you want to do something more sophisticated, make your own
+                modifications to MODData.df_featurized before fitting the model.
+            xscale_before_impute: whether to first scale the input and then impute values, or
+                first impute values and then scale the inputs.
             metrics: A list of tf.keras metrics to pass to `compile(...)`.
             loss: The built-in tf.keras loss to pass to `compile(...)`.
             fit_params: Any additional parameters to pass to `fit(...)`,
@@ -253,6 +276,7 @@ class MODNetModel:
             )
 
         self.xscale = xscale
+        self.impute_missing = impute_missing
         self.target_names = list(self.weights.keys())
         self.optimal_descriptors = training_data.get_optimal_descriptors()
 
@@ -273,41 +297,82 @@ class MODNetModel:
             if self.num_classes[targ] >= 2:  # Classification
                 if self.multi_label:
                     y_inner = np.stack(training_data.df_targets[targ].values)
-                    loss = "binary_crossentropy"
+                    if loss is None:
+                        loss = "binary_crossentropy"
                 else:
                     y_inner = tf.keras.utils.to_categorical(
                         training_data.df_targets[targ].values,
                         num_classes=self.num_classes[targ],
                     )
-                    loss = "categorical_crossentropy"
+                    if loss is None:
+                        loss = "categorical_crossentropy"
             else:
                 y_inner = training_data.df_targets[targ].values.astype(
                     np.float64, copy=False
                 )
+            if custom_data is not None:
+                val_data = None
+                val_fraction = 0
+                metrics = []
+                y_inner = np.hstack(
+                    (
+                        np.reshape(y_inner, (len(y_inner), -1)),
+                        custom_data.reshape((len(custom_data), -1)),
+                    )
+                )
             y.append(y_inner)
 
-        # Scale the input features:
+        # Define the scaler
         if self.xscale == "minmax":
             self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
 
         elif self.xscale == "standard":
             self._scaler = StandardScaler()
 
-        x = self._scaler.fit_transform(x)
-        x = np.nan_to_num(x, nan=-1)
+        # Define the imputer
+        if isinstance(impute_missing, str):
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy=impute_missing
+            )
+        else:
+            if self.xscale == "minmax":
+                impute_missing = -1 if xscale_before_impute else impute_missing
+            elif self.xscale == "standard":
+                impute_missing = (
+                    10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
+                    if xscale_before_impute
+                    else impute_missing
+                )
+            self.impute_missing = impute_missing
+
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy="constant", fill_value=impute_missing
+            )
+
+        # Scale and impute input features in the desired order
+        if xscale_before_impute:
+            self._scale_impute = Pipeline(
+                [("scaler", self._scaler), ("imputer", self._imputer)]
+            )
+        else:
+            self._scale_impute = Pipeline(
+                [("imputer", self._imputer), ("scaler", self._scaler)]
+            )
+
+        x = self._scale_impute.fit_transform(x)
 
         if val_data is not None:
             val_x = val_data.get_featurized_df()[
                 self.optimal_descriptors[: self.n_feat]
             ].values
-            val_x = self._scaler.transform(val_x)
-            val_x = np.nan_to_num(val_x, nan=-1)
+            val_x = self._scale_impute.transform(val_x)
             val_y = []
             for targ in self.targets_flatten:
                 if self.num_classes[targ] >= 2:  # Classification
                     if self.multi_label:
                         y_inner = np.stack(val_data.df_targets[targ].values)
-                        loss = "binary_crossentropy"
+                        if loss is None:
+                            loss = "binary_crossentropy"
                     else:
                         y_inner = tf.keras.utils.to_categorical(
                             val_data.df_targets[targ].values,
@@ -353,7 +418,7 @@ class MODNetModel:
             else:
                 callbacks.append(print_callback)
 
-        fit_params = {
+        fit_params_kw = {
             "x": x,
             "y": y,
             "epochs": epochs,
@@ -364,6 +429,10 @@ class MODNetModel:
             "callbacks": callbacks,
         }
 
+        fit_params.update(fit_params_kw)
+
+        if loss is None:
+            loss = "mse"
         self.model.compile(
             loss=loss,
             optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
@@ -385,6 +454,7 @@ class MODNetModel:
         nested: int = 5,
         callbacks: List[Any] = None,
         n_jobs=None,
+        **fit_params,
     ) -> Tuple[
         List[List[Any]],
         np.ndarray,
@@ -577,11 +647,14 @@ class MODNetModel:
                 loss=best_preset["loss"],
                 callbacks=callbacks,
                 verbose=verbose,
+                **fit_params,
             )
         else:
             self.n_feat = best_model.n_feat
             self.model = best_model.model
             self._scaler = best_model._scaler
+            self._imputer = best_model._imputer
+            self._scale_impute = best_model._scale_impute
 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
 
@@ -604,17 +677,13 @@ class MODNetModel:
         # prevents Nan predictions if some features are inf
         x = (
             test_data.get_featurized_df()
-            .replace([np.inf, -np.inf, np.nan], 0)[
-                self.optimal_descriptors[: self.n_feat]
-            ]
+            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
             .values
         )
 
-        # Scale the input features:
-        x = np.nan_to_num(x)
-        if self._scaler is not None:
-            x = self._scaler.transform(x)
-            x = np.nan_to_num(x, nan=-1)
+        # Scale and impute input features:
+        if self._scale_impute is not None:
+            x = self._scale_impute.transform(x)
 
         p = np.array(self.model.predict(x))
 
@@ -670,17 +739,13 @@ class MODNetModel:
         # prevents Nan predictions if some features are inf
         x = (
             test_data.get_featurized_df()
-            .replace([np.inf, -np.inf, np.nan], 0)[
-                self.optimal_descriptors[: self.n_feat]
-            ]
+            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
             .values
         )
 
-        # Scale the input features:
-        x = np.nan_to_num(x)
-        if self._scaler is not None:
-            x = self._scaler.transform(x)
-            x = np.nan_to_num(x, nan=-1)
+        # Scale and impute input features:
+        if self._scale_impute is not None:
+            x = self._scale_impute.transform(x)
 
         y_pred = np.array(self.model.predict(x))
         if len(y_pred.shape) == 2:
