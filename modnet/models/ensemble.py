@@ -40,17 +40,28 @@ class EnsembleMODNetModel(MODNetModel):
 
     can_return_uncertainty = True
 
-    def __init__(self, *args, n_models=100, bootstrap=True, models=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        n_models=100,
+        bootstrap=True,
+        models=None,
+        modnet_models=None,
+        **kwargs,
+    ):
         """
         Args:
             *args: See MODNetModel
             n_models: number of inner MODNetModels, each model has the same architecture defined by the args nd kwargs.
             bootstrap: whether to bootstrap the samples for each inner MODNet fit.
             models: List of user provided MODNetModels. Enables to have different architectures. n_models is discarded in this case.
+            modnet_model: Deprecated. Same argument as models. For backward compatibility only.
             **kwargs: See MODNetModel
         """
         self.__modnet_version__ = __version__
         self.bootstrap = bootstrap
+        if modnet_models is not None and models is None:
+            models = modnet_models
         if models is None:
             self.models = []
             self.n_models = n_models
@@ -431,6 +442,11 @@ class EnsembleMODNetModel(MODNetModel):
             "models",
         ]
         return possible_params
+
+    @property
+    def model(self) -> List[MODNetModel]:
+        """Returns the inner MODNet models. For Backward compatability only."""
+        return self.models
 
 
 def _validate_ensemble_model(
