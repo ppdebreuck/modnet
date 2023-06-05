@@ -24,7 +24,7 @@ import numpy as np
 import tqdm
 from multiprocessing import Pool
 
-from modnet.featurizers import MODFeaturizer
+from modnet.featurizers import MODFeaturizer, clean_df
 from modnet import __version__
 from modnet.utils import LOG
 
@@ -70,6 +70,7 @@ def nmi_target(
     df_target: pd.DataFrame,
     task_type: str = "regression",
     drop_constant_features: bool = True,
+    drop_duplicate_features: bool = True,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -85,6 +86,8 @@ def nmi_target(
         task_type (integer): 0 for regression, 1 for classification
         drop_constant_features (bool): If True, the features that are constant
             across the entire data set will be dropped.
+        drop_duplicate_features (bool): If True, the features that have exactly the same
+            values across the entire data set will be dropped.
         **kwargs: Keyword arguments to be passed down to the
             :py:func:`mutual_info_regression` function from scikit-learn. This
             can be useful e.g. for testing purposes.
@@ -115,11 +118,13 @@ def nmi_target(
             "should contain the same number of data points."
         )
 
+    # Drop features that are duplicates across the entire data set
+    if drop_duplicate_features:
+        df_feat = df_feat.T.drop_duplicates().T
+
     # Drop features which have the same value for the entire data set
     if drop_constant_features:
-        frange = df_feat.max(axis=0) - df_feat.min(axis=0)
-        to_drop = frange[frange == 0].index
-        df_feat = df_feat.drop(to_drop, axis=1)
+        df_feat = df_feat.loc[:, (df_feat != df_feat.iloc[0]).any()]
 
     # preprocess the input matrix
     if (
@@ -662,7 +667,10 @@ class MODData:
             if np.shape(targets)[-1] != len(target_names):
                 raise ValueError("Target names must be supplied for every target.")
         elif targets is not None:
-            target_names = ["prop" + str(i) for i in range(len(targets))]
+            if len(np.shape(targets)) == 1:
+                target_names = ["prop0"]
+            else:
+                target_names = ["prop" + str(i) for i in range(np.shape(targets)[1])]
 
         if structure_ids is not None:
             # for backwards compat, always store the *passed* list of
@@ -769,7 +777,8 @@ class MODData:
         else:
             df_final = self.featurizer.featurize(self.df_structure)
 
-        df_final = df_final.replace([np.inf, -np.inf, np.nan], 0)
+        # replace infinite values by nan that are handled during the fit
+        df_final = clean_df(df_final)
 
         self.df_featurized = df_final
         LOG.info("Data has successfully been featurized!")
@@ -780,7 +789,9 @@ class MODData:
         cross_nmi: Optional[pd.DataFrame] = None,
         use_precomputed_cross_nmi: bool = False,
         n_samples=6000,
+        drop_thr: float = 0.2,
         n_jobs: int = None,
+        ignore_names: Optional[List] = [],
     ):
         """Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
@@ -797,24 +808,30 @@ class MODData:
                 that was computed on Materials Project features, instead of
                 precomputing.
             n_jobs: max. number of processes to use when calculating cross NMI.
+            ignore_names (List): Optional list of property names to ignore during feature selection.
+                Feature selection will be performed w.r.t. all properties except the ones in ignore_names.
 
         """
         if getattr(self, "df_featurized", None) is None:
             raise RuntimeError(
-                "Mutual information feature selection requiresd featurized data, please call `.featurize()`"
+                "Mutual information feature selection requires featurized data, please call `.featurize()`"
             )
         if getattr(self, "df_targets", None) is None:
             raise RuntimeError(
                 "Mutual information feature selection requires target properties"
             )
 
+        for na in ignore_names:
+            if na not in self.names:
+                raise RuntimeError(
+                    f"Names provided in ignore_names should be part of {self.names}. {na} was not found."
+                )
+
         ranked_lists = []
         optimal_features_by_target = {}
 
         if cross_nmi is not None:
             self.cross_nmi = cross_nmi
-        elif getattr(self, "cross_nmi", None) is None:
-            self.cross_nmi = None
 
         # Loading mutual information between features
         if use_precomputed_cross_nmi:
@@ -837,16 +854,17 @@ class MODData:
             else:
                 df = self.df_featurized.copy()
             self.cross_nmi, self.feature_entropy = get_cross_nmi(
-                df, return_entropy=True, n_jobs=n_jobs
+                df, return_entropy=True, drop_thr=drop_thr, n_jobs=n_jobs
             )
 
         if self.cross_nmi.isna().sum().sum() > 0:
-            raise RuntimeError(
-                "Cross NMI (`moddata.cross_nmi`) contains NaN values, consider setting them to zero."
-            )
+            raise RuntimeError("Cross NMI (`moddata.cross_nmi`) contains NaN values.")
 
-        for i, name in enumerate(self.names):
-            LOG.info(f"Starting target {i + 1}/{len(self.names)}: {self.names[i]} ...")
+        selection_names = list(set(self.names).difference(set(ignore_names)))
+        for i, name in enumerate(selection_names):
+            LOG.info(
+                f"Starting target {i + 1}/{len(selection_names)}: {selection_names[i]} ..."
+            )
 
             # Computing mutual information with target
             LOG.info("Computing mutual information between features and target...")

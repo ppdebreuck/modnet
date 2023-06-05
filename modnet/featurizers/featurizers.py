@@ -2,6 +2,7 @@ import abc
 from typing import Optional, Iterable, Tuple, Dict
 
 import pandas as pd
+from pymatgen.core import Composition
 
 from matminer.featurizers.base import MultipleFeaturizer, BaseFeaturizer
 from matminer.featurizers.structure import SiteStatsFingerprint
@@ -204,14 +205,41 @@ class MODFeaturizer(abc.ABC):
 
         if self.oxid_composition_featurizers:
             LOG.info("Applying oxidation state featurizers...")
+            # Get integer composition if some are not
+            col_comp = "composition"
+            if not all(
+                all(amt == int(amt) for amt in comp.values())
+                for comp in df["composition"].values
+            ):
+                LOG.info(
+                    "There are non-integer compositions in the dataset, and featurizers that need them. "
+                    "Computing..."
+                )
+                df["integer_composition"] = [
+                    Composition(
+                        comp.get_integer_formula_and_factor(
+                            max_denominator=10
+                            if getattr(self, "fast_oxid", False)
+                            else 100
+                        )[0]
+                    )
+                    for comp in df["composition"].values
+                ]
+                # df["integer_composition"] = df["composition"].apply(
+                # lambda c: c.get_integer_formula_and_factor(
+                #         max_denominator=10 if getattr(self, "fast_oxid", False) else 100
+                #     )[0]
+                # )
+
+                col_comp = "integer_composition"
             if getattr(self, "fast_oxid", False):
                 df = CompositionToOxidComposition(
                     all_oxi_states=False, max_sites=-1
-                ).featurize_dataframe(df, "composition")
+                ).featurize_dataframe(df, col_id=col_comp)
             else:
-                df = CompositionToOxidComposition().featurize_dataframe(
-                    df, "composition"
-                )
+                df = CompositionToOxidComposition(
+                    max_sites=-1 if getattr(self, "continuous_only", False) else None
+                ).featurize_dataframe(df, col_id=col_comp, ignore_errors=True)
             df = self._fit_apply_featurizers(
                 df,
                 self.oxid_composition_featurizers,
@@ -271,6 +299,9 @@ class MODFeaturizer(abc.ABC):
         df.columns = ["Input data|" + x for x in df.columns]
 
         for fingerprint in self.site_featurizers:
+            fingerprint_name = fingerprint.__class__.__name__
+            if fingerprint_name == "SOAP":
+                fingerprint.fit(df["Input data|structure"])
             site_stats_fingerprint = SiteStatsFingerprint(
                 fingerprint, stats=self.site_stats
             )
@@ -278,7 +309,6 @@ class MODFeaturizer(abc.ABC):
                 df, "Input data|structure", multiindex=False, ignore_errors=True
             )
 
-            fingerprint_name = fingerprint.__class__.__name__
             if aliases:
                 fingerprint_name = aliases.get(fingerprint_name, fingerprint_name)
             if "|" not in fingerprint_name:
