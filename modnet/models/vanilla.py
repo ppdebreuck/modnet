@@ -212,7 +212,9 @@ class MODNetModel:
 
         return tf.keras.models.Model(inputs=f_input, outputs=final_out)
 
-    def _set_scale_impute(self, impute_missing, xscale_before_impute):
+    def _set_scale_impute(
+        self, impute_missing, xscale_before_impute, scaler=None, imputer=None
+    ):
         """
         Sets the inner scaling and imputer mechanism.
         impute_missing: Determines how the NaN features are treated.
@@ -221,16 +223,22 @@ class MODNetModel:
                 If a float is provided, this float is used to replace NaNs in the original dataset.
         xscale_before_impute: whether to first scale the input and then impute values, or
                 first impute values and then scale the inputs.
+        scaler: optional sklearn scaler to use
+        imputer: optional sklearn imputer to use
         """
         # Define the scaler
-        if self.xscale == "minmax":
+        if scaler is not None:
+            self._scaler = scaler
+        elif self.xscale == "minmax":
             self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
 
         elif self.xscale == "standard":
             self._scaler = StandardScaler()
 
         # Define the imputer
-        if isinstance(impute_missing, str):
+        if imputer is not None:
+            self._imputer = imputer
+        elif isinstance(impute_missing, str):
             self._imputer = SimpleImputer(
                 missing_values=np.nan, strategy=impute_missing
             )
@@ -810,6 +818,18 @@ class MODNetModel:
         model_json, model_weights = self.model
         self.model = tf.keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
+        if not hasattr(self, "_scale_impute"):
+            self.xscale = "minmax"
+            self._set_scale_impute(
+                impute_missing=-1,
+                xscale_before_impute=True,
+                scaler=self._scaler,
+                imputer=SimpleImputer(
+                    missing_values=np.nan,
+                    strategy="constant",
+                    fill_value=-1,
+                ).fit(np.zeros((1, self.n_feat))),
+            )
 
     def save(self, filename: str) -> None:
         """Save the `MODNetModel` to filename:
@@ -863,11 +883,6 @@ class MODNetModel:
         if isinstance(pickled_data, MODNetModel):
             if not hasattr(pickled_data, "__modnet_version__"):
                 pickled_data.__modnet_version__ = "unknown"
-            if not hasattr(pickled_data, "_scale_impute"):
-                pickled_data.xscale = "minmax"
-                pickled_data._set_scale_impute(
-                    impute_missing=-1, xscale_before_impute=True
-                )
             pickled_data._restore_model()
             LOG.info(
                 f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}"
