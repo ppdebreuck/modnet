@@ -212,6 +212,51 @@ class MODNetModel:
 
         return tf.keras.models.Model(inputs=f_input, outputs=final_out)
 
+    def _set_scale_impute(
+        self, impute_missing, xscale_before_impute, scaler=None, imputer=None
+    ):
+        """
+        Sets the inner scaling and imputer mechanism.
+        impute_missing: Determines how the NaN features are treated.
+                If str, defines the strategy used in the scikit-learn SimpleImputer,
+                e.g., "mean" sets the NaNs to the mean of their feature column.
+                If a float is provided, this float is used to replace NaNs in the original dataset.
+        xscale_before_impute: whether to first scale the input and then impute values, or
+                first impute values and then scale the inputs.
+        scaler: optional sklearn scaler to use
+        imputer: optional sklearn imputer to use
+        """
+        # Define the scaler
+        if scaler is not None:
+            self._scaler = scaler
+        elif self.xscale == "minmax":
+            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+
+        elif self.xscale == "standard":
+            self._scaler = StandardScaler()
+
+        # Define the imputer
+        if imputer is not None:
+            self._imputer = imputer
+        elif isinstance(impute_missing, str):
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy=impute_missing
+            )
+        else:
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy="constant", fill_value=impute_missing
+            )
+
+        # Scale and impute input features in the desired order
+        if xscale_before_impute:
+            self._scale_impute = Pipeline(
+                [("scaler", self._scaler), ("imputer", self._imputer)]
+            )
+        else:
+            self._scale_impute = Pipeline(
+                [("imputer", self._imputer), ("scaler", self._scaler)]
+            )
+
     def fit(
         self,
         training_data: MODData,
@@ -322,42 +367,19 @@ class MODNetModel:
                 )
             y.append(y_inner)
 
-        # Define the scaler
+        # set scaler and imputer
         if self.xscale == "minmax":
-            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
-
+            impute_missing = -1 if xscale_before_impute else impute_missing
         elif self.xscale == "standard":
-            self._scaler = StandardScaler()
-
-        # Define the imputer
-        if isinstance(impute_missing, str):
-            self._imputer = SimpleImputer(
-                missing_values=np.nan, strategy=impute_missing
+            impute_missing = (
+                10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
+                if xscale_before_impute
+                else impute_missing
             )
-        else:
-            if self.xscale == "minmax":
-                impute_missing = -1 if xscale_before_impute else impute_missing
-            elif self.xscale == "standard":
-                impute_missing = (
-                    10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
-                    if xscale_before_impute
-                    else impute_missing
-                )
-            self.impute_missing = impute_missing
-
-            self._imputer = SimpleImputer(
-                missing_values=np.nan, strategy="constant", fill_value=impute_missing
-            )
-
-        # Scale and impute input features in the desired order
-        if xscale_before_impute:
-            self._scale_impute = Pipeline(
-                [("scaler", self._scaler), ("imputer", self._imputer)]
-            )
-        else:
-            self._scale_impute = Pipeline(
-                [("imputer", self._imputer), ("scaler", self._scaler)]
-            )
+        self.impute_missing = impute_missing
+        self._set_scale_impute(
+            impute_missing=impute_missing, xscale_before_impute=xscale_before_impute
+        )
 
         x = self._scale_impute.fit_transform(x)
 
@@ -796,6 +818,18 @@ class MODNetModel:
         model_json, model_weights = self.model
         self.model = tf.keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
+        if not hasattr(self, "_scale_impute"):
+            self.xscale = "minmax"
+            self._set_scale_impute(
+                impute_missing=-1,
+                xscale_before_impute=True,
+                scaler=self._scaler,
+                imputer=SimpleImputer(
+                    missing_values=np.nan,
+                    strategy="constant",
+                    fill_value=-1,
+                ).fit(np.zeros((1, self.n_feat))),
+            )
 
     def save(self, filename: str) -> None:
         """Save the `MODNetModel` to filename:
