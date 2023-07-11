@@ -432,6 +432,10 @@ class EnsembleMODNetModel(MODNetModel):
         restore inner keras model after running make_picklable
         """
 
+        # backward compatibility for loading models saved <v0.3
+        if not hasattr(self, "models") and hasattr(self, "model"):
+            self.models = self.model
+
         for m in self.models:
             m._restore_model()
 
@@ -442,11 +446,6 @@ class EnsembleMODNetModel(MODNetModel):
             "models",
         ]
         return possible_params
-
-    @property
-    def model(self) -> List[MODNetModel]:
-        """Returns the inner MODNet models. For Backward compatability only."""
-        return self.models
 
 
 def _validate_ensemble_model(

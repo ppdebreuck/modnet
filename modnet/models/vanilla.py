@@ -101,8 +101,8 @@ class MODNetModel:
         self.targets = targets
         self.model = None
 
-        f_temp = [x for subl in targets for x in subl]
-        self.targets_flatten = [x for subl in f_temp for x in subl]
+        self.targets_groups = [x for subl in targets for x in subl]
+        self.targets_flatten = [x for subl in self.targets_groups for x in subl]
         self.num_classes = {name: 0 for name in self.targets_flatten}
         if num_classes is not None:
             self.num_classes.update(num_classes)
@@ -179,6 +179,7 @@ class MODNetModel:
 
         # Build outputs
         final_out = []
+        output_names = []
         for group_idx, group in enumerate(targets):
             for prop_idx in range(len(group)):
                 previous_layer = intermediate_models_out[group_idx]
@@ -190,27 +191,76 @@ class MODNetModel:
                         previous_layer = tf.keras.layers.BatchNormalization()(
                             previous_layer
                         )
-                clayer = previous_layer
-                for pi in range(len(group[prop_idx])):
-                    previous_layer = clayer
-                    for li in range(num_layers[3]):
-                        previous_layer = tf.keras.layers.Dense(num_neurons[3][li])(
-                            previous_layer
-                        )
-                    n = num_classes[group[prop_idx][pi]]
-                    if n >= 2:
-                        out = tf.keras.layers.Dense(
-                            n,
-                            activation="sigmoid" if multi_label else "softmax",
-                            name=group[prop_idx][pi],
-                        )(previous_layer)
-                    else:
-                        out = tf.keras.layers.Dense(
-                            1, activation=out_act, name=group[prop_idx][pi]
-                        )(previous_layer)
-                    final_out.append(out)
+
+                n = num_classes[group[prop_idx][0]]
+                name = group[prop_idx][0]
+                if n >= 2:
+                    out = tf.keras.layers.Dense(
+                        n,
+                        activation="sigmoid" if multi_label else "softmax",
+                        name=name,
+                    )(previous_layer)
+                else:
+                    out = tf.keras.layers.Dense(
+                        len(group[prop_idx]),
+                        activation=out_act,
+                        name=name,
+                    )(previous_layer)
+                final_out.append(out)
+                output_names.append(name)
+
+        new_weights = dict()
+        for n in output_names:
+            w = self.weights.get(n, 1)
+            new_weights[n] = w
+        self.weights = new_weights
 
         return tf.keras.models.Model(inputs=f_input, outputs=final_out)
+
+    def _set_scale_impute(
+        self, impute_missing, xscale_before_impute, scaler=None, imputer=None
+    ):
+        """
+        Sets the inner scaling and imputer mechanism.
+        impute_missing: Determines how the NaN features are treated.
+                If str, defines the strategy used in the scikit-learn SimpleImputer,
+                e.g., "mean" sets the NaNs to the mean of their feature column.
+                If a float is provided, this float is used to replace NaNs in the original dataset.
+        xscale_before_impute: whether to first scale the input and then impute values, or
+                first impute values and then scale the inputs.
+        scaler: optional sklearn scaler to use
+        imputer: optional sklearn imputer to use
+        """
+        # Define the scaler
+        if scaler is not None:
+            self._scaler = scaler
+        elif self.xscale == "minmax":
+            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+
+        elif self.xscale == "standard":
+            self._scaler = StandardScaler()
+
+        # Define the imputer
+        if imputer is not None:
+            self._imputer = imputer
+        elif isinstance(impute_missing, str):
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy=impute_missing
+            )
+        else:
+            self._imputer = SimpleImputer(
+                missing_values=np.nan, strategy="constant", fill_value=impute_missing
+            )
+
+        # Scale and impute input features in the desired order
+        if xscale_before_impute:
+            self._scale_impute = Pipeline(
+                [("scaler", self._scaler), ("imputer", self._imputer)]
+            )
+        else:
+            self._scale_impute = Pipeline(
+                [("imputer", self._imputer), ("scaler", self._scaler)]
+            )
 
     def fit(
         self,
@@ -293,8 +343,9 @@ class MODNetModel:
             self.targets_flatten = list(training_data.df_targets.columns)
 
         y = []
-        for targ in self.targets_flatten:
-            if self.num_classes[targ] >= 2:  # Classification
+        for prop in self.targets_groups:
+            if self.num_classes[prop[0]] >= 2:  # Classification
+                targ = prop[0]
                 if self.multi_label:
                     y_inner = np.stack(training_data.df_targets[targ].values)
                     if loss is None:
@@ -307,7 +358,8 @@ class MODNetModel:
                     if loss is None:
                         loss = "categorical_crossentropy"
             else:
-                y_inner = training_data.df_targets[targ].values.astype(
+
+                y_inner = training_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
             if custom_data is not None:
@@ -322,42 +374,19 @@ class MODNetModel:
                 )
             y.append(y_inner)
 
-        # Define the scaler
+        # set scaler and imputer
         if self.xscale == "minmax":
-            self._scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
-
+            impute_missing = -1 if xscale_before_impute else impute_missing
         elif self.xscale == "standard":
-            self._scaler = StandardScaler()
-
-        # Define the imputer
-        if isinstance(impute_missing, str):
-            self._imputer = SimpleImputer(
-                missing_values=np.nan, strategy=impute_missing
+            impute_missing = (
+                10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
+                if xscale_before_impute
+                else impute_missing
             )
-        else:
-            if self.xscale == "minmax":
-                impute_missing = -1 if xscale_before_impute else impute_missing
-            elif self.xscale == "standard":
-                impute_missing = (
-                    10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
-                    if xscale_before_impute
-                    else impute_missing
-                )
-            self.impute_missing = impute_missing
-
-            self._imputer = SimpleImputer(
-                missing_values=np.nan, strategy="constant", fill_value=impute_missing
-            )
-
-        # Scale and impute input features in the desired order
-        if xscale_before_impute:
-            self._scale_impute = Pipeline(
-                [("scaler", self._scaler), ("imputer", self._imputer)]
-            )
-        else:
-            self._scale_impute = Pipeline(
-                [("imputer", self._imputer), ("scaler", self._scaler)]
-            )
+        self.impute_missing = impute_missing
+        self._set_scale_impute(
+            impute_missing=impute_missing, xscale_before_impute=xscale_before_impute
+        )
 
         x = self._scale_impute.fit_transform(x)
 
@@ -367,8 +396,9 @@ class MODNetModel:
             ].values
             val_x = self._scale_impute.transform(val_x)
             val_y = []
-            for targ in self.targets_flatten:
-                if self.num_classes[targ] >= 2:  # Classification
+            for prop in self.targets_groups:
+                if self.num_classes[prop[0]] >= 2:  # Classification
+                    targ = prop[0]
                     if self.multi_label:
                         y_inner = np.stack(val_data.df_targets[targ].values)
                         if loss is None:
@@ -378,8 +408,9 @@ class MODNetModel:
                             val_data.df_targets[targ].values,
                             num_classes=self.num_classes[targ],
                         )
+                        loss = "categorical_crossentropy"
                 else:
-                    y_inner = val_data.df_targets[targ].values.astype(
+                    y_inner = val_data.df_targets[prop].values.astype(
                         np.float64, copy=False
                     )
                 val_y.append(y_inner)
@@ -388,9 +419,11 @@ class MODNetModel:
             validation_data = None
 
         # set up bounds for postprocessing
-        if max(self.num_classes.values()) <= 2:  # regression
-            self.min_y = training_data.df_targets.values.min(axis=0)
-            self.max_y = training_data.df_targets.values.max(axis=0)
+        self.min_y = []
+        self.max_y = []
+        for prop in self.targets_groups:
+            self.min_y.append(training_data.df_targets[prop].values.min(axis=0))
+            self.max_y.append(training_data.df_targets[prop].values.max(axis=0))
 
         # Optionally set up print callback
         if verbose:
@@ -641,7 +674,7 @@ class MODNetModel:
             self.fit(
                 data,
                 val_fraction=0,
-                lr=best_preset["lr"],
+                learning_rate=best_preset["lr"],
                 epochs=best_preset["epochs"],
                 batch_size=best_preset["batch_size"],
                 loss=best_preset["loss"],
@@ -685,38 +718,41 @@ class MODNetModel:
         if self._scale_impute is not None:
             x = self._scale_impute.transform(x)
 
-        p = np.array(self.model.predict(x))
+        p = self.model.predict(x)
 
-        if len(p.shape) == 2:
-            p = np.array([p])
+        if len(self.targets_groups) == 1:
+            p = [p]
 
         # post-process based on training data
         if max(self.num_classes.values()) <= 2:  # regression
-            yrange = self.max_y - self.min_y
-            upper_bound = self.max_y + 0.25 * yrange
-            lower_bound = self.min_y - 0.25 * yrange
             for i, vals in enumerate(p):
-                out_of_range_idxs = np.where(
-                    (vals < lower_bound[i]) | (vals > upper_bound[i])
-                )
-                vals[out_of_range_idxs] = (
-                    np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
-                    * (self.max_y[i] - self.min_y[i])
-                    + self.min_y[i]
-                )
+                yrange = self.max_y[i] - self.min_y[i]
+                upper_bound = self.max_y[i] + 0.25 * yrange
+                lower_bound = self.min_y[i] - 0.25 * yrange
+                for j in range(len(self.targets_groups[i])):
+                    out_of_range_idxs = np.where(
+                        (vals[:, j] < lower_bound[j]) | (vals[:, j] > upper_bound[j])
+                    )
+                    vals[out_of_range_idxs, j] = (
+                        np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
+                        * (yrange[j])
+                        + self.min_y[i][j]
+                    )
 
         p_dic = {}
-        for i, name in enumerate(self.targets_flatten):
+
+        for i, props in enumerate(self.targets_groups):
+            name = props[0]
             if self.num_classes[name] >= 2:
                 if return_prob:
-                    # temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
-                    temp = p[i, :, :]
+                    temp = p[i]
                     for j in range(temp.shape[-1]):
                         p_dic["{}_prob_{}".format(name, j)] = temp[:, j]
                 else:
-                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+                    p_dic[name] = np.argmax(p[i], axis=1)
             else:
-                p_dic[name] = p[i, :, 0]
+                for j, name in enumerate(props):
+                    p_dic[name] = p[i][:, j]
         predictions = pd.DataFrame(p_dic)
         predictions.index = test_data.structure_ids
 
@@ -747,12 +783,14 @@ class MODNetModel:
         if self._scale_impute is not None:
             x = self._scale_impute.transform(x)
 
-        y_pred = np.array(self.model.predict(x))
-        if len(y_pred.shape) == 2:
-            y_pred = np.array([y_pred])
+        y_pred = self.model.predict(x)
+        if len(self.targets_groups) == 1:
+            y_pred = [y_pred]
+
         score = []
-        for i, targ in enumerate(self.targets_flatten):
-            if self.num_classes[targ] >= 2:  # Classification
+        for i, prop in enumerate(self.targets_groups):
+            if self.num_classes[prop[0]] >= 2:  # Classification
+                targ = prop[0]
                 if self.multi_label:
                     y_true = np.stack(test_data.df_targets[targ].values)
                 else:
@@ -771,7 +809,7 @@ class MODNetModel:
                             scores.append(float("nan"))
                     score.append(np.nanmean(scores))
             else:
-                y_true = test_data.df_targets[targ].values.astype(
+                y_true = test_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
                 score.append(mean_absolute_error(y_true, y_pred[i]))
@@ -796,6 +834,18 @@ class MODNetModel:
         model_json, model_weights = self.model
         self.model = tf.keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
+        if not hasattr(self, "_scale_impute"):
+            self.xscale = "minmax"
+            self._set_scale_impute(
+                impute_missing=-1,
+                xscale_before_impute=True,
+                scaler=self._scaler,
+                imputer=SimpleImputer(
+                    missing_values=np.nan,
+                    strategy="constant",
+                    fill_value=-1,
+                ).fit(np.zeros((1, self.n_feat))),
+            )
 
     def save(self, filename: str) -> None:
         """Save the `MODNetModel` to filename:

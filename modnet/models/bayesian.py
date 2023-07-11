@@ -94,8 +94,8 @@ class BayesianMODNetModel(MODNetModel):
         self.targets = targets
         self.model = None
 
-        f_temp = [x for subl in targets for x in subl]
-        self.targets_flatten = [x for subl in f_temp for x in subl]
+        self.targets_groups = [x for subl in targets for x in subl]
+        self.targets_flatten = [x for subl in self.targets_groups for x in subl]
         self.num_classes = {name: 0 for name in self.targets_flatten}
         if num_classes is not None:
             self.num_classes.update(num_classes)
@@ -229,6 +229,7 @@ class BayesianMODNetModel(MODNetModel):
 
         # Build outputs
         final_out = []
+        output_names = []
         for group_idx, group in enumerate(targets):
             for prop_idx in range(len(group)):
                 previous_layer = intermediate_models_out[group_idx]
@@ -243,38 +244,34 @@ class BayesianMODNetModel(MODNetModel):
                         previous_layer = tf.keras.layers.BatchNormalization()(
                             previous_layer
                         )
-                clayer = previous_layer
-                for pi in range(len(group[prop_idx])):
-                    previous_layer = clayer
-                    for li in range(num_layers[3]):
-                        if bayesian_layers[3][li]:
-                            previous_layer = bayesian_layer(num_neurons[3][li])(
-                                previous_layer
-                            )
-                        else:
-                            previous_layer = dense_layer(num_neurons[3][li])(
-                                previous_layer
-                            )
-                    n = num_classes[group[prop_idx][pi]]
-                    if n >= 2:
-                        out = tfp.layers.DenseVariational(
-                            n,
-                            make_posterior_fn=posterior,
-                            make_prior_fn=prior,
-                            kl_weight=kl_weight,
-                            activation="softmax",
-                            name=group[prop_idx][pi],
-                        )(previous_layer)
-                    else:
-                        out = tfp.layers.DenseVariational(
-                            1,
-                            make_posterior_fn=posterior,
-                            make_prior_fn=prior,
-                            kl_weight=kl_weight,
-                            activation=out_act,
-                            name=group[prop_idx][pi],
-                        )(previous_layer)
-                    final_out.append(out)
+                n = num_classes[group[prop_idx][0]]
+                name = group[prop_idx][0]
+                if n >= 2:
+                    out = tfp.layers.DenseVariational(
+                        n,
+                        make_posterior_fn=posterior,
+                        make_prior_fn=prior,
+                        kl_weight=kl_weight,
+                        activation="softmax",
+                        name=name,
+                    )(previous_layer)
+                else:
+                    out = tfp.layers.DenseVariational(
+                        len(group[prop_idx]),
+                        make_posterior_fn=posterior,
+                        make_prior_fn=prior,
+                        kl_weight=kl_weight,
+                        activation=out_act,
+                        name=name,
+                    )(previous_layer)
+                final_out.append(out)
+                output_names.append(name)
+
+        new_weights = dict()
+        for n in output_names:
+            w = self.weights.get(n, 1)
+            new_weights[n] = w
+        self.weights = new_weights
 
         return tf.keras.models.Model(inputs=f_input, outputs=final_out)
 
@@ -316,13 +313,14 @@ class BayesianMODNetModel(MODNetModel):
 
         for i in range(1000):
             p = self.model.predict(x)
-            if len(self.targets_flatten) == 1:
+            if len(self.targets_groups) == 1:
                 p = np.array([p])
             all_predictions.append(p)
 
         p_dic = {}
         unc_dic = {}
-        for i, name in enumerate(self.targets_flatten):
+        for i, props in enumerate(self.targets_groups):
+            name = props[0]
             if self.num_classes[name] >= 2:
                 if return_prob:
                     preds = np.array([pred[i] for pred in all_predictions])
@@ -342,10 +340,15 @@ class BayesianMODNetModel(MODNetModel):
                         axis=1,
                     )
             else:
-                mean_p = np.array([pred[i] for pred in all_predictions]).mean(axis=0)
-                std_p = np.array([pred[i] for pred in all_predictions]).std(axis=0)
-                p_dic[name] = mean_p[:, 0]
-                unc_dic[name] = std_p[:, 0]
+                for j, name in enumerate(props):
+                    mean_p = np.array([pred[i][:, j] for pred in all_predictions]).mean(
+                        axis=0
+                    )
+                    std_p = np.array([pred[i][:, j] for pred in all_predictions]).std(
+                        axis=0
+                    )
+                    p_dic[name] = mean_p
+                    unc_dic[name] = std_p
 
         predictions = pd.DataFrame(p_dic)
         unc = pd.DataFrame(unc_dic)
