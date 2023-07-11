@@ -846,6 +846,11 @@ class MODNetModel:
                     fill_value=-1,
                 ).fit(np.zeros((1, self.n_feat))),
             )
+        if not hasattr(self, "targets_groups"):
+            self.targets_groups = [x for subl in self.targets for x in subl]
+            LOG.warning(
+                "Installed modnet version (v>=0.4.0) does not match loaded model (v<0.4.0) and may result in errors. Please retrain or change your modnet version !"
+            )
 
     def save(self, filename: str) -> None:
         """Save the `MODNetModel` to filename:
