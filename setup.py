@@ -12,11 +12,8 @@ with open("modnet/__init__.py", "r") as f:
 
 version = re.search('__version__ = "(.*)"', lines).group(1)
 
-tests_require = ["pytest>=6.0", "pytest-cov>=2.10", "flake8>=3.8"]
-
-dev_require = [
-    "pre-commit~=2.11",
-]
+tests_require = ("pytest>=6.0", "pytest-cov>=2.10", "flake8>=3.8")
+dev_require = ("pre-commit~=2.11",)
 
 setuptools.setup(
     name="modnet",
@@ -34,13 +31,15 @@ setuptools.setup(
     include_package_data=True,
     packages=setuptools.find_packages(),
     install_requires=[
-        "pandas>=0.25.3",
-        "tensorflow>=2.4",
-        "tensorflow-probability>=0.12",
-        "pymatgen>=2020,<2020.9",
-        "matminer>=0.6.2",
-        "numpy>=1.18.3",
-        "scikit-learn>=0.23,<0.24",
+        "pandas~=1.5",
+        "tensorflow~=2.10",
+        "tensorflow-probability~=0.18",
+        "pymatgen>=2022.9",
+        "matminer~=0.8",
+        "numpy>=1.20",
+        "scikit-learn~=1.1",
+        "emmet-core<0.57",  # Can remove after https://github.com/materialsproject/api/issues/819
+        "pydantic~=1.10",
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",
@@ -50,6 +49,8 @@ setuptools.setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Information Analysis",
         "Topic :: Scientific/Engineering :: Physics",

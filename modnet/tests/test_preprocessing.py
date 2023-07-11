@@ -2,8 +2,51 @@
 import numpy as np
 import pandas as pd
 import pytest
+from modnet.preprocessing import MODData, get_cross_nmi, nmi_target
 
-from modnet.preprocessing import get_cross_nmi, nmi_target, MODData
+
+def check_column_values(new: MODData, reference: MODData, tolerance=0.03):
+    """Utiliy function  to check that moddata values haven't
+    changed between initial calculation.
+
+    Allows for some columns to be checked more loosely (see inline comment below).
+
+    """
+    error_cols = set()
+    for col in new.df_featurized.columns:
+        if not (
+            np.absolute(
+                (
+                    new.df_featurized[col].to_numpy()
+                    - reference.df_featurized[col].to_numpy()
+                )
+                / (reference.df_featurized[col].to_numpy() + 1e-6)
+            ).max()
+            < tolerance
+        ):
+            error_cols.add(col)
+
+    # Unfortuanately there are some columns we cannot control, e.g.,
+    # default symmetry tolerance changing in pymatgen leading to a
+    # different number of symm ops being detected.
+
+    # We need a mechanism to allow these discrepancies through in certain cases:
+    allowed_bad_columns = [
+        "GlobalSymmetryFeatures|n_symmetry_ops",
+        "GlobalSymmetryFeatures|crystal_system",
+        "YangSolidSolution|Yang delta",
+        "Miedema|Miedema_deltaH_inter",
+        "AtomicPackingEfficiency|mean simul. packing efficiency",
+        "Miedema|Miedema_deltaH_amor",
+        "AtomicPackingEfficiency|mean abs simul. packing efficiency",
+        "Miedema|Miedema_deltaH_ss_min",
+    ]
+
+    for col in allowed_bad_columns:
+        if col in error_cols:
+            error_cols.remove(col)
+
+    assert not error_cols, f"Some columns contained errors: {error_cols}"
 
 
 def test_nmi_target():
@@ -291,15 +334,20 @@ def test_load_moddata_zip(subset_moddata):
     assert len(data.df_targets) == 100
 
 
-def test_small_moddata_featurization(small_moddata):
+@pytest.mark.parametrize("featurizer_mode", ["single", "multi"])
+def test_small_moddata_featurization(small_moddata_2023, featurizer_mode):
     """This test creates a new MODData from the MP 2018.6 structures."""
 
-    old = small_moddata
+    from modnet.featurizers.presets import Matminer2023Featurizer
+
+    old = small_moddata_2023
     structures = old.structures
     targets = old.targets
 
     names = old.names
-    new = MODData(structures, targets, target_names=names)
+    featurizer = Matminer2023Featurizer()
+    featurizer.featurizer_mode = featurizer_mode
+    new = MODData(structures, targets, target_names=names, featurizer=featurizer)
     new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
@@ -309,25 +357,23 @@ def test_small_moddata_featurization(small_moddata):
         assert new_cols[i] == old_cols[i]
 
     np.testing.assert_array_equal(old_cols, new_cols)
-
-    # assert relative error below 3 percent
-    for col in new.df_featurized.columns:
-        assert (
-            np.absolute(
-                (new.df_featurized[col].to_numpy() - old.df_featurized[col].to_numpy())
-                / (old.df_featurized[col].to_numpy() + 1e-6)
-            ).max()
-            < 0.03
-        )
+    check_column_values(new, old, tolerance=0.03)
 
 
-def test_small_moddata_composition_featurization(small_moddata_composition):
+@pytest.mark.parametrize("featurizer_mode", ["multi", "single"])
+def test_small_moddata_composition_featurization(
+    small_moddata_composition_2023, featurizer_mode
+):
     """This test creates a new MODData from the MP 2018.6 structures."""
+    from modnet.featurizers.presets import CompositionOnlyMatminer2023Featurizer
 
-    reference = small_moddata_composition
+    reference = small_moddata_composition_2023
     compositions = reference.compositions
 
-    new = MODData(materials=compositions)
+    featurizer = CompositionOnlyMatminer2023Featurizer()
+    featurizer.featurizer_mode = featurizer_mode
+
+    new = MODData(materials=compositions, featurizer=featurizer)
     new.featurize(fast=False, n_jobs=1)
 
     new_cols = sorted(new.df_featurized.columns.tolist())
@@ -338,20 +384,10 @@ def test_small_moddata_composition_featurization(small_moddata_composition):
         assert new_cols[i] == ref_cols[i]
 
     # assert relative error below 3 percent
-    for col in new.df_featurized.columns:
-        assert (
-            np.absolute(
-                (
-                    new.df_featurized[col].to_numpy()
-                    - reference.df_featurized[col].to_numpy()
-                )
-                / (reference.df_featurized[col].to_numpy() + 1e-6)
-            ).max()
-            < 0.03
-        )
+    check_column_values(new, reference, tolerance=0.03)
 
 
-def test_small_moddata_feature_selection_classif(small_moddata):
+def test_small_moddata_feature_selection_classif(small_moddata_2023):
     """This test creates classifier MODData and test the feature selection method"""
 
     x1 = np.array([0] * 500 + [1] * 500 + [2] * 500, dtype="float")
@@ -414,8 +450,9 @@ def test_load_precomputed_dataset():
 
     """
 
-    from modnet.ext_data import load_ext_dataset
     from pathlib import Path
+
+    from modnet.ext_data import load_ext_dataset
 
     path = load_ext_dataset("MP_2018.6", "MODData")
     assert path == Path(__file__).parent.parent.joinpath("data") / "MP_2018.6.zip"
@@ -466,13 +503,13 @@ def test_moddata_splits(subset_moddata):
         break
 
 
-def test_precomputed_cross_nmi(small_moddata):
+def test_precomputed_cross_nmi(small_moddata_2020):
 
     new = MODData(
-        materials=small_moddata.structures,
-        targets=small_moddata.targets,
-        target_names=small_moddata.names,
-        df_featurized=small_moddata.df_featurized,
+        materials=small_moddata_2020.structures,
+        targets=small_moddata_2020.targets,
+        target_names=small_moddata_2020.names,
+        df_featurized=small_moddata_2020.df_featurized,
     )
     new.feature_selection(5, use_precomputed_cross_nmi=True)
 

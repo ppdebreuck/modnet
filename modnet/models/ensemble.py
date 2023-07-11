@@ -41,31 +41,40 @@ class EnsembleMODNetModel(MODNetModel):
     can_return_uncertainty = True
 
     def __init__(
-        self, *args, n_models=100, bootstrap=True, modnet_models=None, **kwargs
+        self,
+        *args,
+        n_models=100,
+        bootstrap=True,
+        models=None,
+        modnet_models=None,
+        **kwargs,
     ):
         """
         Args:
             *args: See MODNetModel
             n_models: number of inner MODNetModels, each model has the same architecture defined by the args nd kwargs.
             bootstrap: whether to bootstrap the samples for each inner MODNet fit.
-            modnet_models: List of user provided MODNetModels. Enables to have different architectures. n_models is discarded in this case.
+            models: List of user provided MODNetModels. Enables to have different architectures. n_models is discarded in this case.
+            modnet_model: Deprecated. Same argument as models. For backward compatibility only.
             **kwargs: See MODNetModel
         """
         self.__modnet_version__ = __version__
         self.bootstrap = bootstrap
-        if modnet_models is None:
-            self.model = []
+        if modnet_models is not None and models is None:
+            models = modnet_models
+        if models is None:
+            self.models = []
             self.n_models = n_models
             for i in range(self.n_models):
-                self.model.append(MODNetModel(*args, **kwargs))
+                self.models.append(MODNetModel(*args, **kwargs))
         else:
-            self.model = modnet_models
-            self.n_models = len(modnet_models)
+            self.models = models
+            self.n_models = len(models)
 
-        self.targets = self.model[0].targets
-        self.weights = self.model[0].weights
-        self.num_classes = self.model[0].num_classes
-        self.out_act = self.model[0].out_act
+        self.targets = self.models[0].targets
+        self.weights = self.models[0].weights
+        self.num_classes = self.models[0].num_classes
+        self.out_act = self.models[0].out_act
 
     def fit(
         self,
@@ -99,18 +108,18 @@ class EnsembleMODNetModel(MODNetModel):
         if n_jobs <= 1:
             for i in range(self.n_models):
                 LOG.info(f"Bootstrap fitting model #{i + 1}/{self.n_models}")
-                self.model[i].fit(train_datas[i], **kwargs)
+                self.models[i].fit(train_datas[i], **kwargs)
                 model_summary = ""
-                for k in self.model[i].history.keys():
+                for k in self.models[i].history.keys():
                     model_summary += "{}: {:.4f}\t".format(
-                        k, self.model[i].history[k][-1]
+                        k, self.models[i].history[k][-1]
                     )
                 LOG.info(model_summary)
         else:
             ctx = multiprocessing.get_context("spawn")
             pool = ctx.Pool(processes=n_jobs)
             tasks = []
-            for i, m in enumerate(self.model):
+            for i, m in enumerate(self.models):
                 m._make_picklable()
                 tasks.append(
                     {
@@ -126,7 +135,7 @@ class EnsembleMODNetModel(MODNetModel):
             ):
                 model, model_id = res
                 model._restore_model()
-                self.model[model_id] = model
+                self.models[model_id] = model
                 model_summary = f"Model #{model_id}\t"
                 for k in model.history.keys():
                     model_summary += "{}: {:.4f}\t".format(k, model.history[k][-1])
@@ -142,9 +151,9 @@ class EnsembleMODNetModel(MODNetModel):
         Parameters:
             test_data: A featurized and feature-selected `MODData`
                 object containing the descriptors used in training.
-            return_prob: For a classification tasks only: whether to return the probability of each
+            return_prob: For a classification task only: whether to return the probability of each
                 class OR only return the most probable class.
-            return_unc: wheter to return a second dataframe containing the uncertainties
+            return_unc: whether to return a second dataframe containing the uncertainties
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
@@ -154,7 +163,7 @@ class EnsembleMODNetModel(MODNetModel):
 
         all_predictions = []
         for i in range(self.n_models):
-            p = self.model[i].predict(test_data, return_prob=return_prob)
+            p = self.models[i].predict(test_data, return_prob=return_prob)
             all_predictions.append(p.values)
 
         p_mean = np.array(all_predictions).mean(axis=0)
@@ -180,7 +189,7 @@ class EnsembleMODNetModel(MODNetModel):
             Loss score
         """
         all_losses = np.zeros(self.n_models)
-        for i, m in enumerate(self.model):
+        for i, m in enumerate(self.models):
             all_losses[i] = m.evaluate(test_data)
 
         return all_losses.mean()
@@ -213,7 +222,7 @@ class EnsembleMODNetModel(MODNetModel):
         The data is first fitted on several well working MODNet presets
         with a validation set (10% of the furnished data by default).
 
-        Sets the `self.model` attribute to the model with the lowest mean validation loss across
+        Sets the `self.models` attribute to the model with the lowest mean validation loss across
         all folds.
 
         Note: Inner models (presets) are 5-model bootstraps. The final (refit) model will be a self.n_model bootstrap.
@@ -275,8 +284,6 @@ class EnsembleMODNetModel(MODNetModel):
             presets = presets[:2]
             for k, _ in enumerate(presets):
                 presets[k]["epochs"] = 5
-
-        val_losses = 1e20 * np.ones((len(presets),))
 
         num_nested_folds = 5
         if nested:
@@ -417,7 +424,7 @@ class EnsembleMODNetModel(MODNetModel):
         transforms inner keras model to jsons so that the MODNet object becomes picklable.
         """
 
-        for m in self.model:
+        for m in self.models:
             m._make_picklable()
 
     def _restore_model(self):
@@ -425,8 +432,20 @@ class EnsembleMODNetModel(MODNetModel):
         restore inner keras model after running make_picklable
         """
 
-        for m in self.model:
+        # backward compatibility for loading models saved <v0.3
+        if not hasattr(self, "models") and hasattr(self, "model"):
+            self.models = self.model
+
+        for m in self.models:
             m._restore_model()
+
+    def _get_param_names(self):
+        possible_params = [
+            "n_models",
+            "bootstrap",
+            "models",
+        ]
+        return possible_params
 
 
 def _validate_ensemble_model(
@@ -445,6 +464,7 @@ def _validate_ensemble_model(
     act="relu",
     out_act="linear",
     xscale="minmax",
+    impute_missing=-1,
     callbacks=[],
     preset_id=None,
     fold_id=None,
@@ -464,11 +484,12 @@ def _validate_ensemble_model(
 
     model.fit(
         train_data,
-        lr=lr,
+        learning_rate=lr,
         epochs=epochs,
         batch_size=batch_size,
         loss=loss,
         xscale=xscale,
+        impute_missing=impute_missing,
         callbacks=callbacks,
         verbose=verbose,
         val_fraction=0,
