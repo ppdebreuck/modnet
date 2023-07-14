@@ -16,7 +16,12 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
 
     """
 
-    def __init__(self, fast_oxid: bool = False, continuous_only: bool = False):
+    def __init__(
+        self,
+        fast_oxid: bool = False,
+        continuous_only: bool = False,
+        drop_allnan: bool = True,
+    ):
         """Creates the featurizer and imports all featurizer functions.
 
         Parameters:
@@ -28,12 +33,14 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             continuous_only: Whether to keep only the features that are continuous
                 with respect to the composition (only for composition featurizers).
                 Discontinuous features may lead to discontinuities in the model predictions.
+            drop_allnan: if True, features that are fully NaNs will be removed.
 
         """
 
         super().__init__()
         self.fast_oxid = fast_oxid
         self.continuous_only = continuous_only
+        self.drop_allnan = drop_allnan
         self.load_featurizers()
 
     def load_featurizers(self):
@@ -323,7 +330,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             if self.oxid_composition_featurizers:
                 df.drop(columns=["IonProperty|max ionic char"], inplace=True)
 
-        return modnet.featurizers.clean_df(df)
+        return modnet.featurizers.clean_df(df, drop_allnan=self.drop_allnan)
 
     def featurize_structure(self, df):
         """Applies the preset structural featurizers to the input dataframe,
@@ -359,7 +366,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             "GlobalSymmetryFeatures|is_centrosymmetric"
         ].map(_int_map)
 
-        return modnet.featurizers.clean_df(df)
+        return modnet.featurizers.clean_df(df, drop_allnan=self.drop_allnan)
 
     def featurize_site(self, df):
         """Applies the preset site featurizers to the input dataframe,
@@ -376,7 +383,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
         df = super().featurize_site(df, aliases=aliases)
         df = df.loc[:, (df != 0).any(axis=0)]
 
-        return modnet.featurizers.clean_df(df)
+        return modnet.featurizers.clean_df(df, drop_allnan=self.drop_allnan)
 
 
 class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
@@ -391,9 +398,14 @@ class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
         self,
         continuous_only: bool = False,
         oxidation_featurizers: bool = False,
+        drop_allnan: bool = True,
         fast_oxid: bool = False,
     ):
-        super().__init__(fast_oxid=fast_oxid, continuous_only=continuous_only)
+        super().__init__(
+            fast_oxid=fast_oxid,
+            continuous_only=continuous_only,
+            drop_allnan=drop_allnan,
+        )
         self.fast_oxid = fast_oxid
         self.structure_featurizers = ()
         self.site_featurizers = ()
