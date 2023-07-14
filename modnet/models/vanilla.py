@@ -919,7 +919,7 @@ class MODNetModel:
                     )
                     recovered_data = DeprecatedMODNetModel(targets=[], weights={})
                     recovered_data.__dict__ = pickled_data.__dict__.copy()
-                    pickled_data.models[i] = recovered_data
+                    pickled_data.model = recovered_data
             return pickled_data
 
         raise ValueError(
