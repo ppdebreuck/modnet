@@ -706,7 +706,9 @@ class MODData:
         self.df_structure = pd.DataFrame({"id": structure_ids, "structure": materials})
         self.df_structure.set_index("id", inplace=True)
 
-    def featurize(self, fast: bool = False, db_file=None, n_jobs=None):
+    def featurize(
+        self, fast: bool = False, db_file=None, n_jobs=None, drop_allnan: bool = True
+    ):
         """For the input structures, construct many matminer features
         and save a featurized dataframe. If `db_file` is specified, this
         method will try to load previous feature calculations for each
@@ -720,6 +722,7 @@ class MODData:
             Note : The database will be downloaded in this case, and takes around 2GB of space on your drive !
 
             db_file: Deprecated. Do Not use this anymore.
+            drop_allnan: if True, features that are fully NaNs will be removed.
 
 
         """
@@ -736,6 +739,8 @@ class MODData:
 
         if n_jobs is not None:
             self.featurizer.set_n_jobs(n_jobs)
+
+        self.featurizer.set_drop_allnan(drop_allnan)
 
         if self.df_featurized is not None:
             raise RuntimeError("Not overwriting existing featurized dataframe.")
@@ -778,7 +783,7 @@ class MODData:
             df_final = self.featurizer.featurize(self.df_structure)
 
         # replace infinite values by nan that are handled during the fit
-        df_final = clean_df(df_final)
+        df_final = clean_df(df_final, drop_allnan=drop_allnan)
 
         self.df_featurized = df_final
         LOG.info("Data has successfully been featurized!")
