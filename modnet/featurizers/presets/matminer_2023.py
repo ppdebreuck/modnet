@@ -179,7 +179,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
         else:
             df.drop(columns=["IonProperty|max ionic char"], inplace=True)
 
-        return modnet.featurizers.clean_df(df)
+        return modnet.featurizers.clean_df(df, drop_allnan=self.drop_allnan)
 
     def featurize_structure(self, df):
         """Applies the preset structural featurizers to the input dataframe,
@@ -215,7 +215,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
             "GlobalSymmetryFeatures|is_centrosymmetric"
         ].map(_int_map)
 
-        return modnet.featurizers.clean_df(df)
+        return modnet.featurizers.clean_df(df, drop_allnan=self.drop_allnan)
 
     def featurize_site(self, df):
         """Applies the preset site featurizers to the input dataframe,
@@ -232,7 +232,7 @@ class Matminer2023Featurizer(modnet.featurizers.MODFeaturizer):
         df = super().featurize_site(df, aliases=aliases)
         df = df.loc[:, (df != 0).any(axis=0)]
 
-        return modnet.featurizers.clean_df(df)
+        return modnet.featurizers.clean_df(df, drop_allnan=self.drop_allnan)
 
 
 class CompositionOnlyMatminer2023Featurizer(Matminer2023Featurizer):

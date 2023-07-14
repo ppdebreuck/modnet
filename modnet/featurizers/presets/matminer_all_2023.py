@@ -20,7 +20,6 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
         self,
         fast_oxid: bool = False,
         continuous_only: bool = False,
-        drop_allnan: bool = True,
     ):
         """Creates the featurizer and imports all featurizer functions.
 
@@ -33,14 +32,12 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             continuous_only: Whether to keep only the features that are continuous
                 with respect to the composition (only for composition featurizers).
                 Discontinuous features may lead to discontinuities in the model predictions.
-            drop_allnan: if True, features that are fully NaNs will be removed.
 
         """
 
         super().__init__()
         self.fast_oxid = fast_oxid
         self.continuous_only = continuous_only
-        self.drop_allnan = drop_allnan
         self.load_featurizers()
 
     def load_featurizers(self):
@@ -398,13 +395,11 @@ class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
         self,
         continuous_only: bool = False,
         oxidation_featurizers: bool = False,
-        drop_allnan: bool = True,
         fast_oxid: bool = False,
     ):
         super().__init__(
             fast_oxid=fast_oxid,
             continuous_only=continuous_only,
-            drop_allnan=drop_allnan,
         )
         self.fast_oxid = fast_oxid
         self.structure_featurizers = ()

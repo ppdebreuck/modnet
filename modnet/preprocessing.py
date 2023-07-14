@@ -740,6 +740,8 @@ class MODData:
         if n_jobs is not None:
             self.featurizer.set_n_jobs(n_jobs)
 
+        self.featurizer.set_drop_allnan(drop_allnan)
+
         if self.df_featurized is not None:
             raise RuntimeError("Not overwriting existing featurized dataframe.")
 

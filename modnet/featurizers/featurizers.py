@@ -48,16 +48,18 @@ class MODFeaturizer(abc.ABC):
     site_stats: Tuple[str] = ("mean", "std_dev")
     featurizer_mode: str = "multi"
 
-    def __init__(self, n_jobs=None):
+    def __init__(self, n_jobs=None, drop_allnan: bool = True):
         """Initialise the MODFeaturizer object with a requested
         number of threads to use during featurization.
 
         Arguments:
             n_jobs: The number of threads to use. If `None`, matminer
             will use `multiprocessing.cpu_count()` by default.
+            drop_allnan: if True, features that are fully NaNs will be removed.
 
         """
         self.set_n_jobs(n_jobs)
+        self.set_drop_allnan(drop_allnan)
 
     def set_n_jobs(self, n_jobs: Optional[int]):
         """Set the no. of threads to pass to matminer for featurizer
@@ -69,6 +71,9 @@ class MODFeaturizer(abc.ABC):
 
         """
         self._n_jobs = n_jobs
+
+    def set_drop_allnan(self, drop_allnan: bool = True):
+        self.drop_allnan = drop_allnan
 
     def featurize(self, df: pd.DataFrame) -> pd.DataFrame:
         """Run all of the preset featurizers on the input dataframe.
