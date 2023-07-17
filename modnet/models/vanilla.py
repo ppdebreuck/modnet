@@ -903,6 +903,23 @@ class MODNetModel:
             LOG.info(
                 f"Loaded {pickled_data} object, created with modnet version {pickled_data.__modnet_version__}"
             )
+            if hasattr(pickled_data, "models"):
+                for i, m in enumerate(pickled_data.models):  # ensemble
+                    if not hasattr(m, "targets_groups"):
+                        LOG.warning(
+                            "Loaded model is old (v<0.4.0) and will not be supported in the future (v1.0.0 onward). Please consider retraining your model!\nLoaded with DepractedMODNetModel."
+                        )
+                        recovered_data = DeprecatedMODNetModel(targets=[], weights={})
+                        recovered_data.__dict__ = m.__dict__.copy()
+                        pickled_data.models[i] = recovered_data
+            else:
+                if not hasattr(pickled_data, "targets_groups"):  # single model
+                    LOG.warning(
+                        "Loaded model is old (v<0.4.0) and will not be supported in the future (v1.0.0 onward). Please consider retraining your model!\nLoaded with DepractedMODNetModel."
+                    )
+                    recovered_data = DeprecatedMODNetModel(targets=[], weights={})
+                    recovered_data.__dict__ = pickled_data.__dict__.copy()
+                    pickled_data.model = recovered_data
             return pickled_data
 
         raise ValueError(
@@ -1012,6 +1029,427 @@ class MODNetModel:
             valid_params[key].set_params(**sub_params)
 
         return self
+
+
+class DeprecatedMODNetModel(MODNetModel):
+    def build_model(
+        self,
+        targets: List,
+        n_feat: int,
+        num_neurons: Tuple[List[int], List[int], List[int], List[int]],
+        num_classes: Optional[Dict[str, int]] = None,
+        multi_label: Optional[bool] = False,
+        act: str = "relu",
+        out_act: str = "linear",
+    ):
+        """Builds the tf.keras model and sets the `self.model` attribute.
+
+        Parameters:
+            targets: A nested list of targets names that defines the hierarchy
+                of the output layers.
+            n_feat: The number of features to use as model inputs.
+            num_neurons: A specification of the model layers, as a 4-tuple
+                of lists of integers. Hidden layers are split into four
+                blocks of `tf.keras.layers.Dense`, with neuron count specified
+                by the elements of the `num_neurons` argument.
+            num_classes: Dictionary defining the target types (classification or regression).
+                Should be constructed as follows: key: string giving the target name; value: integer n,
+                with n=0 for regression and n>=2 for classification with n the number of classes.
+            multi_label: Whether the problem (if classification) is multi-label.
+                In this case the softmax output-activation is replaced by a sigmoid.
+            act: A string defining a tf.keras activation function to pass to use
+                in the `tf.keras.layers.Dense` layers.
+            out_act: A string defining a tf.keras activation function to pass to use
+                for the last output layer (regression only)
+
+        """
+
+        num_layers = [len(x) for x in num_neurons]
+
+        # Build first common block
+        f_input = tf.keras.layers.Input(shape=(n_feat,))
+        previous_layer = f_input
+        for i in range(num_layers[0]):
+            previous_layer = tf.keras.layers.Dense(num_neurons[0][i], activation=act)(
+                previous_layer
+            )
+            if self._multi_target:
+                previous_layer = tf.keras.layers.BatchNormalization()(previous_layer)
+        common_out = previous_layer
+
+        # Build intermediate representations
+        intermediate_models_out = []
+        for _ in range(len(targets)):
+            previous_layer = common_out
+            for j in range(num_layers[1]):
+                previous_layer = tf.keras.layers.Dense(
+                    num_neurons[1][j], activation=act
+                )(previous_layer)
+                if self._multi_target:
+                    previous_layer = tf.keras.layers.BatchNormalization()(
+                        previous_layer
+                    )
+            intermediate_models_out.append(previous_layer)
+
+        # Build outputs
+        final_out = []
+        for group_idx, group in enumerate(targets):
+            for prop_idx in range(len(group)):
+                previous_layer = intermediate_models_out[group_idx]
+                for k in range(num_layers[2]):
+                    previous_layer = tf.keras.layers.Dense(
+                        num_neurons[2][k], activation=act
+                    )(previous_layer)
+                    if self._multi_target:
+                        previous_layer = tf.keras.layers.BatchNormalization()(
+                            previous_layer
+                        )
+                clayer = previous_layer
+                for pi in range(len(group[prop_idx])):
+                    previous_layer = clayer
+                    for li in range(num_layers[3]):
+                        previous_layer = tf.keras.layers.Dense(num_neurons[3][li])(
+                            previous_layer
+                        )
+                    n = num_classes[group[prop_idx][pi]]
+                    if n >= 2:
+                        out = tf.keras.layers.Dense(
+                            n,
+                            activation="sigmoid" if multi_label else "softmax",
+                            name=group[prop_idx][pi],
+                        )(previous_layer)
+                    else:
+                        out = tf.keras.layers.Dense(
+                            1, activation=out_act, name=group[prop_idx][pi]
+                        )(previous_layer)
+                    final_out.append(out)
+
+        return tf.keras.models.Model(inputs=f_input, outputs=final_out)
+
+    def fit(
+        self,
+        training_data: MODData,
+        custom_data: Optional[np.ndarray] = None,
+        val_fraction: float = 0.0,
+        val_key: Optional[str] = None,
+        val_data: Optional[MODData] = None,
+        lr: float = 0.001,
+        epochs: int = 200,
+        batch_size: int = 128,
+        xscale: Optional[str] = "minmax",
+        impute_missing: Optional[Union[float, str]] = 0,
+        xscale_before_impute: bool = True,
+        metrics: List[str] = ["mae"],
+        callbacks: List[Callable] = None,
+        verbose: int = 0,
+        loss: str = None,
+        **fit_params,
+    ) -> None:
+        """Train the model on the passed training `MODData` object.
+
+        Parameters:
+            training_data: A `MODData` that has been featurized and
+                feature selected. The first `self.n_feat` entries in
+                `training_data.get_optimal_descriptors()` will be used
+                for training.
+            custom_data (np.ndarray): Optional array of shape (n_sampels, n_custom_props) that will be appended to the targets (columns wise).
+                This can be useful for defining custom loss functions.
+            val_fraction: The fraction of the training data to use as a
+                validation set for tracking model performance during
+                training.
+            val_key: The target name to track on the validation set
+                during training, if performing multi-target learning.
+            lr: The learning rate.
+            epochs: The maximum number of epochs to train for.
+            batch_size: The batch size to use for training.
+            xscale: The feature scaler to use, either `None`,
+                `'minmax'` or `'standard'`.
+            impute_missing: Determines how the NaN features are treated.
+                If str, defines the strategy used in the scikit-learn SimpleImputer,
+                e.g., "mean" sets the NaNs to the mean of their feature column.
+                If a float is provided, and if xscale_before_impute is False, this
+                float is used to replace NaNs in the original dataset.
+                If a float is provided but xscale_before_impute is True, the float
+                is not used and standard values are used.
+                If you want to do something more sophisticated, make your own
+                modifications to MODData.df_featurized before fitting the model.
+            xscale_before_impute: whether to first scale the input and then impute values, or
+                first impute values and then scale the inputs.
+            metrics: A list of tf.keras metrics to pass to `compile(...)`.
+            loss: The built-in tf.keras loss to pass to `compile(...)`.
+            fit_params: Any additional parameters to pass to `fit(...)`,
+                these will be overwritten by the explicit keyword
+                arguments above.
+
+        """
+
+        if self.n_feat > len(training_data.get_optimal_descriptors()):
+            raise RuntimeError(
+                "The model requires more features than computed in data. "
+                f"Please reduce n_feat below or equal to {len(training_data.get_optimal_descriptors())}"
+            )
+
+        self.xscale = xscale
+        self.impute_missing = impute_missing
+        self.target_names = list(self.weights.keys())
+        self.optimal_descriptors = training_data.get_optimal_descriptors()
+
+        x = training_data.get_featurized_df()[
+            self.optimal_descriptors[: self.n_feat]
+        ].values
+
+        # For compatibility with MODNet 0.1.7; if there is only one target in the training data,
+        # use that for the name of the target too.
+        if (
+            len(self.targets_flatten) == 1
+            and len(training_data.df_targets.columns) == 1
+        ):
+            self.targets_flatten = list(training_data.df_targets.columns)
+
+        y = []
+        for targ in self.targets_flatten:
+            if self.num_classes[targ] >= 2:  # Classification
+                if self.multi_label:
+                    y_inner = np.stack(training_data.df_targets[targ].values)
+                    if loss is None:
+                        loss = "binary_crossentropy"
+                else:
+                    y_inner = tf.keras.utils.to_categorical(
+                        training_data.df_targets[targ].values,
+                        num_classes=self.num_classes[targ],
+                    )
+                    if loss is None:
+                        loss = "categorical_crossentropy"
+            else:
+                y_inner = training_data.df_targets[targ].values.astype(
+                    np.float64, copy=False
+                )
+            if custom_data is not None:
+                val_data = None
+                val_fraction = 0
+                metrics = []
+                y_inner = np.hstack(
+                    (
+                        np.reshape(y_inner, (len(y_inner), -1)),
+                        custom_data.reshape((len(custom_data), -1)),
+                    )
+                )
+            y.append(y_inner)
+
+        # set scaler and imputer
+        if self.xscale == "minmax":
+            impute_missing = -1 if xscale_before_impute else impute_missing
+        elif self.xscale == "standard":
+            impute_missing = (
+                10 * np.max(np.nan_to_num(StandardScaler().fit_transform(x)))
+                if xscale_before_impute
+                else impute_missing
+            )
+        self.impute_missing = impute_missing
+        self._set_scale_impute(
+            impute_missing=impute_missing, xscale_before_impute=xscale_before_impute
+        )
+
+        x = self._scale_impute.fit_transform(x)
+
+        if val_data is not None:
+            val_x = val_data.get_featurized_df()[
+                self.optimal_descriptors[: self.n_feat]
+            ].values
+            val_x = self._scale_impute.transform(val_x)
+            val_y = []
+            for targ in self.targets_flatten:
+                if self.num_classes[targ] >= 2:  # Classification
+                    if self.multi_label:
+                        y_inner = np.stack(val_data.df_targets[targ].values)
+                        if loss is None:
+                            loss = "binary_crossentropy"
+                    else:
+                        y_inner = tf.keras.utils.to_categorical(
+                            val_data.df_targets[targ].values,
+                            num_classes=self.num_classes[targ],
+                        )
+                else:
+                    y_inner = val_data.df_targets[targ].values.astype(
+                        np.float64, copy=False
+                    )
+                val_y.append(y_inner)
+            validation_data = (val_x, val_y)
+        else:
+            validation_data = None
+
+        # set up bounds for postprocessing
+        if max(self.num_classes.values()) <= 2:  # regression
+            self.min_y = training_data.df_targets.values.min(axis=0)
+            self.max_y = training_data.df_targets.values.max(axis=0)
+
+        # Optionally set up print callback
+        if verbose:
+            if val_fraction > 0 or validation_data:
+                if self._multi_target and val_key is not None:
+                    val_metric_key = f"val_{val_key}_mae"
+                else:
+                    val_metric_key = "val_mae"
+                print_callback = tf.keras.callbacks.LambdaCallback(
+                    on_epoch_end=lambda epoch, logs: print(
+                        f"epoch {epoch}: loss: {logs['loss']:.3f}, "
+                        f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
+                    )
+                )
+
+            else:
+                print_callback = tf.keras.callbacks.LambdaCallback(
+                    on_epoch_end=lambda epoch, logs: print(
+                        f"epoch {epoch}: loss: {logs['loss']:.3f}"
+                    )
+                )
+
+            if callbacks is None:
+                callbacks = [print_callback]
+            else:
+                callbacks.append(print_callback)
+
+        fit_params_kw = {
+            "x": x,
+            "y": y,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "verbose": 0,
+            "validation_split": val_fraction,
+            "validation_data": validation_data,
+            "callbacks": callbacks,
+        }
+
+        fit_params.update(fit_params_kw)
+
+        if loss is None:
+            loss = "mse"
+        self.model.compile(
+            loss=loss,
+            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
+            metrics=metrics,
+            loss_weights=self.weights,
+        )
+        history = self.model.fit(**fit_params)
+        self.history = history.history
+
+    def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
+        """Predict the target values for the passed MODData.
+
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+            return_prob: For a classification tasks only: whether to return the probability of each
+                class OR only return the most probable class.
+
+        Returns:
+            A `pandas.DataFrame` containing the predicted values of the targets.
+
+
+        """
+        # prevents Nan predictions if some features are inf
+        x = (
+            test_data.get_featurized_df()
+            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
+            .values
+        )
+
+        # Scale and impute input features:
+        if self._scale_impute is not None:
+            x = self._scale_impute.transform(x)
+
+        p = np.array(self.model.predict(x))
+
+        if len(p.shape) == 2:
+            p = np.array([p])
+
+        # post-process based on training data
+        if max(self.num_classes.values()) <= 2:  # regression
+            yrange = self.max_y - self.min_y
+            upper_bound = self.max_y + 0.25 * yrange
+            lower_bound = self.min_y - 0.25 * yrange
+            for i, vals in enumerate(p):
+                out_of_range_idxs = np.where(
+                    (vals < lower_bound[i]) | (vals > upper_bound[i])
+                )
+                vals[out_of_range_idxs] = (
+                    np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
+                    * (self.max_y[i] - self.min_y[i])
+                    + self.min_y[i]
+                )
+
+        p_dic = {}
+        for i, name in enumerate(self.targets_flatten):
+            if self.num_classes[name] >= 2:
+                if return_prob:
+                    # temp = p[i, :, :] / (p[i, :, :].sum(axis=1)).reshape((-1, 1))
+                    temp = p[i, :, :]
+                    for j in range(temp.shape[-1]):
+                        p_dic["{}_prob_{}".format(name, j)] = temp[:, j]
+                else:
+                    p_dic[name] = np.argmax(p[i, :, :], axis=1)
+            else:
+                p_dic[name] = p[i, :, 0]
+        predictions = pd.DataFrame(p_dic)
+        predictions.index = test_data.structure_ids
+
+        return predictions
+
+    def evaluate(self, test_data: MODData) -> pd.DataFrame:
+        """Evaluates predictions on the passed MODData by returning the corresponding score:
+            - for regression: MAE
+            - for classification: negative ROC AUC.
+            averaged over the targets when multi-target.
+
+        Parameters:
+            test_data: A featurized and feature-selected `MODData`
+                object containing the descriptors used in training.
+
+
+        Returns:
+            Score defined hereabove.
+        """
+        # prevents Nan predictions if some features are inf
+        x = (
+            test_data.get_featurized_df()
+            .replace([np.inf, -np.inf], np.nan)[self.optimal_descriptors[: self.n_feat]]
+            .values
+        )
+
+        # Scale and impute input features:
+        if self._scale_impute is not None:
+            x = self._scale_impute.transform(x)
+
+        y_pred = np.array(self.model.predict(x))
+        if len(y_pred.shape) == 2:
+            y_pred = np.array([y_pred])
+        score = []
+        for i, targ in enumerate(self.targets_flatten):
+            if self.num_classes[targ] >= 2:  # Classification
+                if self.multi_label:
+                    y_true = np.stack(test_data.df_targets[targ].values)
+                else:
+                    y_true = tf.keras.utils.to_categorical(
+                        test_data.df_targets[targ].values,
+                        num_classes=self.num_classes[targ],
+                    )
+                try:
+                    score.append(-roc_auc_score(y_true, y_pred[i], multi_class="ovr"))
+                except ValueError:
+                    scores = []
+                    for j in range(y_true.shape[1]):
+                        try:
+                            scores.append(-roc_auc_score(y_true[:, j], y_pred[i][:, j]))
+                        except ValueError:
+                            scores.append(float("nan"))
+                    score.append(np.nanmean(scores))
+            else:
+                y_true = test_data.df_targets[targ].values.astype(
+                    np.float64, copy=False
+                )
+                score.append(mean_absolute_error(y_true, y_pred[i]))
+
+        return np.mean(score)
 
 
 def validate_model(
