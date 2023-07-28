@@ -6,3 +6,4 @@ matminer==0.8.0
 numpy>=1.20
 scikit-learn==1.2.0
 emmet-core<0.57  # Can remove after https://github.com/materialsproject/api/issues/819
+Cython==0.29.32
