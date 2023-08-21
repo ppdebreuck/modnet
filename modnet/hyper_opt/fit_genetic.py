@@ -658,7 +658,7 @@ class FitGenetic:
 
         else:
             ensemble = []
-            for m in models[ranking[:refit]]:
+            for m in models[ranking[:10]]:
                 ensemble += m.models
             self.best_model = EnsembleMODNetModel(models=ensemble)
 
