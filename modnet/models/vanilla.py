@@ -2,33 +2,30 @@
 model with deterministic weights and outputs.
 
 """
-from collections import defaultdict
-from typing import List, Tuple, Dict, Optional, Callable, Any, Union
-
-from pathlib import Path
 import multiprocessing
-
-import pandas as pd
-import numpy as np
 import warnings
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, roc_auc_score
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-import tensorflow as tf
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import keras_core as keras
+import numpy as np
+import pandas as pd
+import tqdm
+from modnet import __version__
 from modnet.preprocessing import MODData
 from modnet.utils import LOG
-from modnet import __version__
-
-import tqdm
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_absolute_error, roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 __all__ = ("MODNetModel",)
 
 
 class MODNetModel:
-    """Container class for the underlying tf.keras `Model`, that handles
+    """Container class for the underlying keras `Model`, that handles
     setting up the architecture, activations, training and learning curve.
 
     Attributes:
@@ -36,7 +33,7 @@ class MODNetModel:
         weights: The relative loss weights for each target.
         optimal_descriptors: The list of column names used
             in training the model.
-        model: The `tf.keras.model.Model` of the network itself.
+        model: The network itself.
         target_names: The list of targets names that the model
             was trained for.
 
@@ -69,12 +66,12 @@ class MODNetModel:
                 In this case the softmax output-activation is replaced by a sigmoid.
             num_neurons: A specification of the model layers, as a 4-tuple
                 of lists of integers. Hidden layers are split into four
-                blocks of `tf.keras.layers.Dense`, with neuron count specified
+                blocks of `keras.layers.Dense`, with neuron count specified
                 by the elements of the `num_neurons` argument.
             n_feat: The number of features to use as model inputs.
-            act: A string defining a tf.keras activation function to pass to use
-                in the `tf.keras.layers.Dense` layers.
-            out_act: A string defining a tf.keras activation function to pass to use
+            act: A string defining a keras activation function to pass to use
+                in the `keras.layers.Dense` layers.
+            out_act: A string defining a keras activation function to pass to use
                 for the last output layer (regression only)
 
         """
@@ -128,7 +125,7 @@ class MODNetModel:
         act: str = "relu",
         out_act: str = "linear",
     ):
-        """Builds the tf.keras model and sets the `self.model` attribute.
+        """Builds the keras model and sets the `self.model` attribute.
 
         Parameters:
             targets: A nested list of targets names that defines the hierarchy
@@ -136,16 +133,16 @@ class MODNetModel:
             n_feat: The number of features to use as model inputs.
             num_neurons: A specification of the model layers, as a 4-tuple
                 of lists of integers. Hidden layers are split into four
-                blocks of `tf.keras.layers.Dense`, with neuron count specified
+                blocks of `keras.layers.Dense`, with neuron count specified
                 by the elements of the `num_neurons` argument.
             num_classes: Dictionary defining the target types (classification or regression).
                 Should be constructed as follows: key: string giving the target name; value: integer n,
                 with n=0 for regression and n>=2 for classification with n the number of classes.
             multi_label: Whether the problem (if classification) is multi-label.
                 In this case the softmax output-activation is replaced by a sigmoid.
-            act: A string defining a tf.keras activation function to pass to use
-                in the `tf.keras.layers.Dense` layers.
-            out_act: A string defining a tf.keras activation function to pass to use
+            act: A string defining a keras activation function to pass to use
+                in the `keras.layers.Dense` layers.
+            out_act: A string defining a keras activation function to pass to use
                 for the last output layer (regression only)
 
         """
@@ -153,14 +150,14 @@ class MODNetModel:
         num_layers = [len(x) for x in num_neurons]
 
         # Build first common block
-        f_input = tf.keras.layers.Input(shape=(n_feat,))
+        f_input = keras.layers.Input(shape=(n_feat,))
         previous_layer = f_input
         for i in range(num_layers[0]):
-            previous_layer = tf.keras.layers.Dense(num_neurons[0][i], activation=act)(
+            previous_layer = keras.layers.Dense(num_neurons[0][i], activation=act)(
                 previous_layer
             )
             if self._multi_target:
-                previous_layer = tf.keras.layers.BatchNormalization()(previous_layer)
+                previous_layer = keras.layers.BatchNormalization()(previous_layer)
         common_out = previous_layer
 
         # Build intermediate representations
@@ -168,13 +165,11 @@ class MODNetModel:
         for _ in range(len(targets)):
             previous_layer = common_out
             for j in range(num_layers[1]):
-                previous_layer = tf.keras.layers.Dense(
-                    num_neurons[1][j], activation=act
-                )(previous_layer)
+                previous_layer = keras.layers.Dense(num_neurons[1][j], activation=act)(
+                    previous_layer
+                )
                 if self._multi_target:
-                    previous_layer = tf.keras.layers.BatchNormalization()(
-                        previous_layer
-                    )
+                    previous_layer = keras.layers.BatchNormalization()(previous_layer)
             intermediate_models_out.append(previous_layer)
 
         # Build outputs
@@ -184,24 +179,24 @@ class MODNetModel:
             for prop_idx in range(len(group)):
                 previous_layer = intermediate_models_out[group_idx]
                 for k in range(num_layers[2]):
-                    previous_layer = tf.keras.layers.Dense(
+                    previous_layer = keras.layers.Dense(
                         num_neurons[2][k], activation=act
                     )(previous_layer)
                     if self._multi_target:
-                        previous_layer = tf.keras.layers.BatchNormalization()(
+                        previous_layer = keras.layers.BatchNormalization()(
                             previous_layer
                         )
 
                 n = num_classes[group[prop_idx][0]]
                 name = group[prop_idx][0]
                 if n >= 2:
-                    out = tf.keras.layers.Dense(
+                    out = keras.layers.Dense(
                         n,
                         activation="sigmoid" if multi_label else "softmax",
                         name=name,
                     )(previous_layer)
                 else:
-                    out = tf.keras.layers.Dense(
+                    out = keras.layers.Dense(
                         len(group[prop_idx]),
                         activation=out_act,
                         name=name,
@@ -215,7 +210,7 @@ class MODNetModel:
             new_weights[n] = w
         self.weights = new_weights
 
-        return tf.keras.models.Model(inputs=f_input, outputs=final_out)
+        return keras.models.Model(inputs=f_input, outputs=final_out)
 
     def _set_scale_impute(
         self, impute_missing, xscale_before_impute, scaler=None, imputer=None
@@ -311,8 +306,8 @@ class MODNetModel:
                 modifications to MODData.df_featurized before fitting the model.
             xscale_before_impute: whether to first scale the input and then impute values, or
                 first impute values and then scale the inputs.
-            metrics: A list of tf.keras metrics to pass to `compile(...)`.
-            loss: The built-in tf.keras loss to pass to `compile(...)`.
+            metrics: A list of keras metrics to pass to `compile(...)`.
+            loss: The built-in keras loss to pass to `compile(...)`.
             fit_params: Any additional parameters to pass to `fit(...)`,
                 these will be overwritten by the explicit keyword
                 arguments above.
@@ -351,14 +346,13 @@ class MODNetModel:
                     if loss is None:
                         loss = "binary_crossentropy"
                 else:
-                    y_inner = tf.keras.utils.to_categorical(
+                    y_inner = keras.utils.to_categorical(
                         training_data.df_targets[targ].values,
                         num_classes=self.num_classes[targ],
                     )
                     if loss is None:
                         loss = "categorical_crossentropy"
             else:
-
                 y_inner = training_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
@@ -404,7 +398,7 @@ class MODNetModel:
                         if loss is None:
                             loss = "binary_crossentropy"
                     else:
-                        y_inner = tf.keras.utils.to_categorical(
+                        y_inner = keras.utils.to_categorical(
                             val_data.df_targets[targ].values,
                             num_classes=self.num_classes[targ],
                         )
@@ -432,7 +426,7 @@ class MODNetModel:
                     val_metric_key = f"val_{val_key}_mae"
                 else:
                     val_metric_key = "val_mae"
-                print_callback = tf.keras.callbacks.LambdaCallback(
+                print_callback = keras.callbacks.LambdaCallback(
                     on_epoch_end=lambda epoch, logs: print(
                         f"epoch {epoch}: loss: {logs['loss']:.3f}, "
                         f"val_loss:{logs['val_loss']:.3f} {val_metric_key}:{logs[val_metric_key]:.3f}"
@@ -440,7 +434,7 @@ class MODNetModel:
                 )
 
             else:
-                print_callback = tf.keras.callbacks.LambdaCallback(
+                print_callback = keras.callbacks.LambdaCallback(
                     on_epoch_end=lambda epoch, logs: print(
                         f"epoch {epoch}: loss: {logs['loss']:.3f}"
                     )
@@ -468,7 +462,7 @@ class MODNetModel:
             loss = "mse"
         self.model.compile(
             loss=loss,
-            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
+            optimizer=keras.optimizers.legacy.Adam(learning_rate=lr),
             metrics=metrics,
             loss_weights=self.weights,
         )
@@ -510,7 +504,7 @@ class MODNetModel:
         Args:
             data: MODData object contain training and validation samples.
             presets: A list of dictionaries containing custom presets.
-            verbose: The verbosity level to pass to tf.keras
+            verbose: The verbosity level to pass to keras
             val_fraction: The fraction of the data to use for validation.
             classification: Whether or not we are performing classification.
             refit: Whether or not to refit the final model for each fold with
@@ -532,15 +526,16 @@ class MODNetModel:
 
         """
 
-        from modnet.matbench.benchmark import matbench_kfold_splits
         import os
+
+        from modnet.matbench.benchmark import matbench_kfold_splits
 
         os.environ[
             "TF_CPP_MIN_LOG_LEVEL"
         ] = "2"  # many models will be fitted => reduce output
 
         if callbacks is None:
-            es = tf.keras.callbacks.EarlyStopping(
+            es = keras.callbacks.EarlyStopping(
                 monitor="loss",
                 min_delta=0.001,
                 patience=100,
@@ -794,7 +789,7 @@ class MODNetModel:
                 if self.multi_label:
                     y_true = np.stack(test_data.df_targets[targ].values)
                 else:
-                    y_true = tf.keras.utils.to_categorical(
+                    y_true = keras.utils.to_categorical(
                         test_data.df_targets[targ].values,
                         num_classes=self.num_classes[targ],
                     )
@@ -832,7 +827,7 @@ class MODNetModel:
         """
 
         model_json, model_weights = self.model
-        self.model = tf.keras.models.model_from_json(model_json)
+        self.model = keras.models.model_from_json(model_json)
         self.model.set_weights(model_weights)
         if not hasattr(self, "_scale_impute"):
             self.xscale = "minmax"
