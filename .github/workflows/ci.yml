@@ -23,7 +23,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -U setuptools wheel
-        pip install .[dev]
+        pip install .[dev,bayesian]
 
     - name: Run pre-commit
       run: |
@@ -54,7 +54,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install .[test,dev]
+        pip install .[test,dev,bayesian]
 
     - name: Run tests with pytest
       run: |
