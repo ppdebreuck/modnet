@@ -72,7 +72,6 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
     model.predict(data)
 
 
-@pytest.mark.slow
 def test_train_small_model_presets(subset_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     from modnet.model_presets import gen_presets
@@ -105,6 +104,7 @@ def test_train_small_model_presets(subset_moddata, tf_session):
             nested=nested_option,
             val_fraction=0.2,
             n_jobs=1,
+            refit=True,
         )
         models = results[0]
         assert len(models) == len(modified_presets)
@@ -293,6 +293,7 @@ def test_train_small_bootstrap_multi_target(small_moddata, tf_session):
 def test_train_small_bootstrap_presets(small_moddata, tf_session):
     """Tests the `fit_preset()` method."""
     import time
+
     from modnet.model_presets import gen_presets
     from modnet.models import EnsembleMODNetModel
 
