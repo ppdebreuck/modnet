@@ -38,6 +38,7 @@ setuptools.setup(
         "matminer~=0.8",
         "numpy>=1.20",
         "scikit-learn~=1.1",
+        "ruamel.yaml~=0.17,<0.18",  # Required until matminer updates
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",
