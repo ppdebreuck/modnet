@@ -33,7 +33,6 @@ setuptools.setup(
     install_requires=[
         "pandas~=1.5",
         "tensorflow~=2.10",
-        "tensorflow-probability~=0.18",
         "pymatgen>=2022.9",
         "matminer~=0.8",
         "numpy>=1.20",
@@ -44,6 +43,7 @@ setuptools.setup(
     tests_require=tests_require,
     test_suite="modnet.tests",
     extras_require={
+        "bayesian": ["tensorflow-probability~=0.18"],
         "test": tests_require,
         "dev": dev_require,
     },
