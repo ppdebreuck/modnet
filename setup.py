@@ -1,5 +1,6 @@
-import setuptools
 import re
+
+import setuptools
 
 with open("README.md", "r") as f:
     long_description = f.read()
@@ -37,8 +38,6 @@ setuptools.setup(
         "matminer~=0.8",
         "numpy>=1.20",
         "scikit-learn~=1.1",
-        "emmet-core<0.57",  # Can remove after https://github.com/materialsproject/api/issues/819
-        "pydantic~=1.10",
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",
