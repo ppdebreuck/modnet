@@ -674,7 +674,7 @@ class MODNetModel:
             self.fit(
                 data,
                 val_fraction=0,
-                learning_rate=best_preset["lr"],
+                lr=best_preset["lr"],
                 epochs=best_preset["epochs"],
                 batch_size=best_preset["batch_size"],
                 loss=best_preset["loss"],
