@@ -1,5 +1,6 @@
-import setuptools
 import re
+
+import setuptools
 
 with open("README.md", "r") as f:
     long_description = f.read()
@@ -33,17 +34,16 @@ setuptools.setup(
     install_requires=[
         "pandas~=1.5",
         "tensorflow~=2.10",
-        "tensorflow-probability~=0.18",
         "pymatgen>=2022.9",
         "matminer~=0.8",
         "numpy>=1.20",
         "scikit-learn~=1.1",
-        "emmet-core<0.57",  # Can remove after https://github.com/materialsproject/api/issues/819
-        "pydantic~=1.10",
+        "ruamel.yaml~=0.17,<0.18",  # Required until matminer updates
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",
     extras_require={
+        "bayesian": ["tensorflow-probability==0.18"],
         "test": tests_require,
         "dev": dev_require,
     },

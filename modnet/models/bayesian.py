@@ -4,13 +4,20 @@ Probability.
 
 """
 
-from typing import Optional, Dict, List, Tuple
+import warnings
 from functools import partial
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import tensorflow_probability as tfp
+
+try:
+    import tensorflow_probability as tfp
+except ImportError:
+    raise RuntimeError(
+        "`tensorflow-probability` is required for Bayesian models: install modnet[bayesian]."
+    )
 
 from modnet import __version__
 from modnet.models.vanilla import MODNetModel
@@ -76,6 +83,11 @@ class BayesianMODNetModel(MODNetModel):
                 for the last output layer
 
         """
+
+        warnings.warn(
+            "BayesianMODNetModel is deprecated and may be removed in the future.",
+            DeprecationWarning,
+        )
 
         self.__modnet_version__ = __version__
 
