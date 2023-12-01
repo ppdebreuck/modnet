@@ -4,4 +4,4 @@ pymatgen==2023.7.20
 matminer==0.8.0
 numpy>=1.20
 scikit-learn==1.2.0
-ruamel.yaml~=0.17,<0.18  # Required until matminer updates
+ruamel.yaml~=0.18  # Required until matminer updates
