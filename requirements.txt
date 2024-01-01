@@ -1,6 +1,6 @@
 tensorflow==2.11.0
 pandas==1.5.2
-pymatgen==2023.7.20
+pymatgen==2023.12.18
 matminer==0.8.0
 numpy>=1.20
 scikit-learn==1.2.0
