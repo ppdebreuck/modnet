@@ -358,7 +358,6 @@ class MODNetModel:
                     if loss is None:
                         loss = "categorical_crossentropy"
             else:
-
                 y_inner = training_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
@@ -758,7 +757,11 @@ class MODNetModel:
 
         return predictions
 
-    def evaluate(self, test_data: MODData) -> pd.DataFrame:
+    def evaluate(
+        self,
+        test_data: MODData,
+        loss: Union[str, Callable] = "mae",
+    ) -> pd.DataFrame:
         """Evaluates predictions on the passed MODData by returning the corresponding score:
             - for regression: MAE
             - for classification: negative ROC AUC.
@@ -812,7 +815,9 @@ class MODNetModel:
                 y_true = test_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
-                score.append(mean_absolute_error(y_true, y_pred[i]))
+                if loss == "mae":
+                    loss = mean_absolute_error
+                score.append(loss(y_true, y_pred[i]))
 
         return np.mean(score)
 

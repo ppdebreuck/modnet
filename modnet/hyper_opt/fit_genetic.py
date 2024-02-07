@@ -238,7 +238,10 @@ class Individual:
             **self.fit_params,
         )
 
-        self.val_loss = model.evaluate(val_data)
+        self.val_loss = model.evaluate(
+            val_data,
+            loss=self.genes["loss"],
+        )
         self.model = model
 
     def refit_model(self, data: MODData, n_models=10, n_jobs=1, fast: bool = False):
