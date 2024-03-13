@@ -90,18 +90,12 @@ class Individual:
         Returns:
             Individual: Child.
         """
-
-        genes_from_mother = random.sample(
-            range(len(self.genes)), k=len(self.genes) // 2
-        )  # creates indices to take randomly half the genes from one parent, and half the genes from the other
+        # creates indices to take randomly half the genes from one parent, and half the genes from the other
+        mother_genes = random.sample(self.genes.keys(), k=len(self.genes) // 2)
 
         child_genes = {
-            list(self.genes.keys())[i]: (
-                list(self.genes.values())[i]
-                if i in genes_from_mother
-                else list(partner.genes.values())[i]
-            )
-            for i in range(len(self.genes))
+            gene: self.genes[gene] if gene in mother_genes else partner.genes[gene]
+            for gene in self.genes
         }
 
         child = Individual(
