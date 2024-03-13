@@ -2,6 +2,7 @@
 model with deterministic weights and outputs.
 
 """
+
 from collections import defaultdict
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
@@ -13,7 +14,7 @@ import numpy as np
 import warnings
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, roc_auc_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, roc_auc_score
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 import tensorflow as tf
@@ -763,7 +764,7 @@ class MODNetModel:
         loss: Union[str, Callable] = "mae",
     ) -> pd.DataFrame:
         """Evaluates predictions on the passed MODData by returning the corresponding score:
-            - for regression: MAE
+            - for regression: loss function provided in loss argument. Defaults to mae.
             - for classification: negative ROC AUC.
             averaged over the targets when multi-target.
 
@@ -817,7 +818,14 @@ class MODNetModel:
                 )
                 if loss == "mae":
                     loss = mean_absolute_error
-                score.append(loss(y_true, y_pred[i]))
+                elif loss == "mse":
+                    loss = mean_squared_error
+                elif isinstance(loss, str):
+                    raise RuntimeError(
+                        f"Loss {loss} not recognized. Use mae, mse or a callable."
+                    )
+                else:
+                    score.append(loss(y_true, y_pred[i]))
 
         return np.mean(score)
 
