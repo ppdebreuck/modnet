@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 import random
 from typing import List, Optional, Dict, Union, Callable
 import numpy as np
@@ -12,7 +13,6 @@ import tqdm
 
 
 class Individual:
-
     """Class representing a set of hyperparameters for the genetic algorithm."""
 
     def __init__(
@@ -90,16 +90,12 @@ class Individual:
         Returns:
             Individual: Child.
         """
-
-        genes_from_mother = random.sample(
-            range(len(self.genes)), k=len(self.genes) // 2
-        )  # creates indices to take randomly half the genes from one parent, and half the genes from the other
+        # creates indices to take randomly half the genes from one parent, and half the genes from the other
+        mother_genes = random.sample(self.genes.keys(), k=len(self.genes) // 2)
 
         child_genes = {
-            list(self.genes.keys())[i]: list(self.genes.values())[i]
-            if i in genes_from_mother
-            else list(partner.genes.values())[i]
-            for i in range(len(self.genes))
+            gene: self.genes[gene] if gene in mother_genes else partner.genes[gene]
+            for gene in self.genes
         }
 
         child = Individual(
@@ -574,6 +570,7 @@ class FitGenetic:
             weights = [
                 1 / lw**5 for lw in val_loss[ranking]
             ]  # **5 in order to give relatively more importance to the best individuals
+            weights = [1e-5 if math.isnan(weight) else weight for weight in weights]
             weights = [w / sum(weights) for w in weights]
             # selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
             parents_1 = random.choices(
