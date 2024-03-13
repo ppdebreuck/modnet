@@ -579,7 +579,6 @@ class FitGenetic:
             weights = [1e-5 if math.isnan(weight) else weight for weight in weights]
             weights = [w / sum(weights) for w in weights]
             # selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
-            print(weights)
             parents_1 = random.choices(
                 individuals[ranking], weights=weights, k=size_pop
             )
