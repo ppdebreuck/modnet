@@ -223,9 +223,9 @@ class MODFeaturizer(abc.ABC):
                 df["integer_composition"] = [
                     Composition(
                         comp.get_integer_formula_and_factor(
-                            max_denominator=10
-                            if getattr(self, "fast_oxid", False)
-                            else 100
+                            max_denominator=(
+                                10 if getattr(self, "fast_oxid", False) else 100
+                            )
                         )[0]
                     )
                     for comp in df["composition"].values

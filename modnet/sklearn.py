@@ -24,7 +24,6 @@ p = Pipeline([('featurizer', modnet_featurizer), ('rr', rr_analysis), ('modnet',
   (see https://scikit-learn.org/stable/developers/develop.html#instantiation).
 """
 
-
 from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin
 from sklearn.base import TransformerMixin

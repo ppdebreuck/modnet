@@ -3,13 +3,13 @@ default_language_version:
 
 repos:
   - repo: https://github.com/ambv/black
-    rev: 22.3.0
+    rev: 24.3.0
     hooks:
     - id: black
       name: Blacken
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.2.0
+    rev: v4.5.0
     hooks:
     - id: check-added-large-files
       args: [--maxkb=1024]
@@ -19,6 +19,6 @@ repos:
     - id: end-of-file-fixer
 
   - repo: https://github.com/pycqa/flake8
-    rev: '6.0.0'
+    rev: '7.0.0'
     hooks:
     -   id: flake8
