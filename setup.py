@@ -35,10 +35,9 @@ setuptools.setup(
         "pandas~=1.5",
         "tensorflow~=2.10",
         "pymatgen>=2023",
-        "matminer~=0.8",
+        "matminer~=0.9",
         "numpy>=1.24",
         "scikit-learn~=1.3",
-        "ruamel.yaml~=0.17,<0.18",  # Required until matminer updates
     ],
     tests_require=tests_require,
     test_suite="modnet.tests",
