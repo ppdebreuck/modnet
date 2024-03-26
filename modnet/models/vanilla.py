@@ -535,9 +535,9 @@ class MODNetModel:
         from modnet.matbench.benchmark import matbench_kfold_splits
         import os
 
-        os.environ[
-            "TF_CPP_MIN_LOG_LEVEL"
-        ] = "2"  # many models will be fitted => reduce output
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = (
+            "2"  # many models will be fitted => reduce output
+        )
 
         if callbacks is None:
             es = tf.keras.callbacks.EarlyStopping(

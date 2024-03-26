@@ -438,9 +438,9 @@ class FitGenetic:
         from modnet.matbench.benchmark import matbench_kfold_splits
         import os
 
-        os.environ[
-            "TF_CPP_MIN_LOG_LEVEL"
-        ] = "2"  # many models will be fitted => reduce output
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = (
+            "2"  # many models will be fitted => reduce output
+        )
 
         num_nested_folds = 5
         if nested:
