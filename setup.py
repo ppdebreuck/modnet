@@ -37,7 +37,7 @@ setuptools.setup(
         "pymatgen>=2023",
         "matminer~=0.8",
         "numpy>=1.24",
-        "scikit-learn~=1.1",
+        "scikit-learn~=1.3",
         "ruamel.yaml~=0.17,<0.18",  # Required until matminer updates
     ],
     tests_require=tests_require,
