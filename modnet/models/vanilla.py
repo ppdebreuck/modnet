@@ -2,6 +2,7 @@
 model with deterministic weights and outputs.
 
 """
+
 from collections import defaultdict
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
@@ -13,7 +14,7 @@ import numpy as np
 import warnings
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, roc_auc_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, roc_auc_score
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 import tensorflow as tf
@@ -358,7 +359,6 @@ class MODNetModel:
                     if loss is None:
                         loss = "categorical_crossentropy"
             else:
-
                 y_inner = training_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
@@ -535,9 +535,9 @@ class MODNetModel:
         from modnet.matbench.benchmark import matbench_kfold_splits
         import os
 
-        os.environ[
-            "TF_CPP_MIN_LOG_LEVEL"
-        ] = "2"  # many models will be fitted => reduce output
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = (
+            "2"  # many models will be fitted => reduce output
+        )
 
         if callbacks is None:
             es = tf.keras.callbacks.EarlyStopping(
@@ -758,9 +758,13 @@ class MODNetModel:
 
         return predictions
 
-    def evaluate(self, test_data: MODData) -> pd.DataFrame:
+    def evaluate(
+        self,
+        test_data: MODData,
+        loss: Union[str, Callable] = "mae",
+    ) -> pd.DataFrame:
         """Evaluates predictions on the passed MODData by returning the corresponding score:
-            - for regression: MAE
+            - for regression: loss function provided in loss argument. Defaults to mae.
             - for classification: negative ROC AUC.
             averaged over the targets when multi-target.
 
@@ -812,7 +816,16 @@ class MODNetModel:
                 y_true = test_data.df_targets[prop].values.astype(
                     np.float64, copy=False
                 )
-                score.append(mean_absolute_error(y_true, y_pred[i]))
+                if loss == "mae":
+                    loss = mean_absolute_error
+                elif loss == "mse":
+                    loss = mean_squared_error
+                elif isinstance(loss, str):
+                    raise RuntimeError(
+                        f"Loss {loss} not recognized. Use mae, mse or a callable."
+                    )
+                else:
+                    score.append(loss(y_true, y_pred[i]))
 
         return np.mean(score)
 

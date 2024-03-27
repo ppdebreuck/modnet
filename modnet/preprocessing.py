@@ -924,15 +924,16 @@ class MODData:
                 max_support = support.max()
                 for i in range(self.num_classes[targ]):
                     idxs = np.where(self.df_targets[targ].values == i)[0]
-                    sampled_x, sampled_y, sampled_struct = resample(
-                        self.df_featurized.iloc[idxs],
-                        self.df_targets.iloc[idxs],
-                        self.df_structure.iloc[idxs],
-                        n_samples=int(max_support - support[i]),
-                    )
-                    self.df_featurized = self.df_featurized.append(sampled_x)
-                    self.df_targets = self.df_targets.append(sampled_y)
-                    self.df_structure = self.df_structure.append(sampled_struct)
+                    if max_support - support[i] > 0:
+                        sampled_x, sampled_y, sampled_struct = resample(
+                            self.df_featurized.iloc[idxs],
+                            self.df_targets.iloc[idxs],
+                            self.df_structure.iloc[idxs],
+                            n_samples=int(max_support - support[i]),
+                        )
+                        self.df_featurized = self.df_featurized.append(sampled_x)
+                        self.df_targets = self.df_targets.append(sampled_y)
+                        self.df_structure = self.df_structure.append(sampled_struct)
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
