@@ -1,7 +1,7 @@
 tensorflow==2.11.0
 pandas==1.5.2
 pymatgen==2023.7.20
-matminer==0.8.0
-numpy>=1.20
 scikit-learn==1.3.2
-ruamel.yaml~=0.17,<0.18  # Required until matminer updates
+matminer==0.9.1
+numpy>=1.25
+scikit-learn==1.3.2
