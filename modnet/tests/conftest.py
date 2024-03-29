@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 
 from modnet.utils import get_hash_of_file
+from pymatgen.core import Structure
 
 
 _TEST_DATA_HASHES = {
@@ -41,7 +42,22 @@ def _load_moddata(filename):
     # what it was when created
     assert get_hash_of_file(data_file) == _TEST_DATA_HASHES[filename]
 
-    return MODData.load(data_file)
+    moddata = MODData.load(data_file)
+    # For forwards compatibility with pymatgen, we have to patch our old test data to have the following attributes
+    # to allow for depickling
+    # This is hopefully only a temporary solution, and in future, we should serialize pymatgen objects
+    # with Monty's `from_dict`/`to_dict` to avoid having to hack this private interface
+    for ind, s in enumerate(moddata.structures):
+        if isinstance(moddata.structures[ind], Structure):
+            # assume all previous data was periodic
+            moddata.structures[ind].lattice._pbc = [True, True, True]
+            for jnd, site in enumerate(s.sites):
+                # assume all of our previous data had ordered sites
+                moddata.structures[ind].sites[jnd].label = str(next(iter(site.species)))
+                # required for the global structure.is_ordered to work
+                moddata.structures[ind].sites[jnd].species._n_atoms = 1.0
+
+    return moddata
 
 
 @pytest.fixture(scope="function")
