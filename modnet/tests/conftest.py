@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+from modnet.preprocessing import CompositionContainer
 
 from modnet.utils import get_hash_of_file
 from pymatgen.core import Structure
@@ -48,7 +49,7 @@ def _load_moddata(filename):
     # This is hopefully only a temporary solution, and in future, we should serialize pymatgen objects
     # with Monty's `from_dict`/`to_dict` to avoid having to hack this private interface
     for ind, s in enumerate(moddata.structures):
-        if isinstance(moddata.structures[ind], Structure):
+        if isinstance(s, Structure):
             # assume all previous data was periodic
             moddata.structures[ind].lattice._pbc = [True, True, True]
             for jnd, site in enumerate(s.sites):
@@ -56,6 +57,8 @@ def _load_moddata(filename):
                 moddata.structures[ind].sites[jnd].label = str(next(iter(site.species)))
                 # required for the global structure.is_ordered to work
                 moddata.structures[ind].sites[jnd].species._n_atoms = 1.0
+        elif isinstance(s, CompositionContainer):
+            moddata.structures[ind].composition._n_atoms = s.composition._natoms
 
     return moddata
 
