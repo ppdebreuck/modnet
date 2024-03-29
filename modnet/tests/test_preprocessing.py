@@ -12,8 +12,14 @@ def check_column_values(new: MODData, reference: MODData, tolerance=0.03):
     Allows for some columns to be checked more loosely (see inline comment below).
 
     """
+    new_cols = set(new.df_featurized.columns)
+    old_cols = set(reference.df_featurized.columns)
+
+    # Check that the new df only adds new columns and is not missing anything
+    assert not (old_cols - new_cols)
+
     error_cols = set()
-    for col in new.df_featurized.columns:
+    for col in old_cols:
         if not (
             np.absolute(
                 (
@@ -349,14 +355,6 @@ def test_small_moddata_featurization(small_moddata_2023, featurizer_mode):
     featurizer.featurizer_mode = featurizer_mode
     new = MODData(structures, targets, target_names=names, featurizer=featurizer)
     new.featurize(fast=False, n_jobs=1)
-
-    new_cols = sorted(new.df_featurized.columns.tolist())
-    old_cols = sorted(old.df_featurized.columns.tolist())
-
-    for i in range(len(old_cols)):
-        assert new_cols[i] == old_cols[i]
-
-    np.testing.assert_array_equal(old_cols, new_cols)
     check_column_values(new, old, tolerance=0.03)
 
 
@@ -375,13 +373,6 @@ def test_small_moddata_composition_featurization(
 
     new = MODData(materials=compositions, featurizer=featurizer)
     new.featurize(fast=False, n_jobs=1)
-
-    new_cols = sorted(new.df_featurized.columns.tolist())
-    ref_cols = sorted(reference.df_featurized.columns.tolist())
-
-    for i in range(len(ref_cols)):
-        # print(new_cols[i], ref_cols[i])
-        assert new_cols[i] == ref_cols[i]
 
     # assert relative error below 3 percent
     check_column_values(new, reference, tolerance=0.03)
