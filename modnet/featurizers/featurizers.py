@@ -141,7 +141,10 @@ class MODFeaturizer(abc.ABC):
                 _featurizers.set_n_jobs(self._n_jobs)
 
             return _featurizers.featurize_dataframe(
-                df, column, multiindex=True, ignore_errors=True
+                df,
+                column,
+                multiindex=True,
+                ignore_errors=getattr(self, "ignore_errors", True),
             )
         elif mode == "single":
 
@@ -164,7 +167,10 @@ class MODFeaturizer(abc.ABC):
                 )
                 start = time.monotonic_ns()
                 df = featurizer.featurize_dataframe(
-                    df, column, multiindex=True, ignore_errors=True
+                    df,
+                    column,
+                    multiindex=True,
+                    ignore_errors=getattr(self, "ignore_errors", True),
                 )
                 LOG.info(
                     f"Applied featurizer {featurizer.__class__.__name__} to column {column!r} in {(time.monotonic_ns() - start) * 1e-9} seconds"
@@ -244,7 +250,11 @@ class MODFeaturizer(abc.ABC):
             else:
                 df = CompositionToOxidComposition(
                     max_sites=-1 if getattr(self, "continuous_only", False) else None
-                ).featurize_dataframe(df, col_id=col_comp, ignore_errors=True)
+                ).featurize_dataframe(
+                    df,
+                    col_id=col_comp,
+                    ignore_errors=getattr(self, "ignore_errors", True),
+                )
             df = self._fit_apply_featurizers(
                 df,
                 self.oxid_composition_featurizers,
@@ -311,7 +321,10 @@ class MODFeaturizer(abc.ABC):
                 fingerprint, stats=self.site_stats
             )
             df = site_stats_fingerprint.featurize_dataframe(
-                df, "Input data|structure", multiindex=False, ignore_errors=True
+                df,
+                "Input data|structure",
+                multiindex=False,
+                ignore_errors=getattr(self, "ignore_errors", True),
             )
 
             if aliases:
