@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import pytest
+import numpy as np
 
 
 def test_train_small_model_single_target(subset_moddata, tf_session):
@@ -21,6 +22,7 @@ def test_train_small_model_single_target(subset_moddata, tf_session):
 
     model.fit(data, epochs=2)
     model.predict(data)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_model_single_target_classif(subset_moddata, tf_session):
@@ -49,6 +51,7 @@ def test_train_small_model_single_target_classif(subset_moddata, tf_session):
     )
 
     model.fit(data, epochs=2)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_model_multi_target(subset_moddata, tf_session):
@@ -70,6 +73,7 @@ def test_train_small_model_multi_target(subset_moddata, tf_session):
 
     model.fit(data, epochs=2)
     model.predict(data)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_model_presets(subset_moddata, tf_session):
@@ -109,6 +113,7 @@ def test_train_small_model_presets(subset_moddata, tf_session):
         models = results[0]
         assert len(models) == len(modified_presets)
         assert len(models[0]) == num_nested
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_model_integration(subset_moddata, tf_session):
@@ -134,6 +139,7 @@ def test_model_integration(subset_moddata, tf_session):
     loaded_model = MODNetModel.load("test")
 
     assert model.predict(data).equals(loaded_model.predict(data))
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_bayesian_single_target(subset_moddata, tf_session):
@@ -156,6 +162,7 @@ def test_train_small_bayesian_single_target(subset_moddata, tf_session):
     model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
@@ -186,6 +193,7 @@ def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
     model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
@@ -208,6 +216,7 @@ def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
     model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
@@ -232,6 +241,7 @@ def test_train_small_bootstrap_single_target(subset_moddata, tf_session):
     model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_bootstrap_single_target_classif(small_moddata, tf_session):
@@ -264,6 +274,7 @@ def test_train_small_bootstrap_single_target_classif(small_moddata, tf_session):
     model.fit(data, epochs=2)
     model.predict(data)
     model.predict(data, return_unc=True)
+    assert not np.isnan(model.evaluate(data))
 
 
 def test_train_small_bootstrap_multi_target(small_moddata, tf_session):
@@ -333,3 +344,5 @@ def test_train_small_bootstrap_presets(small_moddata, tf_session):
         models = results[0]
         assert len(models) == len(modified_presets)
         assert len(models[0]) == num_nested
+
+        assert not np.isnan(model.evaluate(data))
