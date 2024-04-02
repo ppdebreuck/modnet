@@ -15,7 +15,7 @@ import tensorflow as tf
 try:
     import tensorflow_probability as tfp
 except ImportError:
-    raise RuntimeError(
+    raise ImportError(
         "`tensorflow-probability` is required for Bayesian models: install modnet[bayesian]."
     )
 
