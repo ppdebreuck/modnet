@@ -825,7 +825,9 @@ class MODNetModel:
                         f"Loss {loss} not recognized. Use mae, mse or a callable."
                     )
                 else:
-                    score.append(loss(y_true, y_pred[i]))
+                    pass
+
+                score.append(loss(y_true, y_pred[i]))
 
         return np.mean(score)
 
