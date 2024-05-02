@@ -664,8 +664,10 @@ class MODData:
             LOG.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
 
         if target_names is not None:
+            if isinstance(target_names, str):
+                target_names = [target_names]
             if np.shape(targets)[-1] != len(target_names):
-                raise ValueError("Target names must be supplied for every target.")
+                raise ValueError(f"Target names must be supplied for every target: {np.shape(targets)} vs {target_names=}")
         elif targets is not None:
             if len(np.shape(targets)) == 1:
                 target_names = ["prop0"]
