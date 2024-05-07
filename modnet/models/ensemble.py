@@ -144,7 +144,11 @@ class EnsembleMODNetModel(MODNetModel):
             pool.join()
 
     def predict(
-        self, test_data: MODData, return_unc=False, return_prob=False
+        self,
+        test_data: MODData,
+        return_unc: bool = False,
+        return_prob: bool = False,
+        remap_out_of_bounds: bool = True,
     ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
@@ -154,6 +158,7 @@ class EnsembleMODNetModel(MODNetModel):
             return_prob: For a classification task only: whether to return the probability of each
                 class OR only return the most probable class.
             return_unc: whether to return a second dataframe containing the uncertainties
+            remap_out_of_bounds: whether to remap out-of-bounds values to the nearest bound.
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
@@ -163,7 +168,11 @@ class EnsembleMODNetModel(MODNetModel):
 
         all_predictions = []
         for i in range(self.n_models):
-            p = self.models[i].predict(test_data, return_prob=return_prob)
+            p = self.models[i].predict(
+                test_data,
+                return_prob=return_prob,
+                remap_out_of_bounds=remap_out_of_bounds,
+            )
             all_predictions.append(p.values)
 
         p_mean = np.array(all_predictions).mean(axis=0)

@@ -693,7 +693,12 @@ class MODNetModel:
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
-    def predict(self, test_data: MODData, return_prob=False) -> pd.DataFrame:
+    def predict(
+        self,
+        test_data: MODData,
+        return_prob: bool = False,
+        remap_out_of_bounds: bool = True,
+    ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
         Parameters:
@@ -701,6 +706,7 @@ class MODNetModel:
                 object containing the descriptors used in training.
             return_prob: For a classification tasks only: whether to return the probability of each
                 class OR only return the most probable class.
+            remap_out_of_bounds: Whether to remap out-of-bounds predictions to the training data distribution.
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
@@ -724,20 +730,22 @@ class MODNetModel:
             p = [p]
 
         # post-process based on training data
-        if max(self.num_classes.values()) <= 2:  # regression
-            for i, vals in enumerate(p):
-                yrange = self.max_y[i] - self.min_y[i]
-                upper_bound = self.max_y[i] + 0.25 * yrange
-                lower_bound = self.min_y[i] - 0.25 * yrange
-                for j in range(len(self.targets_groups[i])):
-                    out_of_range_idxs = np.where(
-                        (vals[:, j] < lower_bound[j]) | (vals[:, j] > upper_bound[j])
-                    )
-                    vals[out_of_range_idxs, j] = (
-                        np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
-                        * (yrange[j])
-                        + self.min_y[i][j]
-                    )
+        if remap_out_of_bounds:
+            if max(self.num_classes.values()) <= 2:  # regression
+                for i, vals in enumerate(p):
+                    yrange = self.max_y[i] - self.min_y[i]
+                    upper_bound = self.max_y[i] + 0.25 * yrange
+                    lower_bound = self.min_y[i] - 0.25 * yrange
+                    for j in range(len(self.targets_groups[i])):
+                        out_of_range_idxs = np.where(
+                            (vals[:, j] < lower_bound[j])
+                            | (vals[:, j] > upper_bound[j])
+                        )
+                        vals[out_of_range_idxs, j] = (
+                            np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
+                            * (yrange[j])
+                            + self.min_y[i][j]
+                        )
 
         p_dic = {}
 

@@ -664,8 +664,12 @@ class MODData:
             LOG.info(f"Loaded {self.featurizer.__class__.__name__} featurizer.")
 
         if target_names is not None:
+            if isinstance(target_names, str):
+                target_names = [target_names]
             if np.shape(targets)[-1] != len(target_names):
-                raise ValueError("Target names must be supplied for every target.")
+                raise ValueError(
+                    f"Target names must be supplied for every target: {np.shape(targets)} vs {target_names=}"
+                )
         elif targets is not None:
             if len(np.shape(targets)) == 1:
                 target_names = ["prop0"]
@@ -681,16 +685,20 @@ class MODData:
                     "List of IDs (`structure_ids`) provided must be unique."
                 )
 
-            if len(structure_ids) != len(materials):
-                raise ValueError(
-                    "List of IDs (`structure_ids`) must have same length as list of structure."
-                )
+            if materials is not None:
+                if len(structure_ids) != len(materials):
+                    raise ValueError(
+                        "List of IDs (`structure_ids`) must have same length as list of structure."
+                    )
 
         else:
-            num_entries = (
-                len(materials) if materials is not None else len(df_featurized)
-            )
-            structure_ids = [f"id{i}" for i in range(num_entries)]
+            if df_featurized is not None:
+                structure_ids = df_featurized.index
+            else:
+                num_entries = (
+                    len(materials) if materials is not None else len(df_featurized)
+                )
+                structure_ids = [f"id{i}" for i in range(num_entries)]
 
         if targets is not None:
             # set up dataframe for targets with columns (id, property_1, ..., property_n)
