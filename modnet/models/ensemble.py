@@ -144,7 +144,11 @@ class EnsembleMODNetModel(MODNetModel):
             pool.join()
 
     def predict(
-            self, test_data: MODData, return_unc: bool = False, return_prob: bool = False, remap_out_of_bounds: bool = True
+        self,
+        test_data: MODData,
+        return_unc: bool = False,
+        return_prob: bool = False,
+        remap_out_of_bounds: bool = True,
     ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
@@ -164,7 +168,11 @@ class EnsembleMODNetModel(MODNetModel):
 
         all_predictions = []
         for i in range(self.n_models):
-            p = self.models[i].predict(test_data, return_prob=return_prob, remap_out_of_bounds=remap_out_of_bounds)
+            p = self.models[i].predict(
+                test_data,
+                return_prob=return_prob,
+                remap_out_of_bounds=remap_out_of_bounds,
+            )
             all_predictions.append(p.values)
 
         p_mean = np.array(all_predictions).mean(axis=0)

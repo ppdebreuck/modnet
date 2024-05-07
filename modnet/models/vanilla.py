@@ -693,7 +693,12 @@ class MODNetModel:
 
         return models, val_losses, best_learning_curve, learning_curves, best_preset
 
-    def predict(self, test_data: MODData, return_prob: bool = False, remap_out_of_bounds: bool = True) -> pd.DataFrame:
+    def predict(
+        self,
+        test_data: MODData,
+        return_prob: bool = False,
+        remap_out_of_bounds: bool = True,
+    ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
         Parameters:
@@ -733,7 +738,8 @@ class MODNetModel:
                     lower_bound = self.min_y[i] - 0.25 * yrange
                     for j in range(len(self.targets_groups[i])):
                         out_of_range_idxs = np.where(
-                            (vals[:, j] < lower_bound[j]) | (vals[:, j] > upper_bound[j])
+                            (vals[:, j] < lower_bound[j])
+                            | (vals[:, j] > upper_bound[j])
                         )
                         vals[out_of_range_idxs, j] = (
                             np.random.uniform(0, 1, size=len(out_of_range_idxs[0]))
