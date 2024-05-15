@@ -324,12 +324,12 @@ def train_fold(
         opt_feat = train_data.optimal_features[: fit_settings["n_feat"]]
         df_train = train_data.df_featurized
         df_train = df_train[opt_feat]
-        df_train.to_csv("folds/train_f{}.csv".format(ind + 1))
+        df_train.to_csv("folds/train_f{}.csv".format(fold_ind + 1))
         df_test = test_data.df_featurized
         df_test = df_test[opt_feat]
         errors.columns = [x + "_error" for x in errors.columns]
         df_test = df_test.join(errors)
-        df_test.to_csv("folds/test_f{}.csv".format(ind + 1))
+        df_test.to_csv("folds/test_f{}.csv".format(fold_ind + 1))
 
     results["predictions"] = predictions
     if stds is not None:
