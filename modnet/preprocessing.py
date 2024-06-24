@@ -805,6 +805,7 @@ class MODData:
         drop_thr: float = 0.2,
         n_jobs: int = None,
         ignore_names: Optional[List] = [],
+        random_state: int = None,
     ):
         """Compute the mutual information between features and targets,
         then apply relevance-redundancy rankings to choose the top `n`
@@ -823,6 +824,7 @@ class MODData:
             n_jobs: max. number of processes to use when calculating cross NMI.
             ignore_names (List): Optional list of property names to ignore during feature selection.
                 Feature selection will be performed w.r.t. all properties except the ones in ignore_names.
+            random_state (int): Seed used to compute the NMI.
 
         """
         if getattr(self, "df_featurized", None) is None:
@@ -867,7 +869,11 @@ class MODData:
             else:
                 df = self.df_featurized.copy()
             self.cross_nmi, self.feature_entropy = get_cross_nmi(
-                df, return_entropy=True, drop_thr=drop_thr, n_jobs=n_jobs
+                df,
+                return_entropy=True,
+                drop_thr=drop_thr,
+                n_jobs=n_jobs,
+                random_state=random_state,
             )
 
         if self.cross_nmi.isna().sum().sum() > 0:
@@ -897,6 +903,7 @@ class MODData:
                 df,
                 df_target,
                 task_type,
+                random_state=random_state,
             )[name]
 
             LOG.info("Computing optimal features...")
