@@ -761,8 +761,7 @@ class MODNetModel:
             else:
                 for j, name in enumerate(props):
                     p_dic[name] = p[i][:, j]
-        predictions = pd.DataFrame(p_dic)
-        predictions.index = test_data.structure_ids
+        predictions = pd.DataFrame(p_dic, index=pd.Index(test_data.structure_ids))
 
         return predictions
 
