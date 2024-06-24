@@ -824,6 +824,7 @@ class MODData:
             n_jobs: max. number of processes to use when calculating cross NMI.
             ignore_names (List): Optional list of property names to ignore during feature selection.
                 Feature selection will be performed w.r.t. all properties except the ones in ignore_names.
+            random_state (int): Seed used to compute the NMI.
 
         """
         if getattr(self, "df_featurized", None) is None:
