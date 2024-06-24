@@ -20,6 +20,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
         self,
         fast_oxid: bool = False,
         continuous_only: bool = False,
+        impute_nan: bool = False,
     ):
         """Creates the featurizer and imports all featurizer functions.
 
@@ -32,12 +33,15 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             continuous_only: Whether to keep only the features that are continuous
                 with respect to the composition (only for composition featurizers).
                 Discontinuous features may lead to discontinuities in the model predictions.
-
+            impute_nan (bool): if True, the features for the elements
+                that are missing from the data_source or are NaNs are replaced by the
+                average of each features over the available elements.
         """
 
         super().__init__()
         self.fast_oxid = fast_oxid
         self.continuous_only = continuous_only
+        self.impute_nan = impute_nan
         self.load_featurizers()
 
     def load_featurizers(self):
@@ -73,7 +77,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                 EwaldEnergy,
                 # GlobalInstabilityIndex,  # Still experimental?
                 GlobalSymmetryFeatures,
-                JarvisCFID,
+                # JarvisCFID,
                 MaximumPackingEfficiency,
                 MinimumRelativeDistances,
                 # OrbitalFieldMatrix,  # Buggy
@@ -142,35 +146,37 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
             ]
 
             if self.continuous_only:
-                magpie_featurizer = ElementProperty.from_preset("magpie")
+                magpie_featurizer = ElementProperty.from_preset(
+                    "magpie", impute_nan=self.impute_nan
+                )
                 magpie_featurizer.stats = ["mean", "avg_dev"]
 
                 pymatgen_featurizer = ElementProperty(
-                    data_source=PymatgenData(),
+                    data_source=PymatgenData(impute_nan=self.impute_nan),
                     stats=["mean", "avg_dev"],
                     features=pymatgen_features,
                 )
 
                 deml_featurizer = ElementProperty(
-                    data_source=DemlData(),
+                    data_source=DemlData(impute_nan=self.impute_nan),
                     stats=["mean", "avg_dev"],
                     features=deml_features,
                 )
 
                 # matscholar_featurizer = ElementProperty(
-                #     data_source=MatscholarElementData(),
+                #     data_source=MatscholarElementData(impute_nan=self.impute_nan),
                 #     stats=["mean", "avg_dev"],
                 #     features=MatscholarElementData().prop_names,
                 # )
                 #
                 # megnet_featurizer = ElementProperty(
-                #     data_source=MEGNetElementData(),
+                #     data_source=MEGNetElementData(impute_nan=self.impute_nan),
                 #     stats=["mean", "avg_dev"],
                 #     features=MEGNetElementData().prop_names,
                 # )
 
                 self.composition_featurizers = (
-                    BandCenter(),
+                    BandCenter(impute_nan=self.impute_nan),
                     ElementFraction(),
                     magpie_featurizer,
                     pymatgen_featurizer,
@@ -179,51 +185,51 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                     # megnet_featurizer,
                     Stoichiometry(p_list=[2, 3, 5, 7, 10]),
                     TMetalFraction(),
-                    ValenceOrbital(props=["frac"]),
-                    WenAlloys(),
+                    ValenceOrbital(props=["frac"], impute_nan=self.impute_nan),
+                    WenAlloys(impute_nan=self.impute_nan),
                 )
 
                 self.oxid_composition_featurizers = (
-                    IonProperty(fast=self.fast_oxid),
+                    IonProperty(fast=self.fast_oxid, impute_nan=self.impute_nan),
                     OxidationStates(stats=["mean"]),
                 )
 
             else:
                 # Get the initial presets from Matminer, without the duplicate features from Magpie
                 pymatgen_featurizer_full = ElementProperty(
-                    data_source=PymatgenData(),
+                    data_source=PymatgenData(impute_nan=self.impute_nan),
                     stats=["minimum", "maximum", "range", "mean", "std_dev"],
                     features=pymatgen_features,
                 )
 
                 deml_featurizer_full = ElementProperty(
-                    data_source=DemlData(),
+                    data_source=DemlData(impute_nan=self.impute_nan),
                     stats=["minimum", "maximum", "range", "mean", "std_dev"],
                     features=deml_features,
                 )
 
                 self.composition_featurizers = (
                     AtomicOrbitals(),
-                    AtomicPackingEfficiency(),
-                    BandCenter(),
+                    AtomicPackingEfficiency(impute_nan=self.impute_nan),
+                    BandCenter(impute_nan=self.impute_nan),
                     ElementFraction(),
-                    ElementProperty.from_preset("magpie"),
+                    ElementProperty.from_preset("magpie", impute_nan=self.impute_nan),
                     pymatgen_featurizer_full,
                     deml_featurizer_full,
-                    # ElementProperty.from_preset("matscholar_el"),
-                    # ElementProperty.from_preset("megnet_el"),
-                    Miedema(),
+                    # ElementProperty.from_preset("matscholar_el", impute_nan=self.impute_nan),
+                    # ElementProperty.from_preset("megnet_el", impute_nan=self.impute_nan),
+                    Miedema(impute_nan=self.impute_nan),
                     Stoichiometry(),
                     TMetalFraction(),
-                    ValenceOrbital(props=["frac"]),
-                    WenAlloys(),
+                    ValenceOrbital(props=["frac"], impute_nan=self.impute_nan),
+                    WenAlloys(impute_nan=self.impute_nan),
                 )
 
                 self.oxid_composition_featurizers = (
-                    CationProperty.from_preset("deml"),
-                    ElectronAffinity(),
+                    CationProperty.from_preset("deml", impute_nan=self.impute_nan),
+                    ElectronAffinity(impute_nan=self.impute_nan),
                     ElectronegativityDiff(),
-                    IonProperty(fast=self.fast_oxid),
+                    IonProperty(fast=self.fast_oxid, impute_nan=self.impute_nan),
                     OxidationStates(),
                 )
 
@@ -237,7 +243,7 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                 ElectronicRadialDistributionFunction(),
                 EwaldEnergy(),
                 GlobalSymmetryFeatures(),
-                JarvisCFID(),  # 1557 features, many redundant ones
+                # JarvisCFID(),  # 1557 features, many redundant ones
                 MaximumPackingEfficiency(),
                 MinimumRelativeDistances(),
                 # OrbitalFieldMatrix(),  # Buggy
@@ -266,8 +272,8 @@ class MatminerAll2023Featurizer(modnet.featurizers.MODFeaturizer):
                 EwaldSiteEnergy(),
                 GaussianSymmFunc(),
                 GeneralizedRadialDistributionFunction.from_preset("gaussian"),
-                IntersticeDistribution(),
-                LocalPropertyDifference(),
+                IntersticeDistribution(impute_nan=self.impute_nan),
+                LocalPropertyDifference(impute_nan=self.impute_nan),
                 OPSiteFingerprint(),
                 # SOAP.from_preset("formation_energy"),  # Leads to >260 000 features...
                 VoronoiFingerprint(),
@@ -387,8 +393,6 @@ class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
     """This subclass simply disables structure and site-level features
     from the main `Matminer2023Featurizer` class.
 
-    This should yield identical results to the original 2020 version.
-
     """
 
     def __init__(
@@ -396,10 +400,12 @@ class CompositionOnlyMatminerAll2023Featurizer(MatminerAll2023Featurizer):
         continuous_only: bool = False,
         oxidation_featurizers: bool = False,
         fast_oxid: bool = False,
+        impute_nan: bool = False,
     ):
         super().__init__(
             fast_oxid=fast_oxid,
             continuous_only=continuous_only,
+            impute_nan=impute_nan,
         )
         self.fast_oxid = fast_oxid
         self.structure_featurizers = ()
