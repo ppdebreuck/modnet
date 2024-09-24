@@ -184,7 +184,7 @@ def get_cross_nmi(
 
     Args:
         df_feat (pandas.DataFrame): Dataframe containing the input features for
-            which the NMI with the target variable is to be computed.
+            which the NMI is to be computed.
         drop_thr: Features having an information entropy (or self mutual information) threshold below this value will be dropped.
         return_entropy: If set to True, the information entropy of each feature is also returned
         **kwargs: Keyword arguments to be passed down to the

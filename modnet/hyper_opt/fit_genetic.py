@@ -534,7 +534,7 @@ class FitGenetic:
             n_jobs (Optional[int], optional): Number of jobs to parallelize on. Defaults to None.
             early_stopping (Optional[int], optional): Number of successive generations without improvement before stopping. Defaults to 4.
             refit (Optional[int], optional): Whether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
-                The amount corresponds to the number of models used in the ensemble. Defaults to 0.
+                The amount corresponds to the number of models used in the ensemble. Defaults to 5.
             fast (bool, optional): Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
                 Overrides the size_pop, num_generation and nested arguments.. Defaults to False.
             fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,
