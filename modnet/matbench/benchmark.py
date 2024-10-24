@@ -61,7 +61,7 @@ def matbench_benchmark(
     fast: bool = False,
     n_jobs: Optional[int] = None,
     nested: bool = False,
-    random_state: int | None = 42,
+    random_state: int | None = None,
     **model_init_kwargs,
 ) -> dict:
     """Train and cross-validate a model against Matbench data splits, optionally
