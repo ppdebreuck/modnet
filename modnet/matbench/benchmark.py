@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from collections import defaultdict
 from traceback import print_exc
@@ -60,6 +61,7 @@ def matbench_benchmark(
     fast: bool = False,
     n_jobs: Optional[int] = None,
     nested: bool = False,
+    random_state: int | None = None,
     **model_init_kwargs,
 ) -> dict:
     """Train and cross-validate a model against Matbench data splits, optionally
@@ -88,6 +90,7 @@ def matbench_benchmark(
         n_jobs: Try to parallelize the inner fit_preset over this number of
             processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
+        random_state: The random seed to use for the feature selection.
         **model_init_kwargs: Additional arguments to pass to the model on creation.
 
     Returns:
@@ -136,6 +139,7 @@ def matbench_benchmark(
                     n=-1,
                     use_precomputed_cross_nmi=use_precomputed_cross_nmi,
                     n_jobs=n_jobs,
+                    random_state=random_state,
                 )
             os.makedirs("folds", exist_ok=True)
             train_data.save(path)
