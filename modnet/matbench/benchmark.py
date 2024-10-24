@@ -73,6 +73,7 @@ def matbench_benchmark(
         target_weights: The target weights to use for the `MODNetModel`.
         fit_settings: Any settings to pass to `model.fit(...)` directly
             (typically when not performing hyperparameter optimisation).
+        ga_settings: Params to pass to run() method of FitGenetic().
         classification: Whether all tasks are classification rather than regression.
         model_type: The type of the model to create and benchmark.
         save_folds: Whether to save dataframes with pre-processed fold
@@ -250,15 +251,7 @@ def train_fold(
 
         elif hp_strategy == "ga":
             ga = FitGenetic(train_data)
-            model = ga.run(
-                size_pop=ga_settings["size_pop"],
-                num_generations=ga_settings["num_generations"],
-                nested=nested,
-                n_jobs=n_jobs,
-                early_stopping=ga_settings["early_stopping"],
-                refit=ga_settings["refit"],
-                fast=fast,
-            )
+            model = ga.run(nested=nested, n_jobs=n_jobs, fast=fast, **ga_settings)
 
         if save_models:
             for ind, nested_model in enumerate(models):
