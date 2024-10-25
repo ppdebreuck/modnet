@@ -13,9 +13,11 @@ import tqdm
 import tensorflow as tf
 
 from sklearn.utils import resample
-from sklearn.model_selection import train_test_split
 
-from modnet.models.vanilla import MODNetModel
+from modnet.models.vanilla import (
+    MODNetModel,
+    generate_shuffled_and_stratified_val_split,
+)
 from modnet import __version__
 from modnet.utils import LOG
 from modnet.preprocessing import MODData
@@ -306,7 +308,11 @@ class EnsembleMODNetModel(MODNetModel):
         )
         if not nested:
             splits = [
-                train_test_split(range(len(data.df_featurized)), test_size=val_fraction)
+                generate_shuffled_and_stratified_val_split(
+                    y=data.df_targets.values,
+                    val_fraction=val_fraction,
+                    classification=classification,
+                )
             ]
             n_splits = 1
         else:

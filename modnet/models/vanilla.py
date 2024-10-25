@@ -25,7 +25,7 @@ from modnet import __version__
 
 import tqdm
 
-__all__ = ("MODNetModel",)
+__all__ = ("MODNetModel", "generate_shuffled_and_stratified_val_split")
 
 
 class MODNetModel:
@@ -413,17 +413,11 @@ class MODNetModel:
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
         elif val_fraction > 0:
-            str_col = (
-                [a_idx for a_idx, a in enumerate(y) if not isinstance(a, np.float64)][0]
-                if max(self.num_classes.values()) >= 2
-                else None
-            )
             x, y, validation_data = generate_shuffled_and_stratified_val_data(
                 x=x,
                 y=y,
                 val_fraction=val_fraction,
                 classification=max(self.num_classes.values()) >= 2,
-                str_col=str_col,
             )
         else:
             validation_data = None
@@ -587,7 +581,11 @@ class MODNetModel:
         )
         if not nested:
             splits = [
-                train_test_split(range(len(data.df_featurized)), test_size=val_fraction)
+                generate_shuffled_and_stratified_val_split(
+                    y=data.df_targets.values,
+                    val_fraction=val_fraction,
+                    classification=classification,
+                )
             ]
             n_splits = 1
         else:
@@ -1546,32 +1544,42 @@ def map_validate_model(kwargs):
     return validate_model(**kwargs)
 
 
-def generate_shuffled_and_stratified_val_data(
-    x: np.ndarray,
-    y: list,
-    val_fraction: float,
-    classification: bool,
-    str_col: int | None,
+def generate_shuffled_and_stratified_val_split(
+    y: list | np.ndarray, val_fraction: float, classification: bool
 ):
     """
-    Generate validation data that is shuffled and, if classification, stratified.
+    Generate train validation split that is shuffled, reproducible and, if classification, stratified.
     """
     if classification:
-        if isinstance(y[str_col][0], list) or isinstance(y[str_col][0], np.ndarray):
-            ycv = np.argmax(y[str_col], axis=1)
+        if isinstance(y[0][0], list) or isinstance(y[0][0], np.ndarray):
+            ycv = np.argmax(y[0], axis=1)
         else:
-            ycv = y[str_col]
-        train_idx, val_idx = train_test_split(
-            range(len(x)),
+            ycv = y[0]
+        return train_test_split(
+            range(len(y[0])),
             test_size=val_fraction,
             random_state=42,
             shuffle=True,
             stratify=ycv,
         )
     else:
-        train_idx, val_idx = train_test_split(
-            range(len(x)), test_size=val_fraction, random_state=42, shuffle=True
+        return train_test_split(
+            range(len(y[0])), test_size=val_fraction, random_state=42, shuffle=True
         )
+
+
+def generate_shuffled_and_stratified_val_data(
+    x: np.ndarray,
+    y: list,
+    val_fraction: float,
+    classification: bool,
+):
+    """
+    Generate train and validation data that is shuffled, reproducible and, if classification, stratified.
+    """
+    train_idx, val_idx = generate_shuffled_and_stratified_val_split(
+        y=y, val_fraction=val_fraction, classification=classification
+    )
     return (
         x[train_idx],
         [t[train_idx] for t in y],
