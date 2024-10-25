@@ -401,14 +401,11 @@ class MODNetModel:
                     targ = prop[0]
                     if self.multi_label:
                         y_inner = np.stack(val_data.df_targets[targ].values)
-                        if loss is None:
-                            loss = "binary_crossentropy"
                     else:
                         y_inner = tf.keras.utils.to_categorical(
                             val_data.df_targets[targ].values,
                             num_classes=self.num_classes[targ],
                         )
-                        loss = "categorical_crossentropy"
                 else:
                     y_inner = val_data.df_targets[prop].values.astype(
                         np.float64, copy=False
