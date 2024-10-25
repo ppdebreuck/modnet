@@ -412,6 +412,19 @@ class MODNetModel:
                     )
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
+        elif val_fraction > 0:
+            str_col = (
+                [a_idx for a_idx, a in enumerate(y) if not isinstance(a, np.float64)][0]
+                if max(self.num_classes.values()) >= 2
+                else None
+            )
+            x, y, validation_data = generate_shuffled_and_stratified_val_data(
+                x=x,
+                y=y,
+                val_fraction=val_fraction,
+                classification=max(self.num_classes.values()) >= 2,
+                str_col=str_col,
+            )
         else:
             validation_data = None
 
@@ -424,7 +437,7 @@ class MODNetModel:
 
         # Optionally set up print callback
         if verbose:
-            if val_fraction > 0 or validation_data:
+            if validation_data:
                 if self._multi_target and val_key is not None:
                     val_metric_key = f"val_{val_key}_mae"
                 else:
@@ -1531,3 +1544,36 @@ def validate_model(
 
 def map_validate_model(kwargs):
     return validate_model(**kwargs)
+
+
+def generate_shuffled_and_stratified_val_data(
+    x: np.ndarray,
+    y: list,
+    val_fraction: float,
+    classification: bool,
+    str_col: int | None,
+):
+    """
+    Generate validation data that is shuffled and, if classification, stratified.
+    """
+    if classification:
+        if isinstance(y[str_col][0], list) or isinstance(y[str_col][0], np.ndarray):
+            ycv = np.argmax(y[str_col], axis=1)
+        else:
+            ycv = y[str_col]
+        train_idx, val_idx = train_test_split(
+            range(len(x)),
+            test_size=val_fraction,
+            random_state=42,
+            shuffle=True,
+            stratify=ycv,
+        )
+    else:
+        train_idx, val_idx = train_test_split(
+            range(len(x)), test_size=val_fraction, random_state=42, shuffle=True
+        )
+    return (
+        x[train_idx],
+        [t[train_idx] for t in y],
+        (x[val_idx], [t[val_idx] for t in y]),
+    )
