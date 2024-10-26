@@ -42,7 +42,7 @@ setuptools.setup(
     tests_require=tests_require,
     test_suite="modnet.tests",
     extras_require={
-        "bayesian": ["tensorflow-probability==0.18"],
+        "bayesian": ["tensorflow-probability==0.18", "tensorflow == 2.11.*"],
         "test": tests_require,
         "dev": dev_require,
     },

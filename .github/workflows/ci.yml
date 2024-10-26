@@ -31,7 +31,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -U setuptools wheel
-        pip install .[dev,bayesian]
+        pip install .[dev]
 
     - name: Run pre-commit
       run: |
@@ -62,9 +62,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install .[test,dev,bayesian]
+        pip install .[test,dev]
 
     - name: Run tests with pytest
       run: |
         # run tests with pytest, reporting coverage and timings
-        pytest -m "not slow" -rs -vvv  --durations=0 --cov=./modnet/
+        pytest -m "not slow" -m "not deprecated" -rs -vvv  --durations=0 --cov=./modnet/
