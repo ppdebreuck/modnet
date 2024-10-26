@@ -64,6 +64,10 @@ jobs:
         pip install -r requirements.txt
         pip install .[test,dev]
 
+    - name: List installed versions
+      run: |
+        pip list
+
     - name: Run tests with pytest
       run: |
         # run tests with pytest, reporting coverage and timings
