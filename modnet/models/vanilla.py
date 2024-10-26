@@ -1343,6 +1343,9 @@ class DeprecatedMODNetModel(MODNetModel):
         }
 
         fit_params.update(fit_params_kw)
+        if "learning_rate" in fit_params:
+            fit_params.pop("learning_rate")
+            warnings.warn("learning_rate is deprecated, use lr instead.")
 
         if loss is None:
             loss = "mse"
