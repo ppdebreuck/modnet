@@ -142,6 +142,7 @@ def test_model_integration(subset_moddata, tf_session):
     assert not np.isnan(model.evaluate(data))
 
 
+@pytest.mark.deprecated
 def test_train_small_bayesian_single_target(subset_moddata, tf_session):
     """Tests the single target training."""
     from modnet.models import BayesianMODNetModel
@@ -165,6 +166,7 @@ def test_train_small_bayesian_single_target(subset_moddata, tf_session):
     assert not np.isnan(model.evaluate(data))
 
 
+@pytest.mark.deprecated
 def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
     """Tests the single target training."""
     from modnet.models import BayesianMODNetModel
@@ -196,6 +198,7 @@ def test_train_small_bayesian_single_target_classif(subset_moddata, tf_session):
     assert not np.isnan(model.evaluate(data))
 
 
+@pytest.mark.deprecated
 def test_train_small_bayesian_multi_target(subset_moddata, tf_session):
     """Tests the multi-target training."""
     from modnet.models import BayesianMODNetModel
