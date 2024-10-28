@@ -1305,6 +1305,13 @@ class DeprecatedMODNetModel(MODNetModel):
                     )
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
+        elif val_fraction > 0:
+            x, y, validation_data = generate_shuffled_and_stratified_val_data(
+                x=x,
+                y=y,
+                val_fraction=val_fraction,
+                classification=max(self.num_classes.values()) >= 2,
+            )
         else:
             validation_data = None
 
@@ -1315,7 +1322,7 @@ class DeprecatedMODNetModel(MODNetModel):
 
         # Optionally set up print callback
         if verbose:
-            if val_fraction > 0 or validation_data:
+            if validation_data:
                 if self._multi_target and val_key is not None:
                     val_metric_key = f"val_{val_key}_mae"
                 else:
