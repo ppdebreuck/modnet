@@ -77,6 +77,7 @@ class EnsembleMODNetModel(MODNetModel):
         self.targets = self.models[0].targets
         self.weights = self.models[0].weights
         self.num_classes = self.models[0].num_classes
+        self.targets_groups = self.models[0].targets_groups
         self.out_act = self.models[0].out_act
 
     def fit(
