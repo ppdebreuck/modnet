@@ -99,15 +99,11 @@ class EnsembleMODNetModel(MODNetModel):
                 random_state = np.arange(self.n_models) + self.random_state
 
             # Loop over all targets and check if any involve classification, if so, stratify
-            classification_props = []
+            stratify = None
             for prop in self.targets_groups:
                 if self.num_classes[prop[0]] >= 2:  # Classification
-                    classification_props.append(prop[0])
-
-            stratify = None
-            if classification_props:
-                stratify = training_data.df_targets[classification_props]
-
+                    stratify = training_data.df_targets[prop[0]].array
+                    break
             train_indices = [
                 resample(
                     np.arange(len(training_data.df_targets)),
