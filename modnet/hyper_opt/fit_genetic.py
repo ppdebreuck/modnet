@@ -4,9 +4,12 @@ import random
 from typing import List, Optional, Dict, Union, Callable
 import numpy as np
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
 from modnet.preprocessing import MODData
-from modnet.models import MODNetModel, EnsembleMODNetModel
+from modnet.models import (
+    MODNetModel,
+    EnsembleMODNetModel,
+    generate_shuffled_and_stratified_val_split,
+)
 from modnet.utils import LOG
 import multiprocessing
 import tqdm
@@ -455,9 +458,21 @@ class FitGenetic:
             classification=max(self.num_classes.values()) >= 2,
         )
         if not nested:
+            str_col = (
+                [
+                    col_idx
+                    for col_idx, col in enumerate(self.train_data.df_targets.columns)
+                    if self.num_classes[col] >= 2
+                ][0]
+                if max(self.num_classes.values()) >= 2
+                else None
+            )  # TODO different nestings of targets  # TODO not all properties of df_targets may be learned!
             splits = [
-                train_test_split(
-                    range(len(self.train_data.df_featurized)), test_size=val_fraction
+                generate_shuffled_and_stratified_val_split(
+                    y=self.train_data.df_targets.values,
+                    val_fraction=val_fraction,
+                    classification=max(self.num_classes.values()) >= 2,
+                    str_col=str_col,
                 )
             ]
             n_splits = 1
