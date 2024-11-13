@@ -510,7 +510,7 @@ def _validate_ensemble_model(
 
     model.fit(
         train_data,
-        learning_rate=lr,
+        lr=lr,
         epochs=epochs,
         batch_size=batch_size,
         loss=loss,
@@ -522,7 +522,7 @@ def _validate_ensemble_model(
         val_data=val_data,
     )
 
-    learning_curves = [m.history["val_loss"] for m in model.model]
+    learning_curves = [m.history["val_loss"] for m in model.models]
 
     val_loss = model.evaluate(val_data)
 
