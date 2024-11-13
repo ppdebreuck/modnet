@@ -528,14 +528,14 @@ class FitGenetic:
             size_pop (int, optional): Size of the population per generation.. Defaults to 20.
             num_generations (int, optional): Size of the population per generation. Defaults to 10.
             prob_mut (Optional[int], optional): Probability of mutation. Defaults to None.
-            nested (Optional[int], optional): CV fold size. Use <=0 for hold-out validation. Defaults to 5.
+            nested (Optional[int], optional): CV fold size. Use 0 for hold-out validation (fraction of 0.1). Negative values and a value of 1 are equivalent to the default (5).
             multi_label: Whether the problem (if classification) is multi-label.
                 In this case the softmax output-activation is replaced by a sigmoid.
             loss: The built-in tf.keras loss to pass to `compile(...)`.
             n_jobs (Optional[int], optional): Number of jobs to parallelize on. Defaults to None.
             early_stopping (Optional[int], optional): Number of successive generations without improvement before stopping. Defaults to 4.
             refit (Optional[int], optional): Whether to refit (>0) the best hyperparameters on the whole dataset or use the best Individual instead (=0).
-                The amount corresponds to the number of models used in the ensemble. Defaults to 0.
+                The amount corresponds to the number of models used in the ensemble. Defaults to 5.
             fast (bool, optional): Use only for debugging and testing. A fast GA run with small number of epochs, generations, individuals and folds.
                 Overrides the size_pop, num_generation and nested arguments.. Defaults to False.
             fit_params: Any additional parameters to pass to `MODNetModel.fit(...)`,

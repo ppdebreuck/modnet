@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from collections import defaultdict
 from traceback import print_exc
@@ -60,6 +61,7 @@ def matbench_benchmark(
     fast: bool = False,
     n_jobs: Optional[int] = None,
     nested: bool = False,
+    random_state: int | None = None,
     **model_init_kwargs,
 ) -> dict:
     """Train and cross-validate a model against Matbench data splits, optionally
@@ -71,6 +73,7 @@ def matbench_benchmark(
         target_weights: The target weights to use for the `MODNetModel`.
         fit_settings: Any settings to pass to `model.fit(...)` directly
             (typically when not performing hyperparameter optimisation).
+        ga_settings: Params to pass to run() method of FitGenetic().
         classification: Whether all tasks are classification rather than regression.
         model_type: The type of the model to create and benchmark.
         save_folds: Whether to save dataframes with pre-processed fold
@@ -88,6 +91,7 @@ def matbench_benchmark(
         n_jobs: Try to parallelize the inner fit_preset over this number of
             processes. Maxes out at number_of_presets*nested_folds
         nested: Whether to perform nested CV for hyperparameter optimisation.
+        random_state: The random seed to use for the feature selection.
         **model_init_kwargs: Additional arguments to pass to the model on creation.
 
     Returns:
@@ -136,6 +140,7 @@ def matbench_benchmark(
                     n=-1,
                     use_precomputed_cross_nmi=use_precomputed_cross_nmi,
                     n_jobs=n_jobs,
+                    random_state=random_state,
                 )
             os.makedirs("folds", exist_ok=True)
             train_data.save(path)
@@ -246,15 +251,7 @@ def train_fold(
 
         elif hp_strategy == "ga":
             ga = FitGenetic(train_data)
-            model = ga.run(
-                size_pop=ga_settings["size_pop"],
-                num_generations=ga_settings["num_generations"],
-                nested=nested,
-                n_jobs=n_jobs,
-                early_stopping=ga_settings["early_stopping"],
-                refit=ga_settings["refit"],
-                fast=fast,
-            )
+            model = ga.run(nested=nested, n_jobs=n_jobs, fast=fast, **ga_settings)
 
         if save_models:
             for ind, nested_model in enumerate(models):
@@ -324,12 +321,12 @@ def train_fold(
         opt_feat = train_data.optimal_features[: fit_settings["n_feat"]]
         df_train = train_data.df_featurized
         df_train = df_train[opt_feat]
-        df_train.to_csv("folds/train_f{}.csv".format(ind + 1))
+        df_train.to_csv("folds/train_f{}.csv".format(fold_ind + 1))
         df_test = test_data.df_featurized
         df_test = df_test[opt_feat]
         errors.columns = [x + "_error" for x in errors.columns]
         df_test = df_test.join(errors)
-        df_test.to_csv("folds/test_f{}.csv".format(ind + 1))
+        df_test.to_csv("folds/test_f{}.csv".format(fold_ind + 1))
 
     results["predictions"] = predictions
     if stds is not None:
