@@ -55,7 +55,8 @@ class Individual:
         self.xscale_before_impute = True
         self.lr_list = [0.1, 0.01, 0.005, 0.001]
         self.batch_size_list = [32, 64, 128, 256]
-        self.fraction_list = [1, 0.75, 0.5, 0.25]
+        self.fraction_list = [1, 1, 0.75, 0.5, 0.25]
+        # add 1 to balance the chance of having an architecture with the same num_neurons on each layer
 
         if fit_params:
             self.__dict__.update(fit_params)
