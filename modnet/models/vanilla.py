@@ -413,21 +413,11 @@ class MODNetModel:
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
         elif val_fraction > 0:
-            str_col = (
-                [
-                    prop_idx
-                    for prop_idx, prop in enumerate(self.targets_groups)
-                    if self.num_classes[prop[0]] >= 2
-                ][0]
-                if max(self.num_classes.values()) >= 2
-                else None
-            )
             x, y, validation_data = generate_shuffled_and_stratified_val_data(
                 x=x,
                 y=y,
                 val_fraction=val_fraction,
                 classification=max(self.num_classes.values()) >= 2,
-                str_col=str_col,
             )
         else:
             validation_data = None
@@ -1562,18 +1552,18 @@ def map_validate_model(kwargs):
 
 
 def generate_shuffled_and_stratified_val_split(
-    y: list | np.ndarray, val_fraction: float, classification: bool, str_col: int | None
+    y: list | np.ndarray, val_fraction: float, classification: bool
 ):
     """
     Generate train validation split that is shuffled, reproducible and, if classification, stratified.
     """
     if classification:
-        if isinstance(y[str_col][0], list) or isinstance(y[str_col][0], np.ndarray):
+        if isinstance(y[0][0], list) or isinstance(y[0][0], np.ndarray):
             ycv = np.argmax(y[0], axis=1)
         else:
-            ycv = y[str_col]
+            ycv = y[0]
         return train_test_split(
-            range(len(y[str_col])),
+            range(len(y[0])),
             test_size=val_fraction,
             random_state=42,
             shuffle=True,
@@ -1590,13 +1580,12 @@ def generate_shuffled_and_stratified_val_data(
     y: list,
     val_fraction: float,
     classification: bool,
-    str_col: int | None,
 ):
     """
     Generate train and validation data that is shuffled, reproducible and, if classification, stratified.
     """
     train_idx, val_idx = generate_shuffled_and_stratified_val_split(
-        y=y, val_fraction=val_fraction, classification=classification, str_col=str_col
+        y=y, val_fraction=val_fraction, classification=classification
     )
     return (
         x[train_idx],
