@@ -1552,7 +1552,7 @@ def map_validate_model(kwargs):
 
 
 def generate_shuffled_and_stratified_val_split(
-    y: list | np.ndarray, val_fraction: float, classification: bool
+    y: np.ndarray, val_fraction: float, classification: bool
 ):
     """
     Generate train validation split that is shuffled, reproducible and, if classification, stratified.
@@ -1585,7 +1585,7 @@ def generate_shuffled_and_stratified_val_data(
     Generate train and validation data that is shuffled, reproducible and, if classification, stratified.
     """
     train_idx, val_idx = generate_shuffled_and_stratified_val_split(
-        y=y, val_fraction=val_fraction, classification=classification
+        y=np.array(y), val_fraction=val_fraction, classification=classification
     )
     return (
         x[train_idx],
