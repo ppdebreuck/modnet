@@ -166,6 +166,7 @@ class EnsembleMODNetModel(MODNetModel):
         return_unc: bool = False,
         return_prob: bool = False,
         remap_out_of_bounds: bool = True,
+        class_voting: str = "soft",
     ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
@@ -176,26 +177,46 @@ class EnsembleMODNetModel(MODNetModel):
                 class OR only return the most probable class.
             return_unc: whether to return a second dataframe containing the uncertainties
             remap_out_of_bounds: whether to remap out-of-bounds values to the nearest bound.
+            class_voting: If classification task and return_prob is False, determines
+                if soft or hard ensemble voting is performed.
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
 
 
         """
+        return_prob_comput = return_prob
+        if (
+            not return_prob
+            and max(self.num_classes.values()) >= 2
+            and class_voting == "soft"
+        ):
+            return_prob_comput = True
 
         all_predictions = []
         for i in range(self.n_models):
             p = self.models[i].predict(
                 test_data,
-                return_prob=return_prob,
+                return_prob=return_prob_comput,
                 remap_out_of_bounds=remap_out_of_bounds,
             )
             all_predictions.append(p.values)
 
-        p_mean = np.array(all_predictions).mean(axis=0)
-        p_std = np.array(all_predictions).std(axis=0)
+        p_columns = p.columns
+        if max(self.num_classes.values()) == 0 or return_prob:
+            p_mean = np.array(all_predictions).mean(axis=0)
+        elif class_voting == "soft":  # TODO think about multitarget classification
+            p_mean = np.argmax(np.array(all_predictions).sum(axis=0), axis=1)
+            p_columns = [p.columns[0].split("_")[0]]
+        else:
+            p_mean = np.apply_along_axis(
+                lambda x: np.argmax(np.bincount(x)),
+                axis=0,
+                arr=np.array(all_predictions),
+            )
 
-        df_mean = pd.DataFrame(p_mean, index=p.index, columns=p.columns)
+        p_std = np.array(all_predictions).std(axis=0)
+        df_mean = pd.DataFrame(p_mean, index=p.index, columns=p_columns)
         df_std = pd.DataFrame(p_std, index=p.index, columns=p.columns)
 
         if return_unc:
