@@ -205,9 +205,16 @@ class EnsembleMODNetModel(MODNetModel):
         p_columns = p.columns
         if max(self.num_classes.values()) == 0 or return_prob:
             p_mean = np.array(all_predictions).mean(axis=0)
-        elif class_voting == "soft":  # TODO think about multitarget classification
-            p_mean = np.argmax(np.array(all_predictions).sum(axis=0), axis=1)
-            p_columns = [p.columns[0].split("_")[0]]
+        elif class_voting == "soft":
+            p_columns, p_mean = [], []
+            for prop in set(["_".join(s.split("_")[:-2]) for s in p.columns]):
+                prop_ids = [
+                    idx for idx, col in enumerate(p.columns) if col.startswith(prop)
+                ]
+                a = np.array(all_predictions)[:, :, prop_ids]
+                p_mean.append(np.argmax(a.sum(axis=0), axis=1))
+                p_columns.append(prop)
+            p_mean = np.array(p_mean).transpose()
         else:
             p_mean = np.apply_along_axis(
                 lambda x: np.argmax(np.bincount(x)),
@@ -215,7 +222,7 @@ class EnsembleMODNetModel(MODNetModel):
                 arr=np.array(all_predictions),
             )
 
-        p_std = np.array(all_predictions).std(axis=0)
+        p_std = np.array(all_predictions).std(axis=0)  # TODO adapt for soft voting
         df_mean = pd.DataFrame(p_mean, index=p.index, columns=p_columns)
         df_std = pd.DataFrame(p_std, index=p.index, columns=p.columns)
 
