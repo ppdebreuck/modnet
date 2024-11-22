@@ -273,7 +273,53 @@ def test_train_small_bootstrap_single_target_classif(small_moddata, tf_session):
 
     model.fit(data, epochs=2)
     model.predict(data)
-    model.predict(data, return_unc=True)
+    model.predict(data, return_prob=False, voting_type="soft", return_unc=True)
+    model.predict(data, return_prob=False, voting_type="hard", return_unc=True)
+    model.predict(data, return_prob=True, return_unc=True)
+    assert not np.isnan(model.evaluate(data))
+
+
+def test_train_small_bootstrap_multi_target_classif(small_moddata, tf_session):
+    """Tests the multi target classification training."""
+    from modnet.models import EnsembleMODNetModel
+
+    data = small_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    def is_metal(egap):
+        if egap == 0:
+            return 1
+        else:
+            return 0
+
+    def eform_cl(eform):
+        if eform > 0:
+            return 1
+        else:
+            return 0
+
+    data.df_targets["is_metal"] = data.df_targets["egap"].apply(is_metal)
+    data.df_targets["eform_cl"] = data.df_targets["eform"].apply(eform_cl)
+    model = EnsembleMODNetModel(
+        [[["eform_cl"], ["is_metal"]]],
+        weights={
+            "eform_cl": 1,
+            "is_metal": 1,
+        },
+        num_neurons=[[16], [8], [8], [4]],
+        num_classes={"eform_cl": 2, "is_metal": 2},
+        n_feat=10,
+        n_models=3,
+        bootstrap=True,
+    )
+
+    model.fit(data, epochs=2)
+    model.predict(data, return_prob=True, return_unc=True)
+    model.predict(data, return_prob=False, voting_type="soft", return_unc=True)
+    model.predict(data, return_prob=False, voting_type="hard", return_unc=True)
     assert not np.isnan(model.evaluate(data))
 
 

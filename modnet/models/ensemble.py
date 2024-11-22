@@ -166,7 +166,7 @@ class EnsembleMODNetModel(MODNetModel):
         return_unc: bool = False,
         return_prob: bool = False,
         remap_out_of_bounds: bool = True,
-        class_voting: str = "soft",
+        voting_type: str = "soft",
     ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
@@ -177,7 +177,7 @@ class EnsembleMODNetModel(MODNetModel):
                 class OR only return the most probable class.
             return_unc: whether to return a second dataframe containing the uncertainties
             remap_out_of_bounds: whether to remap out-of-bounds values to the nearest bound.
-            class_voting: If classification task and return_prob is False, determines
+            voting_type: If classification task and return_prob is False, determines
                 if soft or hard ensemble voting is performed.
 
         Returns:
@@ -189,7 +189,7 @@ class EnsembleMODNetModel(MODNetModel):
         if (
             not return_prob
             and max(self.num_classes.values()) >= 2
-            and class_voting == "soft"
+            and voting_type == "soft"
         ):
             return_prob_comput = True
 
@@ -205,7 +205,7 @@ class EnsembleMODNetModel(MODNetModel):
         p_columns = p.columns
         if max(self.num_classes.values()) == 0 or return_prob:
             p_mean = np.array(all_predictions).mean(axis=0)
-        elif class_voting == "soft":
+        elif voting_type == "soft":
             p_columns, p_mean = [], []
             for prop in set(["_".join(s.split("_")[:-2]) for s in p.columns]):
                 prop_ids = [
@@ -222,7 +222,7 @@ class EnsembleMODNetModel(MODNetModel):
                 arr=np.array(all_predictions),
             )
 
-        p_std = np.array(all_predictions).std(axis=0)  # TODO adapt for soft voting
+        p_std = np.array(all_predictions).std(axis=0)
         df_mean = pd.DataFrame(p_mean, index=p.index, columns=p_columns)
         df_std = pd.DataFrame(p_std, index=p.index, columns=p.columns)
 
