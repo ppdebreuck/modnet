@@ -303,6 +303,41 @@ def test_train_small_bootstrap_multi_target(small_moddata, tf_session):
     model.predict(data, return_unc=True)
 
 
+def test_train_small_bootstrap_custom_loss_multi_target(small_moddata, tf_session):
+    """Tests a multi-target ensemble model with a custom loss per target,
+    modified from Hao Wu's example.
+
+    """
+    from modnet.models import EnsembleMODNetModel
+    import tensorflow as tf
+
+    def custom_loss(y_true, y_pred):
+        loss1 = y_pred - y_true
+        return tf.reduce_mean(
+            tf.math.abs(
+                tf.boolean_mask(loss1, tf.reduce_all(~tf.math.is_nan(loss1), axis=1))
+            )
+        )
+
+    data = small_moddata
+    # set 'optimal' features manually
+    data.optimal_features = [
+        col for col in data.df_featurized.columns if col.startswith("ElementProperty")
+    ]
+
+    model = EnsembleMODNetModel(
+        [[["eform", "egap"]]],
+        weights={"eform": 1, "egap": 1},
+        num_neurons=[[16], [8], [8], [4]],
+        n_feat=10,
+        n_models=3,
+        bootstrap=True,
+    )
+
+    model.fit(data, loss=[custom_loss, custom_loss], epochs=2)
+    model.predict(data, return_unc=True)
+
+
 @pytest.mark.slow
 def test_train_small_bootstrap_presets(small_moddata, tf_session):
     """Tests the `fit_preset()` method."""
