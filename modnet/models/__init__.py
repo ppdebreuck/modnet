@@ -1,6 +1,6 @@
 import warnings
 
-from .vanilla import MODNetModel
+from .vanilla import MODNetModel, generate_shuffled_and_stratified_val_split
 
 try:
     from .bayesian import BayesianMODNetModel
@@ -14,4 +14,9 @@ except ImportError:
 
 from .ensemble import EnsembleMODNetModel
 
-__all__ = ("MODNetModel", "BayesianMODNetModel", "EnsembleMODNetModel")
+__all__ = (
+    "MODNetModel",
+    "BayesianMODNetModel",
+    "EnsembleMODNetModel",
+    "generate_shuffled_and_stratified_val_split",
+)

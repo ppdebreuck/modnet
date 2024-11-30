@@ -25,7 +25,7 @@ from modnet import __version__
 
 import tqdm
 
-__all__ = ("MODNetModel",)
+__all__ = ("MODNetModel", "generate_shuffled_and_stratified_val_split")
 
 
 class MODNetModel:
@@ -401,20 +401,24 @@ class MODNetModel:
                     targ = prop[0]
                     if self.multi_label:
                         y_inner = np.stack(val_data.df_targets[targ].values)
-                        if loss is None:
-                            loss = "binary_crossentropy"
                     else:
                         y_inner = tf.keras.utils.to_categorical(
                             val_data.df_targets[targ].values,
                             num_classes=self.num_classes[targ],
                         )
-                        loss = "categorical_crossentropy"
                 else:
                     y_inner = val_data.df_targets[prop].values.astype(
                         np.float64, copy=False
                     )
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
+        elif val_fraction > 0:
+            x, y, validation_data = generate_shuffled_and_stratified_val_data(
+                x=x,
+                y=y,
+                val_fraction=val_fraction,
+                classification=max(self.num_classes.values()) >= 2,
+            )
         else:
             validation_data = None
 
@@ -427,7 +431,7 @@ class MODNetModel:
 
         # Optionally set up print callback
         if verbose:
-            if val_fraction > 0 or validation_data:
+            if validation_data:
                 if self._multi_target and val_key is not None:
                     val_metric_key = f"val_{val_key}_mae"
                 else:
@@ -577,7 +581,11 @@ class MODNetModel:
         )
         if not nested:
             splits = [
-                train_test_split(range(len(data.df_featurized)), test_size=val_fraction)
+                generate_shuffled_and_stratified_val_split(
+                    y=data.df_targets.values,
+                    val_fraction=val_fraction,
+                    classification=classification,
+                )
             ]
             n_splits = 1
         else:
@@ -1297,6 +1305,13 @@ class DeprecatedMODNetModel(MODNetModel):
                     )
                 val_y.append(y_inner)
             validation_data = (val_x, val_y)
+        elif val_fraction > 0:
+            x, y, validation_data = generate_shuffled_and_stratified_val_data(
+                x=x,
+                y=y,
+                val_fraction=val_fraction,
+                classification=max(self.num_classes.values()) >= 2,
+            )
         else:
             validation_data = None
 
@@ -1307,7 +1322,7 @@ class DeprecatedMODNetModel(MODNetModel):
 
         # Optionally set up print callback
         if verbose:
-            if val_fraction > 0 or validation_data:
+            if validation_data:
                 if self._multi_target and val_key is not None:
                     val_metric_key = f"val_{val_key}_mae"
                 else:
@@ -1537,3 +1552,46 @@ def validate_model(
 
 def map_validate_model(kwargs):
     return validate_model(**kwargs)
+
+
+def generate_shuffled_and_stratified_val_split(
+    y: np.ndarray, val_fraction: float, classification: bool
+):
+    """
+    Generate train validation split that is shuffled, reproducible and, if classification, stratified.
+    """
+    if classification:
+        if isinstance(y[0][0], list) or isinstance(y[0][0], np.ndarray):
+            ycv = np.argmax(y[0], axis=1)
+        else:
+            ycv = y[0]
+        return train_test_split(
+            range(len(y[0])),
+            test_size=val_fraction,
+            random_state=42,
+            shuffle=True,
+            stratify=ycv,
+        )
+    else:
+        return train_test_split(
+            range(len(y[0])), test_size=val_fraction, random_state=42, shuffle=True
+        )
+
+
+def generate_shuffled_and_stratified_val_data(
+    x: np.ndarray,
+    y: list,
+    val_fraction: float,
+    classification: bool,
+):
+    """
+    Generate train and validation data that is shuffled, reproducible and, if classification, stratified.
+    """
+    train_idx, val_idx = generate_shuffled_and_stratified_val_split(
+        y=np.array(y), val_fraction=val_fraction, classification=classification
+    )
+    return (
+        x[train_idx],
+        [t[train_idx] for t in y],
+        (x[val_idx], [t[val_idx] for t in y]),
+    )
