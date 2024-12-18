@@ -13,19 +13,18 @@ import pandas as pd
 import numpy as np
 import warnings
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, roc_auc_score
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 import tensorflow as tf
 
 from modnet.preprocessing import MODData
-from modnet.utils import LOG
+from modnet.utils import LOG, generate_shuffled_and_stratified_val_split
 from modnet import __version__
 
 import tqdm
 
-__all__ = ("MODNetModel", "generate_shuffled_and_stratified_val_split")
+__all__ = "MODNetModel"
 
 
 class MODNetModel:
@@ -1551,41 +1550,20 @@ def map_validate_model(kwargs):
     return validate_model(**kwargs)
 
 
-def generate_shuffled_and_stratified_val_split(
-    y: np.ndarray, val_fraction: float, classification: bool
-):
-    """
-    Generate train validation split that is shuffled, reproducible and, if classification, stratified.
-    """
-    if classification:
-        if isinstance(y[0][0], list) or isinstance(y[0][0], np.ndarray):
-            ycv = np.argmax(y[0], axis=1)
-        else:
-            ycv = y[0]
-        return train_test_split(
-            range(len(y[0])),
-            test_size=val_fraction,
-            random_state=42,
-            shuffle=True,
-            stratify=ycv,
-        )
-    else:
-        return train_test_split(
-            range(len(y[0])), test_size=val_fraction, random_state=42, shuffle=True
-        )
-
-
 def generate_shuffled_and_stratified_val_data(
     x: np.ndarray,
-    y: list,
+    y: list[np.ndarray],
     val_fraction: float,
     classification: bool,
 ):
     """
     Generate train and validation data that is shuffled, reproducible and, if classification, stratified.
+    Please note for classification tasks that stratification is performed on first target.
+    y: list of 2D array with combined dimensions of (n_targets, n_samples, 1 or n_classes)
     """
+    y_split = np.array([y[0]]).swapaxes(1, 0)
     train_idx, val_idx = generate_shuffled_and_stratified_val_split(
-        y=np.array(y), val_fraction=val_fraction, classification=classification
+        y=y_split, val_fraction=val_fraction, classification=classification
     )
     return (
         x[train_idx],

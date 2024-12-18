@@ -16,10 +16,9 @@ from sklearn.utils import resample
 
 from modnet.models.vanilla import (
     MODNetModel,
-    generate_shuffled_and_stratified_val_split,
 )
 from modnet import __version__
-from modnet.utils import LOG
+from modnet.utils import LOG, generate_shuffled_and_stratified_val_split
 from modnet.preprocessing import MODData
 
 __all__ = ("EnsembleMODNetModel",)

@@ -8,9 +8,8 @@ from modnet.preprocessing import MODData
 from modnet.models import (
     MODNetModel,
     EnsembleMODNetModel,
-    generate_shuffled_and_stratified_val_split,
 )
-from modnet.utils import LOG
+from modnet.utils import LOG, generate_shuffled_and_stratified_val_split
 import multiprocessing
 import tqdm
 
