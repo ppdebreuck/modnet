@@ -466,7 +466,7 @@ class EnsembleMODNetModel(MODNetModel):
             for i in range(n_splits):
                 best_5_idx = np.argsort(val_losses[:, i])[:5]
                 for idx in best_5_idx:
-                    final_models += models[idx][i].model
+                    final_models.extend(models[idx][i].models)
             self.__init__(modnet_models=final_models)
 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
