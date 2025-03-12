@@ -98,7 +98,26 @@ class MODFeaturizer(abc.ABC):
         if self.site_featurizers:
             df_site = self.featurize_site(df)
 
-        return df_composition.join(df_structure.join(df_site, lsuffix="l"), rsuffix="r")
+        def safe_join(left: pd.DataFrame, right: pd.DataFrame, lsuffix: str = "", rsuffix: str = "") -> pd.DataFrame:
+            """
+            Join two dataframes with suffixes for overlapping columns.
+            If either side is empty, return the non-empty dataframe.
+            If both are empty, return an empty DataFrame.
+            """
+            if left.empty and right.empty:
+                return pd.DataFrame([])
+            elif left.empty:
+                return right
+            elif right.empty:
+                return left
+            else:
+                return left.join(right, lsuffix=lsuffix, rsuffix=rsuffix)
+
+        # Here we use lsuffix="l" to resolve any overlapping column names.
+        tmp = safe_join(df_structure, df_site, lsuffix="l")
+        
+        final_df = safe_join(df_composition, tmp, rsuffix="r")
+        return final_df
 
     def _fit_apply_featurizers(
         self,
