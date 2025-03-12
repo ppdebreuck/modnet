@@ -11,6 +11,7 @@ from .matminer_all_2023 import (
     MatminerAll2023Featurizer,
     CompositionOnlyMatminerAll2023Featurizer,
 )
+from .matminer_2024_fast import Matminer2024FastFeaturizer
 from modnet.featurizers import MODFeaturizer
 
 DEFAULT_FEATURIZER: str = "Matminer2023"
@@ -23,4 +24,5 @@ FEATURIZER_PRESETS: Dict[str, Type[MODFeaturizer]] = {
     "MatminerAll2023": MatminerAll2023Featurizer,
     "CompositionOnlyMatminer2023": CompositionOnlyMatminer2023Featurizer,
     "CompositionOnlyMatminerAll2023": CompositionOnlyMatminerAll2023Featurizer,
+    "Matminer2024Fast":Matminer2024FastFeaturizer,
 }
