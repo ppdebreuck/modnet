@@ -219,11 +219,11 @@ class MODFeaturizer(abc.ABC):
         """
 
         df = df.copy()
-
+        df["composition"] = df["structure"].apply(lambda s: s.composition)
         if self.composition_featurizers:
 
             LOG.info("Applying composition featurizers...")
-            df["composition"] = df["structure"].apply(lambda s: s.composition)
+            
             df = self._fit_apply_featurizers(
                 df,
                 self.composition_featurizers,
