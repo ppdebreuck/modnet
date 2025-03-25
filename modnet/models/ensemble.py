@@ -47,6 +47,7 @@ class EnsembleMODNetModel(MODNetModel):
         bootstrap=True,
         models=None,
         modnet_models=None,
+        random_state: Optional[int] = None,
         **kwargs,
     ):
         """
@@ -55,11 +56,13 @@ class EnsembleMODNetModel(MODNetModel):
             n_models: number of inner MODNetModels, each model has the same architecture defined by the args nd kwargs.
             bootstrap: whether to bootstrap the samples for each inner MODNet fit.
             models: List of user provided MODNetModels. Enables to have different architectures. n_models is discarded in this case.
+            random_state: fix a random state for use with this model.
             modnet_model: Deprecated. Same argument as models. For backward compatibility only.
             **kwargs: See MODNetModel
         """
         self.__modnet_version__ = __version__
         self.bootstrap = bootstrap
+        self.random_state = random_state
         if modnet_models is not None and models is None:
             models = modnet_models
         if models is None:
@@ -74,6 +77,7 @@ class EnsembleMODNetModel(MODNetModel):
         self.targets = self.models[0].targets
         self.weights = self.models[0].weights
         self.num_classes = self.models[0].num_classes
+        self.targets_groups = self.models[0].targets_groups
         self.out_act = self.models[0].out_act
 
     def fit(
@@ -89,18 +93,31 @@ class EnsembleMODNetModel(MODNetModel):
 
         if self.bootstrap:
             LOG.info("Generating bootstrap data...")
+            if self.random_state is None:
+                random_state = self.n_models * [None]
+            else:
+                random_state = np.arange(self.n_models) + self.random_state
+
+            # Loop over all targets and check if any involve classification, if so, stratify
+            stratify = None
+            for prop in self.targets_groups:
+                if self.num_classes[prop[0]] >= 2:  # Classification
+                    stratify = training_data.df_targets[prop[0]].array
+                    break
+            train_indices = [
+                resample(
+                    np.arange(len(training_data.df_targets)),
+                    replace=True,
+                    n_samples=len(training_data.df_targets),
+                    random_state=random_state[i],
+                    stratify=stratify,
+                )
+                for i in range(self.n_models)
+            ]
+
             train_datas = [
-                training_data.split(
-                    (
-                        resample(
-                            np.arange(len(training_data.df_targets)),
-                            replace=True,
-                            random_state=2943,
-                        ),
-                        [],
-                    )
-                )[0]
-                for _ in range(self.n_models)
+                training_data.split((train_indices[i], []))[0]
+                for i in range(self.n_models)
             ]
         else:
             train_datas = [training_data for _ in range(self.n_models)]
@@ -149,6 +166,7 @@ class EnsembleMODNetModel(MODNetModel):
         return_unc: bool = False,
         return_prob: bool = False,
         remap_out_of_bounds: bool = True,
+        voting_type: str = "soft",
     ) -> pd.DataFrame:
         """Predict the target values for the passed MODData.
 
@@ -159,26 +177,53 @@ class EnsembleMODNetModel(MODNetModel):
                 class OR only return the most probable class.
             return_unc: whether to return a second dataframe containing the uncertainties
             remap_out_of_bounds: whether to remap out-of-bounds values to the nearest bound.
+            voting_type: If classification task and return_prob is False, determines
+                if soft or hard ensemble voting is performed.
 
         Returns:
             A `pandas.DataFrame` containing the predicted values of the targets.
 
 
         """
+        return_prob_comput = return_prob
+        if (
+            not return_prob
+            and max(self.num_classes.values()) >= 2
+            and voting_type == "soft"
+        ):
+            return_prob_comput = True
 
         all_predictions = []
         for i in range(self.n_models):
             p = self.models[i].predict(
                 test_data,
-                return_prob=return_prob,
+                return_prob=return_prob_comput,
                 remap_out_of_bounds=remap_out_of_bounds,
             )
             all_predictions.append(p.values)
 
-        p_mean = np.array(all_predictions).mean(axis=0)
-        p_std = np.array(all_predictions).std(axis=0)
+        p_columns = p.columns
+        if max(self.num_classes.values()) == 0 or return_prob:
+            p_mean = np.array(all_predictions).mean(axis=0)
+        elif voting_type == "soft":
+            p_columns, p_mean = [], []
+            for prop in set(["_".join(s.split("_")[:-2]) for s in p.columns]):
+                prop_ids = [
+                    idx for idx, col in enumerate(p.columns) if col.startswith(prop)
+                ]
+                a = np.array(all_predictions)[:, :, prop_ids]
+                p_mean.append(np.argmax(a.sum(axis=0), axis=1))
+                p_columns.append(prop)
+            p_mean = np.array(p_mean).transpose()
+        else:
+            p_mean = np.apply_along_axis(
+                lambda x: np.argmax(np.bincount(x)),
+                axis=0,
+                arr=np.array(all_predictions),
+            )
 
-        df_mean = pd.DataFrame(p_mean, index=p.index, columns=p.columns)
+        p_std = np.array(all_predictions).std(axis=0)
+        df_mean = pd.DataFrame(p_mean, index=p.index, columns=p_columns)
         df_std = pd.DataFrame(p_std, index=p.index, columns=p.columns)
 
         if return_unc:
@@ -421,7 +466,7 @@ class EnsembleMODNetModel(MODNetModel):
             for i in range(n_splits):
                 best_5_idx = np.argsort(val_losses[:, i])[:5]
                 for idx in best_5_idx:
-                    final_models += models[idx][i].model
+                    final_models.extend(models[idx][i].models)
             self.__init__(modnet_models=final_models)
 
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"  # reset
@@ -493,7 +538,7 @@ def _validate_ensemble_model(
 
     model.fit(
         train_data,
-        learning_rate=lr,
+        lr=lr,
         epochs=epochs,
         batch_size=batch_size,
         loss=loss,
@@ -505,7 +550,7 @@ def _validate_ensemble_model(
         val_data=val_data,
     )
 
-    learning_curves = [m.history["val_loss"] for m in model.model]
+    learning_curves = [m.history["val_loss"] for m in model.models]
 
     val_loss = model.evaluate(val_data)
 

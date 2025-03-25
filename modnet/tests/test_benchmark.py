@@ -155,8 +155,8 @@ def test_ga_benchmark(small_moddata, tf_session):
         ga_settings={
             "size_pop": 2,
             "num_generations": 2,
-            "early_stopping": 2,
             "refit": False,
+            "prob_mut": 0.4,
         },
         fast=True,
         n_jobs=1,
