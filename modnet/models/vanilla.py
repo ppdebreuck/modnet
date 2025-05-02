@@ -1381,7 +1381,9 @@ class DeprecatedMODNetModel(MODNetModel):
 
         # Scale and impute input features:
         if self._scale_impute is not None:
-            self._scale_impute.clip = False  # deprecated compatibility
+            self._scale_impute.named_steps["scaler"].clip = (
+                False  # deprecated compatibility
+            )
             x = self._scale_impute.transform(x)
 
         p = np.array(self.model.predict(x))
