@@ -1383,6 +1383,24 @@ class DeprecatedMODNetModel(MODNetModel):
         if self._scale_impute is not None:
             x = self._scale_impute.transform(x)
 
+        # Clip the scaled features to safe bounds
+        if self._scaler is not None:
+            if isinstance(self._scaler, MinMaxScaler):
+                # For MinMaxScaler, use 5x the feature range as bounds
+                lower_bound = 5.0 * self._scaler.feature_range[0]
+                upper_bound = 5.0 * self._scaler.feature_range[1]
+            elif isinstance(self._scaler, StandardScaler):
+                # For StandardScaler, use 10 standard deviations as bounds
+                lower_bound = -10.0
+                upper_bound = 10.0
+            else:
+                # For other scalers, use default wide bounds
+                lower_bound = -np.inf
+                upper_bound = np.inf
+
+            # Clip the features
+            x = np.clip(x, lower_bound, upper_bound)
+
         p = np.array(self.model.predict(x))
 
         if len(p.shape) == 2:
@@ -1444,6 +1462,24 @@ class DeprecatedMODNetModel(MODNetModel):
         # Scale and impute input features:
         if self._scale_impute is not None:
             x = self._scale_impute.transform(x)
+
+        # Clip the scaled features to safe bounds
+        if self._scaler is not None:
+            if isinstance(self._scaler, MinMaxScaler):
+                # For MinMaxScaler, use 5x the feature range as bounds
+                lower_bound = 5.0 * self._scaler.feature_range[0]
+                upper_bound = 5.0 * self._scaler.feature_range[1]
+            elif isinstance(self._scaler, StandardScaler):
+                # For StandardScaler, use 10 standard deviations as bounds
+                lower_bound = -10.0
+                upper_bound = 10.0
+            else:
+                # For other scalers, use default wide bounds
+                lower_bound = -np.inf
+                upper_bound = np.inf
+
+            # Clip the features
+            x = np.clip(x, lower_bound, upper_bound)
 
         y_pred = np.array(self.model.predict(x))
         if len(y_pred.shape) == 2:
