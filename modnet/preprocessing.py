@@ -946,9 +946,15 @@ class MODData:
                             self.df_structure.iloc[idxs],
                             n_samples=int(max_support - support[i]),
                         )
-                        self.df_featurized = self.df_featurized.append(sampled_x)
-                        self.df_targets = self.df_targets.append(sampled_y)
-                        self.df_structure = self.df_structure.append(sampled_struct)
+                        self.df_featurized = pd.concat(
+                            [self.df_featurized, sampled_x], ignore_index=True
+                        )
+                        self.df_targets = pd.concat(
+                            [self.df_targets, sampled_y], ignore_index=True
+                        )
+                        self.df_structure = pd.concat(
+                            [self.df_structure, sampled_struct], ignore_index=True
+                        )
 
     @property
     def structures(self) -> List[Union[Structure, CompositionContainer]]:
