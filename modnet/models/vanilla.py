@@ -731,7 +731,7 @@ class MODNetModel:
 
         # post-process based on training data
         if remap_out_of_bounds:
-            if max(self.num_classes.values()) <= 2:  # regression
+            if max(self.num_classes.values()) < 2:  # regression
                 for i, vals in enumerate(p):
                     yrange = self.max_y[i] - self.min_y[i]
                     upper_bound = self.max_y[i] + 0.25 * yrange
