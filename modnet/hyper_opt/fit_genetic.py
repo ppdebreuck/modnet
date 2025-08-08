@@ -661,6 +661,10 @@ class FitGenetic:
 
             self.best_model = EnsembleMODNetModel(models=ensemble)
             """
+            if "sample_weight" in fit_params:
+                self.best_individual.fit_params["sample_weight"] = fit_params[
+                    "sample_weight"
+                ]
             self.best_model = self.best_individual.refit_model(
                 self.data, n_models=refit, n_jobs=n_jobs or 1, fast=fast
             )
