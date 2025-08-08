@@ -465,13 +465,21 @@ class FitGenetic:
         else:
             n_splits = num_nested_folds
         train_val_datas = []
+        sample_weights = []
         for train, val in splits:
             train_val_datas.append(self.train_data.split((train, val)))
+            if "sample_weight" in pop[0].fit_params:
+                sample_weights.append(pop[0].fit_params["sample_weight"][train])
+            else:
+                sample_weights.append(None)
 
         tasks = []
         for i, individual in enumerate(pop):
             for j in range(n_splits):
                 train_data, val_data = train_val_datas[j]
+                sample_weight = sample_weights[j]
+                if sample_weight is not None:
+                    individual.fit_params["sample_weight"] = sample_weight
                 tasks += [
                     {
                         "individual": individual,
