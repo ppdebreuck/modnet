@@ -15,7 +15,7 @@ import tqdm
 class Individual:
     """Class representing a set of hyperparameters for the genetic algorithm."""
 
-def __init__(
+    def __init__(
         self,
         max_feat: int,
         num_classes: dict,
