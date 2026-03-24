@@ -77,11 +77,12 @@ class Individual:
             b = int(max_feat / 2)
             self.genes["n_feat"] = random.randint(1, b) + b
         elif max_feat > 100 and max_feat < 2000:
-            max = max_feat
-            self.genes["n_feat"] = 10 * random.randint(1, int(max / 10))
+            max_val = max_feat
+            self.genes["n_feat"] = 10 * random.randint(1, int(max_val / 10))
         else:
-            max = np.sqrt(max_feat)
-            self.genes["n_feat"] = random.randint(1, max) ** 2
+            # FIX: Cast np.sqrt to int to prevent random.randint float crash
+            max_val = int(np.sqrt(max_feat))
+            self.genes["n_feat"] = random.randint(1, max_val) ** 2
 
     def crossover(self, partner: Individual) -> Individual:
         """Does the crossover of two parents and returns a 'child' which has a mix of the parents hyperparams.
@@ -91,8 +92,8 @@ class Individual:
         Returns:
             Individual: Child.
         """
-        # creates indices to take randomly half the genes from one parent, and half the genes from the other
-        mother_genes = random.sample(self.genes.keys(), k=len(self.genes) // 2)
+        # FIX: Cast dict_keys to list for random.sample in Python 3.9+
+        mother_genes = random.sample(list(self.genes.keys()), k=len(self.genes) // 2)
 
         child_genes = {
             gene: self.genes[gene] if gene in mother_genes else partner.genes[gene]
@@ -575,13 +576,17 @@ class FitGenetic:
                 1 / lw**5 for lw in val_loss[ranking]
             ]  # **5 in order to give relatively more importance to the best individuals
             weights = [1e-5 if math.isnan(weight) else weight for weight in weights]
-            weights = [w / sum(weights) for w in weights]
-            # selection: weighted choice of the parents -> parents with a low MAE have more chance to be selected
+            
+            # FIX: Add tiny epsilon to sum to prevent ZeroDivisionError
+            weight_sum = sum(weights) + 1e-10 
+            weights = [w / weight_sum for w in weights]
+            
+            # FIX: wrap NumPy arrays in list() for random.choices compatibility
             parents_1 = random.choices(
-                individuals[ranking], weights=weights, k=size_pop
+                list(individuals[ranking]), weights=weights, k=size_pop
             )
             parents_2 = random.choices(
-                individuals[ranking], weights=weights, k=size_pop
+                list(individuals[ranking]), weights=weights, k=size_pop
             )
 
             # crossover
